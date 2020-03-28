@@ -12,6 +12,7 @@
     "version": "4.2.0"
   },
   "dependencies": {
+    "cheerio": "^1.0.0-rc.3",
     "hexo": "^4.0.0",
     "hexo-generator-archive": "^1.0.0",
     "hexo-generator-category": "^1.0.0",
