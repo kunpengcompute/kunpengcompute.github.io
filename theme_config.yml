@@ -1,7 +1,7 @@
 # Version of the Icarus theme that is currently used
 version: 2.6.0
 # Path or URL to the website's icon
-favicon: /images/favicon.svg
+favicon: /images/logo.png
 # Additional HTML meta tags in an array.
 meta: 
 # canonical_url of your site
@@ -9,7 +9,7 @@ canonical_url:
 # Path or URL to RSS atom.xml
 rss: 
 # Path or URL to the website's logo to be shown on the left of the navigation bar or footer
-logo: /images/logo.svg
+logo: /images/banner.png
 # Open Graph metadata
 # https://hexo.io/docs/helpers.html#open-graph
 open_graph:
@@ -27,11 +27,10 @@ open_graph:
 navbar:
     # Navigation bar menu links
     menu:
-        Home: /
-        Archives: /archives
-        Categories: /categories
-        Tags: /tags
-        About: /about
+        主页: /
+        归档: /archives
+        标签: /tags
+        关于: /about
     # Navigation bar links to be shown on the right
     links:
         Our GitHub:
@@ -56,9 +55,9 @@ article:
         # Default folding status of the code blocks. Can be "", "folded", "unfolded"
         fold: unfolded
     # Whether to show article thumbnail images
-    thumbnail: true
+    thumbnail: false
     # Whether to show estimate article reading time
-    readtime: true
+    readtime: false
 # Search plugin settings
 # https://ppoffice.github.io/hexo-theme-icarus/categories/Plugins/Search
 search:
@@ -104,33 +103,22 @@ widgets:
         # Where should the widget be placed, left or right
         position: left
         # Author name to be shown in the profile widget
-        author: Your name
-        # Title of the author to be shown in the profile widget
-        author_title: Your title
+        author: 鲲鹏计算技术生态团队
         # Author's current location to be shown in the profile widget
-        location: Your location
+        location: Huawei
         # Path or URL to the avatar to be shown in the profile widget
-        avatar: /images/kunpeng.png
+        avatar: /images/logo.png
         # Email address for the Gravatar to be shown in the profile widget
         gravatar: 
         # Whether to show avatar image rounded or square
         avatar_rounded: false
         # Path or URL for the follow button
-        follow_link: 'https://github.com/kunpengcompute'
+        follow_link: 'https://github.com/Kunpeng'
         # Links to be shown on the bottom of the profile widget
         social_links:
             Github:
                 icon: fab fa-github
-                url: 'https://github.com/kunpengcompute'
-            Facebook:
-                icon: fab fa-facebook
-                url: 'https://facebook.com'
-            Twitter:
-                icon: fab fa-twitter
-                url: 'https://twitter.com'
-            Dribbble:
-                icon: fab fa-dribbble
-                url: 'https://dribbble.com'
+                url: 'https://github.com/Kunpeng'
             RSS:
                 icon: fas fa-rss
                 url: /
@@ -146,26 +134,11 @@ widgets:
         position: left
         # Links to be shown in the links widget
         links:
-            Hexo: 'https://hexo.io'
-            PPOffice: 'https://github.com/kunpengcompute'
+            鲲鹏Github主页: 'https://github.com/Kunpeng'
+            华为鲲鹏社区: 'https:/huaweicloud.com/kunpeng'
     -
         # Widget name
         type: category
-        # Where should the widget be placed, left or right
-        position: left
-    -
-        # Widget name
-        type: tagcloud
-        # Where should the widget be placed, left or right
-        position: left
-    -
-        # Widget name
-        type: recent_posts
-        # Where should the widget be placed, left or right
-        position: right
-    -
-        # Widget name
-        type: archive
         # Where should the widget be placed, left or right
         position: right
     -
