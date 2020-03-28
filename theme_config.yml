@@ -134,8 +134,8 @@ widgets:
         position: left
         # Links to be shown in the links widget
         links:
-            鲲鹏Github主页: 'https://github.com/Kunpeng'
-            华为鲲鹏社区: 'https:/huaweicloud.com/kunpeng'
+            鲲鹏Github主页: 'https://github.com/kunpengcompute'
+            华为鲲鹏社区: 'https://huaweicloud.com/kunpeng'
     -
         # Widget name
         type: category
