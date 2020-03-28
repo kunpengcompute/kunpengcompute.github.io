@@ -1,0 +1,51 @@
+name: Publish blog
+
+on:
+  push:
+    branches: [ hexo ]
+  issues:
+    types: [opened, edited]
+
+jobs:
+  publish:
+    name: Generate page
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install requirements
+        run: |
+          sudo apt install -y nodejs npm
+          sudo npm install -g hexo-cli
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Prepare hexo
+        run: |
+          sudo git clone -b hexo https://github.com/kunpengcompute/kunpengcompute.github.io.git
+          pushd kunpengcompute.github.io
+          sudo npm install
+      - name: Init icarus
+        run: |
+          pushd kunpengcompute.github.io
+          sudo git clone -b gitalk https://github.com/Yikun/hexo-theme-icarus.git themes/icarus
+          sudo cp theme_config.yml themes/icarus/_config.yml
+      - name: Update config
+        run: |
+          pushd kunpengcompute.github.io
+          sudo sed -i'' "/^ *repo/s~github\.com~${{ secrets.KUNPENG_BLOG_TOKEN }}@github.com~" _config.yml
+          sudo sed -i 's/    client_id: REPLACEME/    client_id: ${{ secrets.KUNPENG_BLOG_CLIENT_ID }}/' themes/icarus/_config.yml
+          sudo sed -i 's/    client_secret: REPLACEME/    client_secret: ${{ secrets.KUNPENG_BLOG_CLIENT_SECRET }}/' themes/icarus/_config.yml
+
+          popd
+      - name: Generate page
+        run: |
+          pushd kunpengcompute.github.io
+          sudo hexo migrate github-issue kunpengcompute/kunpengcompute.github.io
+          sudo hexo clean
+          sudo hexo generate
+          popd
+      - name: Publish
+        run: |
+          pushd kunpengcompute.github.io
+          sudo git config --global user.name "Yikun"
+          sudo git config --global user.email "yikunkero@gmail.com"
+          sudo hexo deploy
+          popd
