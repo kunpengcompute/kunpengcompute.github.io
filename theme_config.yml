@@ -7,7 +7,7 @@ meta:
 # canonical_url of your site
 canonical_url: 
 # Path or URL to RSS atom.xml
-rss: 
+rss: /atom.xml
 # Path or URL to the website's logo to be shown on the left of the navigation bar or footer
 logo: /images/banner.png
 # Open Graph metadata
@@ -121,7 +121,7 @@ widgets:
                 url: 'https://github.com/Kunpeng'
             RSS:
                 icon: fas fa-rss
-                url: /
+                url: /atom.xml
     -
         # Widget name
         type: toc
