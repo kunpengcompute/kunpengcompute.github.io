@@ -38,7 +38,7 @@ jobs:
       - name: Generate page
         run: |
           pushd kunpengcompute.github.io
-          sudo hexo migrate github-issue kunpengcompute/kunpengcompute.github.io
+          sudo hexo migrate github-issue kunpengcompute/kunpengcompute.github.io --publish
           sudo hexo clean
           sudo hexo generate
           popd
