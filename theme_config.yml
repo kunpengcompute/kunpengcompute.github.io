@@ -103,9 +103,9 @@ widgets:
         # Where should the widget be placed, left or right
         position: left
         # Author name to be shown in the profile widget
-        author: 鲲鹏计算技术生态团队
+        author: 鲲鹏展翅，力算未来
         # Author's current location to be shown in the profile widget
-        location: Huawei
+        # location: Kunpeng
         # Path or URL to the avatar to be shown in the profile widget
         avatar: /images/logo.png
         # Email address for the Gravatar to be shown in the profile widget
