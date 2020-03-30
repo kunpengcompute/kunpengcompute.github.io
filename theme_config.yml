@@ -113,12 +113,12 @@ widgets:
         # Whether to show avatar image rounded or square
         avatar_rounded: false
         # Path or URL for the follow button
-        follow_link: 'https://github.com/Kunpeng'
+        follow_link: 'https://github.com/kunpengcompute'
         # Links to be shown on the bottom of the profile widget
         social_links:
             Github:
                 icon: fab fa-github
-                url: 'https://github.com/Kunpeng'
+                url: 'https://github.com/kunpengcompute'
             RSS:
                 icon: fas fa-rss
                 url: /atom.xml
