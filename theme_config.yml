@@ -134,6 +134,8 @@ widgets:
         position: left
         # Links to be shown in the links widget
         links:
+            Slack: 'https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY'
+            欢迎投稿: 'https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/'
             鲲鹏Github主页: 'https://github.com/kunpengcompute'
             华为鲲鹏社区: 'https://huaweicloud.com/kunpeng'
     -
