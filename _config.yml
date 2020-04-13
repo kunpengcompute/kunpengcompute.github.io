@@ -101,7 +101,9 @@ theme: icarus
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:
   type: git
-  repo: https://github.com/kunpengcompute/kunpengcompute.github.io.git
+  repo:
+    github: https://github.com/kunpengcompute/kunpengcompute.github.io.git
+    gitee: https://gitee.com/kunpengcompute/kunpengcompute.git
   branch: master
 
 feed:

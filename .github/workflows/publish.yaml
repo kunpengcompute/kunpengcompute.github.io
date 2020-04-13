@@ -31,7 +31,8 @@ jobs:
       - name: Update config
         run: |
           pushd kunpengcompute.github.io
-          sudo sed -i'' "/^ *repo/s~github\.com~${{ secrets.KUNPENG_BLOG_TOKEN }}@github.com~" _config.yml
+          sudo sed -i'' "/^ *github/s~github\.com~${{ secrets.KUNPENG_BLOG_TOKEN }}@github.com~" _config.yml
+          sudo sed -i'' "/^ *gitee/s~gitee\.com~${{ secrets.KUNPENG_BLOG_TOKEN_GITEE }}@gitee.com~" _config.yml
           sudo sed -i 's/    client_id: REPLACEME/    client_id: ${{ secrets.KUNPENG_BLOG_CLIENT_ID }}/' themes/icarus/_config.yml
           sudo sed -i 's/    client_secret: REPLACEME/    client_secret: ${{ secrets.KUNPENG_BLOG_CLIENT_SECRET }}/' themes/icarus/_config.yml
 
