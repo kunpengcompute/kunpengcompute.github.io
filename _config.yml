@@ -33,6 +33,8 @@ category_dir: categories
 code_dir: downloads/code
 i18n_dir: :lang
 skip_render:
+  - 'source/google*.html'
+  - 'source/baidu_verify_*.html'
 
 # Writing
 new_post_name: :title.md # File name of new posts
