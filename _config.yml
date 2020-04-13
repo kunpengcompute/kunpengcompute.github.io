@@ -13,7 +13,7 @@ timezone: ''
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-url: https://yikun.github.io
+url: https://kunpengcompute.github.io
 root: /
 permalink: :year/:month/:day/:title/
 permalink_defaults:
@@ -32,10 +32,7 @@ archive_dir: archives
 category_dir: categories
 code_dir: downloads/code
 i18n_dir: :lang
-skip_render:
-  - 'source/google*.html'
-  - 'source/baidu_verify_*.html'
-
+skip_render: ['google*.html', 'baidu_verify_*.html']
 # Writing
 new_post_name: :title.md # File name of new posts
 default_layout: post
