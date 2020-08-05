@@ -191,4 +191,4 @@ providers:
     # Name or URL of the webfont CDN provider
     fontcdn: google
     # Name or URL of the webfont Icon CDN provider
-    iconcdn: fontawesome
+    iconcdn: "https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css"
