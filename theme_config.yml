@@ -30,6 +30,7 @@ navbar:
         主页: /
         归档: /archives
         标签: /tags
+        Landscape: /projects
         关于: /about
     # Navigation bar links to be shown on the right
     links:
