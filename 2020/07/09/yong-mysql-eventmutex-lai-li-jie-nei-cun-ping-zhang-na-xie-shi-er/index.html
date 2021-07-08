@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>用MySQL EventMutex来理解内存屏障那些事儿 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接:  https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Understanding-Memory-Barrier&#x2F; 组内Mysql大牛Krunal利用Mysql EventMutex来让你彻底理解内存屏障问题，如何优化等。中文版实在是不好翻译，强烈建议阅读英文版增加理解。瓜已经备好了，还等啥？！">
+<meta property="og:type" content="article">
+<meta property="og:title" content="用MySQL EventMutex来理解内存屏障那些事儿">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/07/09/yong-mysql-eventmutex-lai-li-jie-nei-cun-ping-zhang-na-xie-shi-er/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接:  https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Understanding-Memory-Barrier&#x2F; 组内Mysql大牛Krunal利用Mysql EventMutex来让你彻底理解内存屏障问题，如何优化等。中文版实在是不好翻译，强烈建议阅读英文版增加理解。瓜已经备好了，还等啥？！">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-07-09T01:49:10.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="用MySQL EventMutex来理解内存屏障那些事儿" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="用MySQL EventMutex来理解内存屏障那些事儿" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-07-09T01:49:10.000Z">2020-07-09</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                用MySQL EventMutex来理解内存屏障那些事儿
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Krunal Bauskar<br>原文链接:  <a href="https://mysqlonarm.github.io/Understanding-Memory-Barrier/">https://mysqlonarm.github.io/Understanding-Memory-Barrier/</a></p>
+<p>组内Mysql大牛Krunal利用Mysql EventMutex来让你彻底理解内存屏障问题，如何优化等。中文版实在是不好翻译，强烈建议阅读英文版增加理解。瓜已经备好了，还等啥？！</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<p>MySQL 有多种互斥实现，即封装在 pthread 上的、基于 futex 的、基于 Spin-Lock 的(EventMutex)。它们都有自己的优点和缺点，但由于长期以来 MySQL 一直默认使用 EventMutex，因为它被认为是 MySQL应用场景的最佳选择。</p>
+<p>EventMutex 被转换为使用 C++原子操作(MySQL 增加了对C++ 11的支持)。鉴于 MySQL 现在也支持 ARM，正确地使用内存屏障也是保持 EventMutex 向前优化发展的关键。</p>
+<p>在本文中，我们将使用 EventMutex 的一个示例，了解内存障碍，并查看缺少什么，可以优化什么等等。.</p>
+<h2 id="理解获取和释放内存顺序"><a href="#理解获取和释放内存顺序" class="headerlink" title="理解获取和释放内存顺序"></a>理解获取和释放内存顺序</h2><p>ARM/PowerPC 平台使用弱内存模型，这意味着计算操作可以更自由地重新排序，因此同步地确保逻辑正确的屏障非常重要。最简单的方案是依赖使用循序一致性的默认方案(就像x86那样) ，但是这可能会大大影响其他架构的性能。</p>
+<p>通常开发人员必须面对两个障碍(即 顺序) : 获取和释放。</p>
+<ul>
+<li>获取内存顺序意味着在这个内存顺序/屏障之后的任何操作都不能调度/重新排序到该内存顺序/屏障之前(但是在获取该获取内存顺序之前的操作是可以调度/重新排序到它之后)</li>
+<li>释放内存顺序意味着在这个内存顺序/屏障之前的任何操作都不能调度/重新排序到释放该内存顺序/屏障之后(但是在释放该获取内存顺序之后的操作是可以调度/重新排序到它之前)</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img1.png" alt="img"></p>
+<h2 id="理解-EventMutex-结构"><a href="#理解-EventMutex-结构" class="headerlink" title="理解 EventMutex 结构"></a>理解 EventMutex 结构</h2><p>EventMutex 提供了一个普通的互斥类接口，用于帮助同步对临界区的访问。</p>
+<ul>
+<li>Enter (lock mutex)<ul>
+<li>try_lock (如果获得锁，立即返回).<ul>
+<li>利用compare-and-exchange (CAX) 接口设置 m_lock_word 原子变量.</li>
+</ul>
+</li>
+<li>如果锁获取失败<ul>
+<li>进入一个自旋循环，多次尝试后暂停，检查锁是否再次可用。</li>
+<li>如果在“ N”次尝试之后(由 innodb_sync_spin_loops 控制)锁仍然不可用，那么释放(释放 cpu 控制)并通过在 InnoDB 自制的同步数组(sync-array)中注册该线程，让其进入等待状态。另外，在保留插槽后设置一个等待标志(这样可以确保我们在 sync-array 中得到一个插槽)。等待标志是另一个用于协调信号机制的原子变量。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Exit (unlock mutex)<ul>
+<li>切换原子变量(m_lock_word)以表示离开临界区。</li>
+<li>检查是否设置了等待标志。如果有设置，那么通过同步数组(sync-array)框架向等待线程发送信号来唤醒它们。</li>
+</ul>
+</li>
+</ul>
+<p>看起来非常简单直接。不是吗？<br>引入内存障碍会使这个过程变得复杂，因为忽略它们将意味着重新排序，这可能会导致代码中出现竞争。</p>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img2.png" alt="img"></p>
+<hr>
+<ul>
+<li>从上面的序列可以很清楚地看出，当锁定 m_lock_word (false-&gt; true)时，它起始于临界区(如果 CAX 成功的话) ，因此在m_lock_word 被获取(设置为 true)之前，流程不应该执行来自临界区的任何语句。</li>
+<li>回到我们的获取-释放屏障的部分，它建议 m_lock_word 应该能<strong>获取一个屏障</strong>一旦它成功了。 <strong>(而不是像它现在这样默认的保持顺序一致(seq_cst))</strong>.</li>
+<li>但是，等等，有两个潜在的结果。失败怎么办？即使在失败的情况下，后续的执行，如自旋，睡眠等待和设置等待标识应该在CAX 评估后。这再次表明<strong>获得屏障</strong>失败的例子 <strong>(而不是像它现在这样默认的保持顺序一致(seq_cst))</strong>. </li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img3.png" alt="img"></p>
+<hr>
+<ul>
+<li>现在让我们看看 m_lock_word <strong>释放屏障</strong>的例子。通常一个释放屏障过程发生在临界区结束要改变m_lock_word的时候。</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img4.png" alt="img"></p>
+<hr>
+<ul>
+<li>还有另外一个原子变量(等待标志)也需要一个合适的屏障</li>
+<li>设置服务员标志的动作应该发生在只有当流程中已确保可以得到一个同步阵列(sync-array)插槽的时候。这自然而然就需要一个 <strong>释放屏障</strong>，在set_waiter以上的代码都不会被重新排序。注意: 这是不同的原子操作，所以这里不适用于协调m_lock_word 的获取和释放。</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img5.png" alt="img"></p>
+<hr>
+<ul>
+<li>同样的信号相关的逻辑也应该在等待标志被清除之后再进行，所以它应该使用一个<strong>获取屏障</strong>，以确保在清除等待之前不会被重新调度。<strong>(而不是像现在这样释放)</strong>。</li>
+<li>这也将帮助我们使用<strong>relaxed屏障</strong>(vs 获取)来改变waiter-load标志检查。(这里有一个潜在的问题，我们将在下面讨论)。</li>
+<li>有了所有这些，我们也应该能够解决那些比较明显的内存屏障了。</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img6.png" alt="img"></p>
+<hr>
+<h3 id="异常情况"><a href="#异常情况" class="headerlink" title="异常情况:"></a>异常情况:</h3><ul>
+<li>在release-barrier的</li>
+</ul>
+  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lock_word</span><br></pre></td></tr></table></figure>
+
+
+
+<p>  在之后的 acquire-barrier</p>
+  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">waiter</span><br></pre></td></tr></table></figure>
+
+
+
+<p>  这是能够重新排序的。</p>
+<ul>
+<li>这甚至是我对潜在风险的理解，我认为这就是为什么 MySQL 在这两个操作之间引入了一个内存屏障。如上所述<a href="https://preshing.com/20170612/can-reordering-of-release-acquire-operations-introduce-deadlock/">blog</a>, C++ 标准应该限制编译器这样做。</li>
+</ul>
+<ul>
+<li><p><strong>relaxed barrier</strong></p>
+</li>
+</ul>
+<p>  对于等待标识(同时检查其值时)有潜在的重新排序，可以将加载指令移动到 m_lock_word释放之前(注意:<strong>释放屏障</strong> 可以让后续的指示得到预先安排，就是排在它之前). </p>
+<ul>
+<li>If “waiter” is true then 调用信号循环来唤醒线程.</li>
+<li>If “waiter” is false then 信号循环将不会被该线程调用，而可能被其他线程调用。</li>
+<li>如果只有2个线程，并且 thread-1通过在释放屏障之前重新排序得到 waiter = false，然后立即发布waiter被 thread-2设置为 true 并继续等待会怎么样。现在，thread-1 将永远不会向thread-2发出信号。</li>
+</ul>
+<p>因此，使用一个<strong>relaxed 屏障</strong>是不可能的，所以让我们转换它使用一个<strong>获取屏障</strong>，应该避免移动后续语句超出上述情况，并作为澄清以上release-acquire需要遵循 C++ 标准。</p>
+<p>所有这些都是为了节省额外的内存屏障。内存屏障的意图是协调同步非原子的操作，因为示例代码中有固有的原子(等待标志)使用适当的内存屏障可以帮助达到所需的效果。</p>
+<p>所以有了这些注意事项，代码就会变成这样</p>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img7.png" alt="img"></p>
+<hr>
+<h3 id="我们从这次代码改造中得到了什么"><a href="#我们从这次代码改造中得到了什么" class="headerlink" title="我们从这次代码改造中得到了什么?"></a>我们从这次代码改造中得到了什么?</h3><p>我们实现了三个目标</p>
+<ul>
+<li>修正了内存屏障的使用，这也有助于澄清代码/流程/开发人员的意图。(这是使用内存屏障所强调的重要事情之一。正确的使用将有助于使代码流程被理解和遵循)。</li>
+<li>从严格的顺序排序移动到单向屏障而不失去正确性(获取和释放)</li>
+<li>避免在非原子操作同步中使用内存屏障。</li>
+</ul>
+<p>除非具有性能影响，否则没有理由进行改造，这次改造也不例外。改造后 ARM 的性能提高了4-15% ，x86_64的性能提高了4-6% 。</p>
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>原子操作是好的，但是内存障碍使它们面临挑战，并且确保正确使用内存屏障是在所有平台上获得最佳性能的关键。Barrier 的改造正在迎头赶上，但仍然在起步阶段(尽管在C+11中有所体现) ，因为大多数软件最近开始移植它。正确使用屏障也有助于描述开发者/代码的意图。</p>
+<p><em>如果你有问题，请联系我。</em></p>
+</div>
+<div id="English" class="tab-content">
+
+<p>MySQL has multiple mutex implementations viz. wrapper over pthread, futex based, Spin-Lock based (EventMutex). All of them have their own pros and cons but since long MySQL defaulted to EventMutex as it has been found to be optimal for MySQL use-cases.</p>
+<p>EventMutex was switched to use C++ atomic (with MySQL adding support for C++11). Given that MySQL now also support ARM, ensuring a correct use of memory barrier is key to keep the EventMutex Optimal moving forward too.</p>
+<p>In this article we will use an example of EventMutex and understand the memory barrier and also see what is missing, what could be optimized, etc…</p>
+<h2 id="Understanding-acquire-and-release-memory-order"><a href="#Understanding-acquire-and-release-memory-order" class="headerlink" title="Understanding acquire and release memory order"></a>Understanding acquire and release memory order</h2><p>ARM/PowerPC follows weak memory model that means operations can be re-ordered more freely so ensuring the correct barrier with synchronization logic is important. Easiest alternative is to rely on a default one that uses sequential consistency (as done with x86) but it could affect performance big time on other architectures.</p>
+<p>Often a programmer has to deal with 2 barriers (aka order): acquire and release.</p>
+<ul>
+<li>acquire memory order means any operation after this memory-order/barrier can’t be scheduled/re-ordered before it (but operations before it can be scheduled/re-ordered after it)</li>
+<li>release memory order means any operations before this memory-order/barrier can’t be scheduled/re-ordered after it (but operations after it can be scheduled/re-ordered before it).</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img1.png" alt="img"></p>
+<h2 id="Understanding-EventMutex-structure"><a href="#Understanding-EventMutex-structure" class="headerlink" title="Understanding EventMutex structure"></a>Understanding EventMutex structure</h2><p>EventMutex provides a normal mutex-like interface meant to help synchronize access to the critical sections.</p>
+<ul>
+<li>Enter (lock mutex)<ul>
+<li>try_lock (try to get the lock if procured return immediately).<ul>
+<li>Uses an atomic variable (m_lock_word) that is set using compare-and-exchange (CAX) interface.</li>
+</ul>
+</li>
+<li>If fail to procure<ul>
+<li>Enter a spin-loop that does multiple attempts to pause followed by check if the lock is again available.</li>
+<li>If after “N” attempts (controlled by innodb_sync_spin_loops) lock is not available then yield (releasing the cpu control) and enter wait by registering thread in InnoDB home-grown sync array implementation. Also, set a waiter flag after reserving the slot (this ensures we will get a slot in sync-array). Waiter flag is another atomic that is used to coordinate the signal mechanism.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>Exit (unlock mutex)<ul>
+<li>Toggling the atomic variable (m_lock_word) to signify leaving the critical section.</li>
+<li>Check if the waiter flag is set. If yes then signal the waiting thread through the sync-array framework.</li>
+</ul>
+</li>
+</ul>
+<p>Looks pretty straightforward and simple. Isn’t it?<br>Things get complicated with introduction of memory barriers as ignoring them would mean re-ordering can cause race in your code.</p>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img2.png" alt="img"></p>
+<hr>
+<ul>
+<li>From the above sequence it is pretty clear that while locking m_lock_word (false-&gt;true) it could potentially begin the critical section (if CAX succeeds) and so flow shouldn’t execute any statement from the critical section before the lock word is acquired (set to true).</li>
+<li>Going back to our acquire-release barrier section it suggests m_lock_word should take an <strong>acquire barrier</strong> incase of success <strong>(instead of default (seq_cst) as it currently does)</strong>.</li>
+<li>But wait, there are 2 potential outcomes. What about failure? Even in case of failure, followup actions like spin, sleep and set-waiter should be done only post CAX evaluation. This again suggests use of an <strong>acquire barrier</strong> for failure case too. <strong>(instead of default (seq_cst) as it currently does)</strong>.</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img3.png" alt="img"></p>
+<hr>
+<ul>
+<li>Now let’s look at the release barrier for m_lock_word. Naturally a <strong>release barrier</strong> will be placed once a critical section is done when the m_lock_word is toggled.</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img4.png" alt="img"></p>
+<hr>
+<ul>
+<li>There is another atomic variable (waiter flag) that needs to get a proper barrier too.</li>
+<li>Action to set a waiter flag should be done only when flow has ensured it can get a sync array slot. This naturally invites the need for a <strong>release barrier</strong> so the code is not re-ordered beyond set_waiter. Note: This is different atomic though so the co-ordination of m_lock_word acquire and release will not apply here.</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img5.png" alt="img"></p>
+<hr>
+<ul>
+<li>Same way signal logic should be done only after the waiter flag is cleared so it should use an <strong>acquire barrier</strong> that will ensure it is not re-scheduled before the clear-waiter. <strong>(instead of release as it currently does)</strong>.</li>
+<li>This will also help us change the waiter-load flag check to use <strong>relaxed barrier</strong> (vs acquire). (There is a potential catch here; we will discuss it below).</li>
+<li>With all that in place we should able to get rid of explicit memory_fence too.</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img6.png" alt="img"></p>
+<hr>
+<h3 id="Anomalies"><a href="#Anomalies" class="headerlink" title="Anomalies:"></a>Anomalies:</h3><ul>
+<li>release-barrier on</li>
+</ul>
+  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">lock_word</span><br></pre></td></tr></table></figure>
+
+
+
+<p>  followed by an acquire-barrier on</p>
+  <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">waiter</span><br></pre></td></tr></table></figure>
+
+
+
+<p>  this could be reordered.</p>
+<ul>
+<li>This was even my understanding of potential risk and I presume that’s why MySQL introduced a fence between these 2 operations. As per the said <a href="https://preshing.com/20170612/can-reordering-of-release-acquire-operations-introduce-deadlock/">blog</a>, C++ standard should limit compilers from doing so.</li>
+</ul>
+<ul>
+<li>By using a</li>
+</ul>
+<p>  <strong>relaxed barrier</strong></p>
+<p>  for the waiter (while checking for its value) there is potential re-ordering that could move load instruction before the m_lock_word release (note: <strong>release barrier</strong> can allow followup instructions to get scheduled before it).</p>
+<ul>
+<li>If “waiter” is true then a signal loop will be called.</li>
+<li>If “waiter” is false then the signal loop will not be called by this thread but some other thread may call it.</li>
+<li>What if there are only 2 threads and thread-1 evaluates waiter=false by re-ordering it before the release barrier and then immediately posts that waiter is set to true by thread-2 and goes to wait. Now thread-1 will never signal thread-2.</li>
+</ul>
+<p>So using a <strong>relaxed barrier</strong> is not possible so let’s switch it to use an <strong>acquire barrier</strong> that should avoid moving the followup statement beyond the said point and as clarified above release-acquire needs to follow C++ standard.</p>
+<p>All this to help save an extra memory fence. memory-fence intention is to help co-ordinate non-atomic synchronization since our flow has inherent atomic (waiter) using proper memory barrier can help achieve the needed effect.</p>
+<p>So with all that taken-care this is how things would look</p>
+<p><img src="https://mysqlonarm.github.io/images/blog9/img7.png" alt="img"></p>
+<hr>
+<h3 id="What-we-gained-from-this-revamp"><a href="#What-we-gained-from-this-revamp" class="headerlink" title="What we gained from this revamp?"></a>What we gained from this revamp?</h3><p>So we achieved 3 things</p>
+<ul>
+<li>Corrected use of memory barrier that helps also clarify the code/flow/developer intention. (This is one of the important thing stressed with use of memory barrier. Correct use will help make the code flow naturally obvious to understand and follow).</li>
+<li>Moved from strict sequential ordering to one-way barrier without loosing on correctness. (acquire and release)</li>
+<li>Avoided use of fence memory barrier meant for synchronization of non-atomic.</li>
+</ul>
+<p>Revamp is not justified unless it has performance impact and this revamp is no exception. Revamp helps improve performance on ARM in range of 4-15% and on x86_64 in range of 4-6%.</p>
+<hr>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>Atomics are good but memory-barrier make them challanging and ensuring proper use of these barriers is key to the optimal performance on all platforms. Adaptation of barrier is catching up but still naive (though present in C+11) as most of the softwares recently started adapting to it. Proper use of barrier help clear the intention too.</p>
+<p><em>If you have more questions/queries do let me know. Will try to answer them.</em></p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/07/14/haproxy-x86-vs-arm64-xing-neng-bi-pin/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">HAproxy X86 vs ARM64性能比拼</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/07/03/zhi-ding-numa-jie-dian-yun-xing-mysql/">
+                <span class="level-item">指定NUMA节点运行MySql</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 37,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="用MySQL EventMutex来理解内存屏障那些事儿" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

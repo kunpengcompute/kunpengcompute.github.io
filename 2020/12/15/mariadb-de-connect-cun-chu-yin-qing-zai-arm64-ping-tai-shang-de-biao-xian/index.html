@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>MariaDB的CONNECT存储引擎在arm64平台上的表现 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: zhaorenhai MariaDB的CONNECT存储引擎是一个让人感到兴奋的存储引擎。 之所以说让人感到兴奋，是因为这个存储引擎能做的事实在是太多了。除了不适合用于OLTP领域之外，几乎是上天入地，无所不能。它可以直接用SQL去查询外部文件，支持各种普通的文本文件，日志文件，只要告诉CONNECT固定的文件格式，就可以用SQL去查询，去分析。它还支持JSON，XML，INI这些常见的文">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MariaDB的CONNECT存储引擎在arm64平台上的表现">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/12/15/mariadb-de-connect-cun-chu-yin-qing-zai-arm64-ping-tai-shang-de-biao-xian/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: zhaorenhai MariaDB的CONNECT存储引擎是一个让人感到兴奋的存储引擎。 之所以说让人感到兴奋，是因为这个存储引擎能做的事实在是太多了。除了不适合用于OLTP领域之外，几乎是上天入地，无所不能。它可以直接用SQL去查询外部文件，支持各种普通的文本文件，日志文件，只要告诉CONNECT固定的文件格式，就可以用SQL去查询，去分析。它还支持JSON，XML，INI这些常见的文">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-12-15T07:28:21.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="MariaDB的CONNECT存储引擎在arm64平台上的表现" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="MariaDB的CONNECT存储引擎在arm64平台上的表现" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-12-15T07:28:21.000Z">2020-12-15</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                MariaDB的CONNECT存储引擎在arm64平台上的表现
+            
+        </h1>
+        <div class="content">
+            <p>作者: zhaorenhai</p>
+<p>MariaDB的CONNECT存储引擎是一个让人感到兴奋的存储引擎。</p>
+<p>之所以说让人感到兴奋，是因为这个存储引擎能做的事实在是太多了。除了不适合用于OLTP领域之外，几乎是上天入地，无所不能。它可以直接用SQL去查询外部文件，支持各种普通的文本文件，日志文件，只要告诉CONNECT固定的文件格式，就可以用SQL去查询，去分析。它还支持JSON，XML，INI这些常见的文件格式。除了支持本地的文件，还可以通过REST接口直接查询远程的数据。对于本地的文件，除了查询，还支持插入，删除等功能。它还可以实现Oracle里面的dblink功能，也就是可以远程查询另外一个数据库的表，甚至是不同类型的数据库，包括MySQL，PostgreSQL，Oracle等等，甚至可以是NoSQL类型的MongoDB。当然所谓的跨源查询，多库查询，更是不在话下。当然在此基础上，将外部文件导入到数据库就更简单了，而且比mysqlimport更强大，更灵活，因为可以实现各种各样的格式转换和过滤。将数据导出到外部文件也是一样。它还支持对压缩文件的查询(目前只有zip格式)。甚至对于二进制格式的文件查询和更新都支持。。这个引擎还支持类似于Oracle的dual的虚拟表功能。还可以支持单行转多行，行列转换，多表映射成一个表等各种各样的功能。</p>
+<p>总之有了这个CONNECT存储引擎，可以说，一切都可以转化成SQL，SQL也可以转化成一切。</p>
+<p>接下来我们就看看CONNECT存储引擎在arm64平台上的表现。</p>
+<a id="more"></a>
+<p>（注意本文不是CONNECT的详细使用指导，由于CONNECT涉及内容太广，具体每种用法的详细指导、各种参数、以及限制说明等等请参考官方指导<a href="https://mariadb.com/kb/en/connect/）">https://mariadb.com/kb/en/connect/）</a></p>
+<p>我们的测试平台使用的是华为云的鲲鹏虚拟机。OS采用Ubuntu18.04版本。</p>
+<p>用如下命令查询</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt search mariadb |grep connect</span><br></pre></td></tr></table></figure>
+
+<p>输出</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mariadb-plugin-connect&#x2F;bionic-updates,bionic-security 1:10.1.47-0ubuntu0.18.04.1 arm64</span><br></pre></td></tr></table></figure>
+
+<p>可以看出来当前MariaDB已经发布了arm64平台的CONNECT插件，说明这个插件的基本功能在arm64上是没问题的。</p>
+<p>如果你自己编译了MariaDB的代码(具体的编译方法请参考<a href="https://kunpengcompute.github.io/2020/12/04/mariadb-de-s3-cun-chu-yin-qing-zai-arm64-ping-tai-shang-de-biao-xian/">这篇博客</a>里的内容)，然后去跑CONNECT的测试用例的话，也可以发现，除了一些测试用力由于环境原因被skip以外，大部分测试用例都是可以成功通过的，如下所示：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br></pre></td><td class="code"><pre><span class="line">mariadb@host1:~/build-mariadb-server/mysql-test$ ./mysql-test-run --suite=connect</span><br><span class="line">Logging: /home/mariadb/server/mysql-test/mysql-test-run.pl  --suite=connect</span><br><span class="line">vardir: /home/mariadb/build-mariadb-server/mysql-test/var</span><br><span class="line">Checking leftover processes...</span><br><span class="line">Removing old var directory...</span><br><span class="line">Creating var directory '/home/mariadb/build-mariadb-server/mysql-test/var'...</span><br><span class="line">Checking supported features...</span><br><span class="line">MariaDB Version 10.6.0-MariaDB</span><br><span class="line"></span><br><span class="line"> - SSL connections supported</span><br><span class="line">   Using suites: connect</span><br><span class="line">   Collecting tests...</span><br><span class="line">   Installing system database...</span><br><span class="line"></span><br><span class="line">==============================================================================</span><br><span class="line"></span><br><span class="line">TEST                                      RESULT   TIME (ms) or COMMENT</span><br><span class="line">--------------------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">worker[1] Using MTR_BUILD_THREAD 300, with reserved ports 16000..16019</span><br><span class="line">connect.grant2                           [ disabled ]  Until fixed</span><br><span class="line">connect.jdbc                             [ disabled ]  Variable settings depend on machine configuration</span><br><span class="line">connect.jdbc_new                         [ disabled ]  Variable settings depend on machine configuration</span><br><span class="line">connect.jdbc_oracle                      [ disabled ]  Variable settings depend on machine configuration</span><br><span class="line">connect.jdbc_postgresql                  [ disabled ]  Variable settings depend on machine configuration</span><br><span class="line">connect.json_java_2                      [ disabled ]  Need MongoDB running and its Java Driver installed</span><br><span class="line">connect.json_java_3                      [ disabled ]  Need MongoDB running and its Java Driver installed</span><br><span class="line">connect.json_mongo_c                     [ disabled ]  Need MongoDB running and its C Driver installed</span><br><span class="line">connect.mongo_c                          [ disabled ]  Need MongoDB running and its C Driver installed</span><br><span class="line">connect.mongo_java_2                     [ disabled ]  Need MongoDB running and its Java Driver installed</span><br><span class="line">connect.mongo_java_3                     [ disabled ]  Need MongoDB running and its Java Driver installed</span><br><span class="line">connect.tbl_thread                       [ disabled ]  Bug MDEV-9844,10179,14214 03/01/2018 OB Option THREAD removed</span><br><span class="line">connect.json                             [ pass ]     23</span><br><span class="line">connect.part_file                        [ pass ]     41</span><br><span class="line">connect.part_table                       [ pass ]     46</span><br><span class="line">connect.drop-open-error                  [ pass ]      7</span><br><span class="line">connect.secure_file_priv                 [ pass ]      5</span><br><span class="line">connect.alter                            [ pass ]     27</span><br><span class="line">connect.alter_xml                        [ skipped ]  Need windows</span><br><span class="line">connect.alter_xml2                       [ pass ]      7</span><br><span class="line">connect.bin                              [ pass ]      7</span><br><span class="line">connect.csv                              [ pass ]     16</span><br><span class="line">connect.datest                           [ pass ]      4</span><br><span class="line">connect.dbf                              [ pass ]     34</span><br><span class="line">connect.dir                              [ pass ]      3</span><br><span class="line">connect.endian                           [ pass ]      6</span><br><span class="line">connect.fix                              [ pass ]     18</span><br><span class="line">connect.fmt                              [ pass ]      5</span><br><span class="line">connect.general                          [ pass ]      3</span><br><span class="line">connect.grant                            [ pass ]     68</span><br><span class="line">connect.grant3                           [ pass ]      2</span><br><span class="line">connect.index                            [ pass ]    153</span><br><span class="line">connect.infoschema-9739                  [ skipped ]  Need windows</span><br><span class="line">connect.infoschema2-9739                 [ pass ]      3</span><br><span class="line">connect.ini                              [ pass ]     22</span><br><span class="line">connect.ini_grant                        [ pass ]      9</span><br><span class="line">connect.json_udf                         [ pass ]     31</span><br><span class="line">connect.json_udf_bin                     [ pass ]     45</span><br><span class="line">connect.mrr                              [ pass ]     14</span><br><span class="line">connect.mul                              [ pass ]      5</span><br><span class="line">connect.mul_new                          [ pass ]      7</span><br><span class="line">connect.mysql                            [ pass ]     51</span><br><span class="line">connect.mysql_discovery                  [ pass ]      9</span><br><span class="line">connect.mysql_exec                       [ pass ]      9</span><br><span class="line">connect.mysql_grant                      [ pass ]      7</span><br><span class="line">connect.mysql_index                      [ pass ]    173</span><br><span class="line">connect.mysql_new                        [ pass ]     24</span><br><span class="line">connect.null                             [ pass ]      9</span><br><span class="line">connect.occur                            [ pass ]     12</span><br><span class="line">connect.odbc                             [ skipped ]  No ODBC support</span><br><span class="line">connect.odbc_firebird                    [ skipped ]  No ODBC support</span><br><span class="line">connect.odbc_oracle                      [ skipped ]  No ODBC support</span><br><span class="line">connect.odbc_postgresql                  [ skipped ]  No ODBC support</span><br><span class="line">connect.odbc_sqlite3                     [ skipped ]  No ODBC support</span><br><span class="line">connect.odbc_sqlite3_grant               [ skipped ]  No ODBC support</span><br><span class="line">connect.odbc_xls                         [ skipped ]  No ODBC support</span><br><span class="line">connect.pivot                            [ pass ]     22</span><br><span class="line">connect.tbl                              [ pass ]     13</span><br><span class="line">connect.temporary                        [ pass ]</span><br><span class="line">connect.type_inet6                       [ pass ]      2</span><br><span class="line">connect.unsigned                         [ pass ]      6</span><br><span class="line">connect.upd                              [ pass ]    218</span><br><span class="line">connect.updelx                           [ pass ]    282</span><br><span class="line">connect.updelx2                          [ pass ]      5</span><br><span class="line">connect.vcol                             [ pass ]      2</span><br><span class="line">connect.vec                              [ pass ]     10</span><br><span class="line">connect.xcol                             [ pass ]      5</span><br><span class="line">connect.xml                              [ skipped ]  Need windows</span><br><span class="line">connect.xml2                             [ pass ]     22</span><br><span class="line">connect.xml2_grant                       [ pass ]     14</span><br><span class="line">connect.xml2_html                        [ pass ]      3</span><br><span class="line">connect.xml2_mdev5261                    [ pass ]      5</span><br><span class="line">connect.xml2_mult                        [ pass ]      9</span><br><span class="line">connect.xml2_zip                         [ pass ]      4</span><br><span class="line">connect.xml_grant                        [ skipped ]  Need windows</span><br><span class="line">connect.xml_html                         [ skipped ]  Need windows</span><br><span class="line">connect.xml_mdev5261                     [ skipped ]  Need windows</span><br><span class="line">connect.xml_mult                         [ skipped ]  Need windows</span><br><span class="line">connect.xml_zip                          [ skipped ]  Need windows</span><br><span class="line"></span><br><span class="line">connect.zip                              [ pass ]     13</span><br><span class="line">--------------------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">The servers were restarted 3 times</span><br><span class="line">Spent 1.540 of 11 seconds executing testcases</span><br><span class="line"></span><br><span class="line">Completed: All 53 tests were successful.</span><br><span class="line"></span><br><span class="line">15 tests were skipped, 15 by the test itself.</span><br></pre></td></tr></table></figure>
+
+<p>接下来我们测试一下CONNECT存储引擎可能会涉及到性能的几个表类型，看看性能情况怎么样。</p>
+<p>在mariadb的配置文件里，添加如下配置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">plugin_dir &#x3D; &#x2F;home&#x2F;mariadb&#x2F;build-mariadb-server&#x2F;storage&#x2F;connect</span><br></pre></td></tr></table></figure>
+
+<p>重启数据库。</p>
+<p>登陆到mariadb，执行如下语句，启用CONNECT存储引擎：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">install</span> <span class="keyword">soname</span> <span class="string">'ha_connect'</span>;</span><br></pre></td></tr></table></figure>
+
+<p><strong>DOS表类型</strong></p>
+<p>DOS表类型实际上对应的就是普通的文本文件，文件中每一列的数据是定长的，只有最后一列是变长的。</p>
+<p>我们有如下格式的一个文件，大小在659M，行数为1300多万行。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">root@mariadb-arm-test:~# ls -lh /tmp/data_dos.txt</span><br><span class="line">-rw-r--r-- 1 root root 659M Dec 11 16:56 /tmp/data_dos.txt</span><br><span class="line">root@mariadb-arm-test:~# wc -l /tmp/data_dos.txt</span><br><span class="line">13819904 /tmp/data_dos.txt</span><br><span class="line">root@mariadb-arm-test:~# tail /tmp/data_dos.txt</span><br><span class="line">53975 1352378138480 dxmpjtsqpmjhltthckyniaxdw</span><br><span class="line">53976 1364107020874 wyqnxsuexajbvekyqamxpzlcoy</span><br><span class="line">53977 1374147913184 ltmwgochhwfwpzbsquuttiglcls</span><br><span class="line">53978 1382141036405 gmedqtymkbkxntltajxbhlaeomda</span><br><span class="line">53979 1391311715118 kfnwwabonxwyfauqlbeguhstbrumj</span><br><span class="line">53980 1303473032800 padqsyhvhvltcpebmtkt</span><br><span class="line">53981 1313713811959 nwduknfpyaeplwpmpozwh</span><br><span class="line">53982 1321669920517 aglfvcespetmimkugoyygu</span><br><span class="line">53983 1333059736260 ltccjcvptqcrwklutmrlles</span><br><span class="line">53984 1342207932901 vqkkrkrqkmcxvkdmiwyfylxe</span><br></pre></td></tr></table></figure>
+
+<p>我们用CONNECT存储引擎来查询一下试试。</p>
+<p>登陆到数据库，创建表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">create table userlist (</span><br><span class="line">  id char(5) not null,</span><br><span class="line">  phonenum char(13) not null flag&#x3D;6,</span><br><span class="line">  userid char(30) not null flag&#x3D;20</span><br><span class="line">  )</span><br><span class="line">engine&#x3D;CONNECT table_type&#x3D;DOS file_name&#x3D;&#39;&#x2F;tmp&#x2F;data_dos.txt&#39;;</span><br></pre></td></tr></table></figure>
+
+<p>建表速度很快</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Query OK, 0 rows affected (0.01 sec)</span><br></pre></td></tr></table></figure>
+
+<p>查询一下总条数，速度也很快，只要13秒</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [test]&gt; select count(*) from userlist;</span><br><span class="line">+----------+</span><br><span class="line">| count(*) |</span><br><span class="line">+----------+</span><br><span class="line">| 13819904 |</span><br><span class="line">+----------+</span><br><span class="line">1 row in set (13.350 sec)</span><br></pre></td></tr></table></figure>
+
+<p>再试试带条件查询和插入</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">8f3941802b868b2bbb43390ab5a2f1c8  -</span><br><span class="line">256 rows in set (9.221 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">8f3941802b868b2bbb43390ab5a2f1c8  -</span><br><span class="line">256 rows in set (9.221 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist where userid like &#39;ltccjc%&#39;;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">2bde22161d7a5bad42c377b7290cdff4  -</span><br><span class="line">256 rows in set (19.196 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist where userid like &#39;ltccjc%&#39;;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">2bde22161d7a5bad42c377b7290cdff4  -</span><br><span class="line">256 rows in set (19.279 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; insert into userlist values(&#39;76245&#39;,&#39;1812345678901&#39;, &#39;swweyuoyslwtqwtoeurwio&#39;);</span><br><span class="line">Query OK, 1 row affected (0.000 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; delete from userlist where id&#x3D;76245 and phonenum &#x3D; &#39;1812345678901&#39;;</span><br><span class="line">Query OK, 1 row affected (9.719 sec)</span><br></pre></td></tr></table></figure>
+
+<p>可以看到查询速度还是比较快的，从1300多万条记录查询出256条记录只要9秒. 不过like查询稍微慢一点，要19秒。<br>插入也很快,插入实际上就是在原文件的最后插入一条记录。</p>
+<p>不建议在这种DOS类型的表上面进行Update操作，可能会有奇怪的事情发生。因为Update的时候默认不是更新原文件，而是更新一个临时文件。有一个参数<code>connect_use_tempfile</code>可以配置支持更新源文件，但是在变长记录的文件里面也不建议使用。如果确定要用这个功能，建议自己测试以后再使用。</p>
+<p><strong>FIX表类型</strong></p>
+<p>FIX表类型和DOS的区别就在于最后一列的宽度是定长的，还是变长的，如果是定长的，就是FIX类型，如果是变长的，就是DOS类型。</p>
+<p>现在我们来测试一下FIX类型，我们有如下文件，大小为667M，1343万行，最后一列长度都是一样的。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">mariadb@mariadb-arm-test:/tmp$ ls -lhrt data_fix.txt</span><br><span class="line">-rw-rw-r-- 1 mariadb mariadb 667M Dec 13 16:29 data_fix.txt</span><br><span class="line">mariadb@mariadb-arm-test:/tmp$ wc -l data_fix.txt</span><br><span class="line">13432192 data_fix.txt</span><br><span class="line">mariadb@mariadb-arm-test:/tmp$ tail data_fix.txt</span><br><span class="line">104930 1302533021891 idmujolnoimfhafacordyrrzmmjjuf</span><br><span class="line">104931 1313195411180 bwuhbnyhxscqprsizgyjkotqfyndda</span><br><span class="line">104932 1323234034390 frynxnmkttbxzibvsdzokelmnqwkwc</span><br><span class="line">104933 1331271621869 sthxlnhbfqpnrpkiahgvqrlfhrcfxu</span><br><span class="line">104934 1342061419324 hheddnlwxslnqttygyalcamwdxujpp</span><br><span class="line">104935 1351001433696 ajlhunoosohztneqfxzotfbgfdegrj</span><br><span class="line">104936 1362857527592 qraermmsdzuxoogprmxsxrqmktfrwr</span><br><span class="line">104937 1372706024878 tkozushzmqhuxkavdbcxwnmksiceji</span><br><span class="line">104938 1382111414256 osllmzidwpmdbxzkzfkelsnwcdtstr</span><br><span class="line">104939 1393077713849 dzafytqywdyahhjvhvdosnsduwwpvw</span><br></pre></td></tr></table></figure>
+
+<p>登陆到MariaDB数据库，我们创建一个FIX表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">create table userlist_fix (</span><br><span class="line">  id char(6) not null,</span><br><span class="line">  phonenum char(13) not null flag&#x3D;7,</span><br><span class="line">  userid char(30) not null flag&#x3D;21</span><br><span class="line">  )</span><br><span class="line">engine&#x3D;CONNECT table_type&#x3D;FIX file_name&#x3D;&#39;&#x2F;tmp&#x2F;data_fix.txt&#39; lrecl&#x3D;52;</span><br></pre></td></tr></table></figure>
+
+<p>注意那个lrecl=52是最长行的字节数长度，包含换行符。</p>
+<p>我们把上面的操作再来一遍：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [test]&gt; select count(*) from userlist_fix;</span><br><span class="line">+----------+</span><br><span class="line">| count(*) |</span><br><span class="line">+----------+</span><br><span class="line">| 13432193 |</span><br><span class="line">+----------+</span><br><span class="line">1 row in set (0.000 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_fix where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">0871c0088df3f4dbf37b12e56611a0b0  -</span><br><span class="line">128 rows in set (3.535 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_fix where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">0871c0088df3f4dbf37b12e56611a0b0  -</span><br><span class="line">128 rows in set (3.535 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_fix where userid like &#39;ltccjc%&#39;;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">Empty set (9.344 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_fix where userid like &#39;ltccjc%&#39;;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">Empty set (9.325 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; insert into userlist_fix values(&#39;76245&#39;,&#39;1812345678901&#39;, &#39;swweyuoyslwtqwtoeurwio&#39;);</span><br><span class="line">Query OK, 1 row affected (0.000 sec)</span><br></pre></td></tr></table></figure>
+
+<p>可以看出来，FIX格式每一种类型的操作都比DOS格式快了很多，说明MariaDB在定长格式的处理里面，利用了定长的特性，性能会更好。 最后一行，我们插入的数据不是对齐的，MariaDB插入数据库的时候，会自动给你补齐：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">mariadb@mariadb-arm-test:/tmp$ tail data_fix.txt</span><br><span class="line">104930 1302533021891 idmujolnoimfhafacordyrrzmmjjuf</span><br><span class="line">104931 1313195411180 bwuhbnyhxscqprsizgyjkotqfyndda</span><br><span class="line">104932 1323234034390 frynxnmkttbxzibvsdzokelmnqwkwc</span><br><span class="line">104933 1331271621869 sthxlnhbfqpnrpkiahgvqrlfhrcfxu</span><br><span class="line">104934 1342061419324 hheddnlwxslnqttygyalcamwdxujpp</span><br><span class="line">104935 1351001433696 ajlhunoosohztneqfxzotfbgfdegrj</span><br><span class="line">104936 1362857527592 qraermmsdzuxoogprmxsxrqmktfrwr</span><br><span class="line">104937 1372706024878 tkozushzmqhuxkavdbcxwnmksiceji</span><br><span class="line">104938 1382111414256 osllmzidwpmdbxzkzfkelsnwcdtstr</span><br><span class="line">76245  1812345678901 swweyuoyslwtqwtoeurwio</span><br></pre></td></tr></table></figure>
+
+<p>定长的类型，对于update和delete操作也是比较友好的，速度也很快，而且都是在原文件上直接操作的。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [test]&gt; update userlist_fix set phonenum = '1811111111111' where id= 104938;</span><br><span class="line">Query OK, 128 rows affected (3.513 sec)</span><br><span class="line">Rows matched: 128  Changed: 128  Warnings: 0</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; delete from userlist_fix where phonenum = '1811111111111';</span><br><span class="line">Query OK, 128 rows affected (3.672 sec)</span><br></pre></td></tr></table></figure>
+
+<p>所以我们在根据原始文本文件建表的时候，如果有可能处理成FIX类型的，尽量处理成FIX类型的。</p>
+<p><strong>关于connect_work_size参数</strong></p>
+<p>接下来我们修改一下connect_work_size参数，这个参数从官网描述来看，应该是CONNECT引擎使用的内存区域，我们来增大一下看看有没有效果。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [test]&gt; select @@session.connect_work_size;</span><br><span class="line">+-----------------------------+</span><br><span class="line">| @@session.connect_work_size |</span><br><span class="line">+-----------------------------+</span><br><span class="line">|                    67108864 |</span><br><span class="line">+-----------------------------+</span><br><span class="line">1 row in set (0.000 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; set session connect_work_size &#x3D; 1073741824;</span><br><span class="line">Query OK, 0 rows affected (0.000 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; select count(*) from userlist;</span><br><span class="line">+----------+</span><br><span class="line">| count(*) |</span><br><span class="line">+----------+</span><br><span class="line">| 13819650 |</span><br><span class="line">+----------+</span><br><span class="line">1 row in set (13.576 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">8f3941802b868b2bbb43390ab5a2f1c8  -</span><br><span class="line">256 rows in set (9.306 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">8f3941802b868b2bbb43390ab5a2f1c8  -</span><br><span class="line">256 rows in set (9.305 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_fix where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">6daf8a0815666570cee0011046e3b568  -</span><br><span class="line">128 rows in set (3.526 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_fix where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">6daf8a0815666570cee0011046e3b568  -</span><br><span class="line">128 rows in set (3.526 sec)</span><br></pre></td></tr></table></figure>
+
+<p>根据上面输出可以看出来，并没有效果。说明CONNECT存储引擎处理文件时，并没有把整个文件缓存起来，增大内存空间，并没有用。我们速度之所以这么快，也得益于我们用的华为云的虚拟机采用的存储是SSD，速度比较快。</p>
+<p><strong>CSV表类型</strong></p>
+<p>CSV表类型对应的就是普通的CSV格式的文本文件，不过这里的分隔符可以指定，就是不仅仅可以是逗号，也可以是指定的其他字符。</p>
+<p>我们来测试下CSV表类型的性能。</p>
+<p>我们创建一个如下格式的CSV文件，大小为603M，1390多万行。列与列之间用竖线分隔。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">mariadb@mariadb-arm-test:/tmp$ wc -l data.csv</span><br><span class="line">13909120 data.csv</span><br><span class="line">mariadb@mariadb-arm-test:/tmp$ ls -lhrt data.csv</span><br><span class="line">-rw-rw-r-- 1 mariadb mariadb 603M Dec 14 12:01 data.csv</span><br><span class="line">mariadb@mariadb-arm-test:/tmp$ tail -10 data.csv</span><br><span class="line">1411|1311008423658|hudulfqgofqahfxwtqihs</span><br><span class="line">1412|1321119524436|atacjjbibtzqwohjnrtebc</span><br><span class="line">1413|1334167818661|tnhdlrpbpaxzfyiymholbfy</span><br><span class="line">1414|1344170515956|xlwsuiotrfhmoltiscorhdec</span><br><span class="line">1415|1351643025744|httzsnqpjydxeinvwcaekgydt</span><br><span class="line">1416|1363624529884|tyyttcbsqjiwufvmpuveototmq</span><br><span class="line">1417|1371750537023|diwtmqdriozmoscypldbcdrqvfd</span><br><span class="line">1418|1383308741505|gqchktgbsstyixidjztgtpgutzeb</span><br><span class="line">1419|1393553934078|culiovhkrdovnbcdestvnqqubwdzl</span><br><span class="line">1420|1302340336368|bfjdepbcrefcfvbhznbd</span><br></pre></td></tr></table></figure>
+
+<p>使用如下sql创建CSV类型的表</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">create table userlist_csv (</span><br><span class="line">  id int not null,</span><br><span class="line">  phonenum char(13) not null,</span><br><span class="line">  userid char(29) not null)</span><br><span class="line">engine&#x3D;CONNECT table_type&#x3D;CSV file_name&#x3D;&#39;&#x2F;tmp&#x2F;data.csv&#39;</span><br><span class="line">header&#x3D;0 sep_char&#x3D;&#39;|&#39; quoted&#x3D;0;</span><br></pre></td></tr></table></figure>
+
+<p>然后我们进行一些增删改查操作：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [test]&gt; select count(*) from userlist_csv;</span><br><span class="line">9229c8871853852300fca7ce0bb33598  -</span><br><span class="line">1 row in set (17.835 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; select count(*) from userlist_csv;</span><br><span class="line">9229c8871853852300fca7ce0bb33598  -</span><br><span class="line">1 row in set (17.712 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_csv where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">9a02ca9b5c3044a73f4441c10945ff91  -</span><br><span class="line">140 rows in set (9.356 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_csv where id &#x3D; 23456;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">9a02ca9b5c3044a73f4441c10945ff91  -</span><br><span class="line">140 rows in set (9.355 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_csv where userid like &#39;ltccjc%&#39;;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">Empty set (21.788 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; pager md5sum;select * from userlist_csv where userid like &#39;ltccjc%&#39;;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">Empty set (21.781 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; insert into userlist_csv values(&#39;76245&#39;,&#39;1812345678901&#39;, &#39;swweyuoyslwtqwtoeurwio&#39;);</span><br><span class="line">Query OK, 1 row affected (0.000 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; update userlist_csv set phonenum&#x3D;&#39;1811111111111&#39; where id&#x3D;76245;</span><br><span class="line">Query OK, 141 rows affected (6.803 sec)</span><br><span class="line">Rows matched: 141  Changed: 141  Warnings: 0</span><br><span class="line"></span><br><span class="line">MariaDB [test]&gt; delete from  userlist_csv  where id&#x3D;76245 and phonenum&#x3D;&#39;1811111111111&#39;;</span><br><span class="line">Query OK, 141 rows affected (6.674 sec)</span><br></pre></td></tr></table></figure>
+
+<p>可以看出来，性能还是不错的，count的查询和like查询比DOS类型稍微慢一点，等于查询和插入操作都和DOS类型差不多，删除操作比DOS类型还要快一点。</p>
+<p><strong>FMT表类型</strong></p>
+<p>FMT表类型相对于CSV更灵活点，可以通过格式匹配来指定每一个字段的格式，长度。FMT在分析各种类型的日志的时候很有用。</p>
+<p>我们用它来分析一个操作系统auth日志。</p>
+<p>这个auth日志有600多M，500多万行。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">root@mariadb-arm-test:/var/log# ls -lhrt auth.log.1</span><br><span class="line">-rw-r----- 1 syslog adm 625M Dec 14 15:11 auth.log.1</span><br><span class="line">root@mariadb-arm-test:/var/log# wc -l auth.log.1</span><br><span class="line">5890048 auth.log.1</span><br></pre></td></tr></table></figure>
+
+<p>截取部分文件内容，格式如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">Dec 12 16:39:23 localhost groupadd[32556]: group added to &#x2F;etc&#x2F;group: name&#x3D;mariadb, GID&#x3D;1000</span><br><span class="line">Dec 12 16:39:23 localhost groupadd[32556]: group added to &#x2F;etc&#x2F;gshadow: name&#x3D;mariadb</span><br><span class="line">Dec 12 16:39:23 localhost groupadd[32556]: new group: name&#x3D;mariadb, GID&#x3D;1000</span><br><span class="line">Dec 12 16:39:23 localhost useradd[32560]: new user: name&#x3D;mariadb, UID&#x3D;1000, GID&#x3D;1000, home&#x3D;&#x2F;home&#x2F;mariadb, shell&#x3D;&#x2F;bin&#x2F;bash</span><br><span class="line">Dec 12 16:39:43 localhost passwd[32569]: pam_unix(passwd:chauthtok): password changed for mariadb</span><br><span class="line">Dec 12 16:39:46 localhost chfn[32570]: changed user &#39;mariadb&#39; information</span><br><span class="line">Dec 12 16:45:36 localhost su[1805]: Successful su for mariadb by root</span><br><span class="line">Dec 12 16:45:36 localhost su[1805]: + &#x2F;dev&#x2F;pts&#x2F;0 root:mariadb</span><br><span class="line">Dec 12 16:45:36 localhost su[1805]: pam_unix(su:session): session opened for user mariadb by root(uid&#x3D;0)</span><br><span class="line">Dec 12 16:45:36 localhost su[1805]: pam_systemd(su:session): Cannot create session: Already running in a session</span><br><span class="line">Dec 12 16:50:01 localhost sudo:  mariadb : TTY&#x3D;pts&#x2F;0 ; PWD&#x3D;&#x2F;home&#x2F;mariadb ; USER&#x3D;root ; COMMAND&#x3D;&#x2F;usr&#x2F;bin&#x2F;apt-get install build-essential libncurses5-dev gnutls-dev libcurl4-gnutls-dev</span><br><span class="line">Dec 12 16:50:01 localhost sudo: pam_unix(sudo:session): session opened for user root by root(uid&#x3D;0)</span><br><span class="line">Dec 12 16:50:04 localhost sudo: pam_unix(sudo:session): session closed for user root</span><br><span class="line">Dec 12 16:50:14 localhost sudo:  mariadb : TTY&#x3D;pts&#x2F;0 ; PWD&#x3D;&#x2F;home&#x2F;mariadb ; USER&#x3D;root ; COMMAND&#x3D;&#x2F;usr&#x2F;bin&#x2F;apt-get install build-essential libncurses5-dev gnutls-dev libcurl4-gnutls-dev</span><br><span class="line">Dec 12 16:50:14 localhost sudo: pam_unix(sudo:session): session opened for user root by root(uid&#x3D;0)</span><br><span class="line">Dec 12 16:50:25 localhost sudo: pam_unix(sudo:session): session closed for user root</span><br><span class="line">Dec 12 16:50:49 localhost sudo:  mariadb : TTY&#x3D;pts&#x2F;0 ; PWD&#x3D;&#x2F;home&#x2F;mariadb ; USER&#x3D;root ; COMMAND&#x3D;&#x2F;usr&#x2F;bin&#x2F;apt-get install zlib1g-dev ccache libnuma-dev libxml2-dev cmake bison</span><br><span class="line">Dec 12 16:50:49 localhost sudo: pam_unix(sudo:session): session opened for user root by root(uid&#x3D;0)</span><br><span class="line">Dec 12 16:51:08 localhost sudo: pam_unix(sudo:session): session closed for user root</span><br><span class="line">Dec 12 16:56:01 localhost CRON[7999]: pam_unix(cron:session): session opened for user root by (uid&#x3D;0)</span><br><span class="line">Dec 12 16:56:01 localhost CRON[7999]: pam_unix(cron:session): session closed for user root</span><br><span class="line">Dec 12 17:17:01 localhost CRON[16493]: pam_unix(cron:session): session opened for user root by (uid&#x3D;0)</span><br><span class="line">Dec 12 17:17:01 localhost CRON[16493]: pam_unix(cron:session): session closed for user root</span><br></pre></td></tr></table></figure>
+
+<p>创建表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">create table authlog (</span><br><span class="line">  month char(3) not null field_format&#x3D;&#39;%n%s%n&#39;,</span><br><span class="line">  day char(2) not null field_format&#x3D;&#39; %n%s%n&#39;,</span><br><span class="line">  time char(8) not null field_format&#x3D;&#39; %n%s%n&#39;,</span><br><span class="line">  hostname char(9) not null field_format&#x3D;&#39; %n%s%n&#39;,</span><br><span class="line">  module char(20) not null field_format&#x3D;&#39; %n%s%n&#39;,</span><br><span class="line">  message char(255) not null field_format&#x3D;&#39; %n%255[^\n]%n&#39;)</span><br><span class="line">engine&#x3D;CONNECT table_type&#x3D;FMT file_name&#x3D;&#39;&#x2F;var&#x2F;log&#x2F;auth.log.1&#39; ;</span><br></pre></td></tr></table></figure>
+
+<p>查询一下，现在看格式是不是好看多了：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [test]&gt;  select * from authlog limit 10;</span><br><span class="line">+-------+-----+----------+-----------+----------------------+-----------------------------------------------------------------------+</span><br><span class="line">| month | day | time     | hostname  | module               | message                                                               |</span><br><span class="line">+-------+-----+----------+-----------+----------------------+-----------------------------------------------------------------------+</span><br><span class="line">| Dec   | 2   | 20:47:26 | localhost | systemd-logind[721]: | Power key pressed.                                                    |</span><br><span class="line">| Dec   | 2   | 20:47:26 | localhost | systemd-logind[721]: | Powering Off...                                                       |</span><br><span class="line">| Dec   | 2   | 20:47:26 | localhost | systemd-logind[721]: | System is powering down.                                              |</span><br><span class="line">| Dec   | 2   | 20:47:27 | localhost | systemd:             | pam_unix(systemd-user:session): session closed for user root          |</span><br><span class="line">| Dec   | 11  | 10:07:26 | localhost | systemd-logind[960]: | New seat seat0.                                                       |</span><br><span class="line">| Dec   | 11  | 10:07:26 | localhost | systemd-logind[960]: | Watching system buttons on &#x2F;dev&#x2F;input&#x2F;event0 (Power Button)           |</span><br><span class="line">| Dec   | 11  | 10:07:26 | localhost | systemd-logind[960]: | Watching system buttons on &#x2F;dev&#x2F;input&#x2F;event2 (QEMU QEMU USB Keyboard) |</span><br><span class="line">| Dec   | 11  | 10:07:50 | localhost | sshd[2384]:          | Server listening on 0.0.0.0 port 22.                                  |</span><br><span class="line">| Dec   | 11  | 10:07:50 | localhost | sshd[2384]:          | Server listening on :: port 22.                                       |</span><br><span class="line">| Dec   | 11  | 10:07:51 | localhost | sshd[2384]:          | Received signal 15; terminating.                                      |</span><br><span class="line">+-------+-----+----------+-----------+----------------------+-----------------------------------------------------------------------+</span><br></pre></td></tr></table></figure>
+
+<p>我们来进行一些查询：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [test]&gt; select count(*) from authlog where month&#x3D;&#39;Dec&#39; and day&#x3D;&#39;12&#39; and module like &#39;sshd%&#39;;</span><br><span class="line">+----------+</span><br><span class="line">| count(*) |</span><br><span class="line">+----------+</span><br><span class="line">|  3170304 |</span><br><span class="line">+----------+</span><br><span class="line">1 row in set (15.609 sec)</span><br></pre></td></tr></table></figure>
+
+<p>速度还可以接受。 当然你如果用如下的方式，用grep命令去过滤，速度会更快一点：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">root@mariadb-arm-test:/var/log# echo 3 &gt; /proc/sys/vm/drop_caches</span><br><span class="line">root@mariadb-arm-test:/var/log# time grep 'Dec 12' auth.log.1 |grep sshd  |wc -l</span><br><span class="line">3170304</span><br><span class="line"></span><br><span class="line">real    0m3.610s</span><br><span class="line">user    0m1.745s</span><br><span class="line">sys     0m1.170s</span><br></pre></td></tr></table></figure>
+
+<p>但是用SQL，有如下几个优点：</p>
+<p>1、数据是按字段分隔开的，结果会更精确。</p>
+<p>2、你如果想把日志导入到数据库里面，就很方便了，直接<code>create table tablename as select * from authlog</code>就搞定了。</p>
+<p>3、有时候会需要把日志里面的内容和表里面的内容进行关联查询，创建成表，就很方便了。</p>
+<p><strong>总结</strong></p>
+<p>CONNECT的功能很多，像解析xml，json，远程查询其他数据库功能，行列转换，虚拟列等等，我们都没有演示。不过这些功能通过之前跑的测试用例可以发现在arm64上都是支持的。而且这些功能涉及性能的场景不太多，像一般xml和json不会有太大的文件，远程查询其实更依赖的是远程数据库的性能。对于这些功能具体的用法，感兴趣的小伙伴可以参考MariaDB官方Knowledge Base指导，写的都是很详细的。</p>
+<p>本文主要测试了几个CONNECT可能会涉及到性能相关，需要解析大文件的表类型，发现在arm64上性能其实也是很不错的。另外，本文测试的查询场景，都是未建索引的场景，如果数据的选择性很好的话，可以选择建立索引，再去查询，几乎就是瞬间就可以返回了。当然索引需要占用一定的空间，另外也要求对磁盘有写权限。具体用法请参考MariaDB官方指导。</p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/12/15/test-mariadb-connect-storage-engine-on-arm64-platform/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">Test MariaDB CONNECT storage engine on arm64 platform</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/12/08/monitor-mariadb-database-on-the-arm64-platform/">
+                <span class="level-item">Monitor MariaDB database on the arm64 platform</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 71,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="MariaDB的CONNECT存储引擎在arm64平台上的表现" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>MariaDB集群在x86和arm64上的混合部署 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: zhaorenhai 本文尝试在x86和arm64平台上混合部署MariaDB集群，看看是否可以部署成功。部署环境计划在华为云上进行，OS采用openEuler20.03版本，MariaDB采用10.3.9版本。MariaDB官方文档里面，高可用环境部署方法一共两种类型，比较简单的是复制，然后是Galera集群。我们分别尝试下这两种高可用环境，是否支持在x86和arm64平台上混合部署。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MariaDB集群在x86和arm64上的混合部署">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/10/26/mariadb-ji-qun-zai-x86-he-arm64-shang-de-hun-he-bu-shu/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: zhaorenhai 本文尝试在x86和arm64平台上混合部署MariaDB集群，看看是否可以部署成功。部署环境计划在华为云上进行，OS采用openEuler20.03版本，MariaDB采用10.3.9版本。MariaDB官方文档里面，高可用环境部署方法一共两种类型，比较简单的是复制，然后是Galera集群。我们分别尝试下这两种高可用环境，是否支持在x86和arm64平台上混合部署。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-10-26T02:27:33.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="MariaDB集群在x86和arm64上的混合部署" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="MariaDB集群在x86和arm64上的混合部署" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-10-26T02:27:33.000Z">2020-10-26</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                MariaDB集群在x86和arm64上的混合部署
+            
+        </h1>
+        <div class="content">
+            <p>作者: zhaorenhai</p>
+<p>本文尝试在x86和arm64平台上混合部署MariaDB集群，看看是否可以部署成功。<br>部署环境计划在华为云上进行，OS采用openEuler20.03版本，MariaDB采用10.3.9版本。<br>MariaDB官方文档里面，高可用环境部署方法一共两种类型，比较简单的是复制，然后是Galera集群。<br>我们分别尝试下这两种高可用环境，是否支持在x86和arm64平台上混合部署。</p>
+<a id="more"></a>
+<p><strong>复制</strong><br>复制，顾名思义，就是一个或者多个从数据库从一个主数据库实时的复制数据，从而保证两个数据库的数据是一样的。（当然复制也支持多个主数据库，这种情况较复杂，而且容易出问题，而且现实场景应用不多，本文先主要尝试一主一从的场景）<br>复制的用途：<br>•    可以将读请求分布在多个数据库上，从而分散主数据库的压力，最常用的场景是读多写少的场景。<br>•    数据分析场景。分析数据库中的数据一般需要比较复杂的sql，如果在主数据库上执行会对主数据库造成不少的压力，因为主数据库一般都设计成OLTP类型的数据库，也不太适合分析型的需求。如果将数据复制到从数据库，数据分析就可以只在从数据库执行，减小主数据库的压力。<br>•    备份场景。备份本身也会对数据库造成比较大的性能影响，可以将数据复制到从库，在从库上进行备份就可以避免对主库的影响。更新和插入比较频繁的数据库，可以备份时，将从库和主库断开，这样备份更快，备份完再恢复。<br>•    数据分布，可以通过复制，将数据分布到各个不同的地域。<br>复制的技术原理：首先将主库数据备份一份，然后在从库上恢复，保证两个数据库的基础数据一致，然后通过配置，让从库实时应用主库的binlog，来保证两个数据库数据的一致性。</p>
+<p><strong>复制的部署步骤</strong><br>首先在华为云同一个网络区域购买两个云服务器，一个x86的，一个arm64的，确保内网能够互通，OS镜像都选择openEuler。<br>然后在x86上部署主库：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install mariadb-server</span><br></pre></td></tr></table></figure>
+<p>创建数据文件目录</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir /var/db/mariadbdatadir</span><br></pre></td></tr></table></figure>
+<p>配置数据库配置文件：<br>修改/etc/my.cnf.d/mariadb-server.cnf，在[mariadb]下面添加如下配置(具体参数可以根据自己环境调整)：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">datadir = /var/db/mariadbdatadir</span><br><span class="line">innodb_buffer_pool_size = 6G</span><br><span class="line">innodb_log_file_size = 1G</span><br><span class="line">innodb_flush_method = O_DIRECT</span><br><span class="line">bind-address = 0.0.0.0</span><br><span class="line">log-bin</span><br><span class="line">server_id = 1</span><br><span class="line">log-basename = primary1</span><br><span class="line">binlog-format = mixed</span><br></pre></td></tr></table></figure>
+<p>启动数据库：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl start mariadb.service</span><br></pre></td></tr></table></figure>
+<p>查看数据库是否启动成功</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl status mariadb.service</span><br></pre></td></tr></table></figure>
+<p>加载测试数据：<br>为了简单起见，我们就用tpcc-mysql工具来加载一些测试用的tpcc数据</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">yum install mariadb-devel</span><br><span class="line">git clone https://github.com/Percona-Lab/tpcc-mysql</span><br><span class="line">cd tpcc-mysql/src</span><br><span class="line">make</span><br><span class="line">cd ..</span><br><span class="line">mysqladmin create tpcc10</span><br><span class="line">mysql tpcc10 &lt; create_table.sql</span><br><span class="line">./tpcc_load -h127.0.0.1 -d tpcc10  -u root -p "" -w 10</span><br></pre></td></tr></table></figure>
+<p>配置一个用来让从库复制数据的用户</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root</span><br><span class="line">Create user 'replication_user'@'%' identified by 'bigs3cret';</span><br><span class="line">grant replication slave on *.* to 'replication_user'@'%';</span><br></pre></td></tr></table></figure>
+<p>现在一个正常运行的有一些数据的主数据库就配置好了。</p>
+<p>接下来我们在arm机器上配置一个从库。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install mariadb-server</span><br></pre></td></tr></table></figure>
+<p>创建数据文件目录</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir /var/db/mariadbdatadir</span><br></pre></td></tr></table></figure>
+<p>配置数据库配置文件：<br>修改/etc/my.cnf.d/mariadb-server.cnf，在[mariadb]下面添加如下配置(具体参数可以根据自己环境调整)：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">datadir = /var/db/mariadbdatadir</span><br><span class="line">innodb_buffer_pool_size = 6G</span><br><span class="line">innodb_log_file_size = 1G</span><br><span class="line">innodb_flush_method = O_DIRECT</span><br><span class="line">server_id = 2</span><br></pre></td></tr></table></figure>
+<p>接下来将主库上的基础数据先复制到从库。<br>登陆主库</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root</span><br></pre></td></tr></table></figure>
+<p>执行如下sql</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">flush tables with read lock;</span><br><span class="line">show master status;</span><br><span class="line">+---------------------+----------+--------------+------------------+</span><br><span class="line">| File                | Position | Binlog_Do_DB | Binlog_Ignore_DB |</span><br><span class="line">+---------------------+----------+--------------+------------------+</span><br><span class="line">| primary1-bin.000011 |      687 |              |                  |</span><br><span class="line">+---------------------+----------+--------------+------------------+</span><br></pre></td></tr></table></figure>
+<p>记录下以上输出中的File和Position的结果<br>注意这个会话不能中断，直到下面主库的数据备份完成。<br>在主库上创建一个备份目录</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir /var/db/mariadbbackup</span><br></pre></td></tr></table></figure>
+<p>执行备份</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mariabackup --backup --target-dir=/var/db/mariadbbackup/ --user=root --password=""</span><br><span class="line">mariabackup --prepare --target-dir=/var/db/mariadbbackup/</span><br></pre></td></tr></table></figure>
+<p>然后现在就可以将上面的会话解锁了,在上面那个会话中执行如下sql：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">unlock tables;</span><br></pre></td></tr></table></figure>
+<p>将备份的数据复制到从库：<br>在主库上：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd /var/db</span><br><span class="line">tar -czvf mariadbbackup.tar.gz mariadbbackup</span><br></pre></td></tr></table></figure>
+<p>在从库上的操作：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">scp root@192.168.0.196:/var/db/mariadbbackup.tar.gz /var/db/</span><br><span class="line">cd /var/db/</span><br><span class="line">tar -zxvf mariadbbackup.tar.gz </span><br><span class="line">mariabackup --copy-back --target-dir=/var/db/mariadbbackup/ --datadir=/var/db/mariadbdatadir/</span><br><span class="line">cd mariadbdatadir</span><br><span class="line">chown -R mysql:mysql ./*</span><br><span class="line">systemctl start mariadb.service</span><br></pre></td></tr></table></figure>
+<p>配置实时复制：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd /var/db/mariadbbackup</span><br><span class="line">cat xtrabackup_binlog_info</span><br></pre></td></tr></table></figure>
+<p>输出如下，记住这些值，后面从库上的操作要用</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">primary1-bin.000011     687     0-1-437</span><br></pre></td></tr></table></figure>
+<p>从库上操作：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root</span><br><span class="line">set global gtid_slave_pos = '0-1-437';</span><br><span class="line">CHANGE MASTER TO</span><br><span class="line">  MASTER_HOST='192.168.0.196',</span><br><span class="line">  MASTER_USER='replication_user',</span><br><span class="line">  MASTER_PASSWORD='bigs3cret',</span><br><span class="line">  MASTER_PORT=3306,</span><br><span class="line">  MASTER_LOG_FILE='primary1-bin.000011 ',</span><br><span class="line">  MASTER_LOG_POS=687,</span><br><span class="line">  MASTER_CONNECT_RETRY=10,</span><br><span class="line">  MASTER_USE_GTID = slave_pos;</span><br><span class="line">START SLAVE;</span><br></pre></td></tr></table></figure>
+<p>使用如下命令查看复制状态</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">show slave status \G</span><br></pre></td></tr></table></figure>
+<p>如果下面两个项的值都是Yes</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Slave_IO_Running: Yes</span><br><span class="line">Slave_SQL_Running: Yes</span><br></pre></td></tr></table></figure>
+<p>就是正常的</p>
+<p>在主库上，再加载一个数据库，进行一下测试：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd tpcc-mysql/</span><br><span class="line">mysql tpcc-test &lt; create_table.sql</span><br><span class="line">./tpcc_load -h127.0.0.1 -d tpcc-test  -u root -p "" -w 10</span><br></pre></td></tr></table></figure>
+<p>在从库上查询</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root</span><br><span class="line">show databases;</span><br></pre></td></tr></table></figure>
+<p>输出如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">+--------------------+</span><br><span class="line">| Database           |</span><br><span class="line">+--------------------+</span><br><span class="line">| information_schema |</span><br><span class="line">| mysql              |</span><br><span class="line">| performance_schema |</span><br><span class="line">| tpcc-test          |</span><br><span class="line">| tpcc10             |</span><br><span class="line">+--------------------+</span><br></pre></td></tr></table></figure>
+<p>可以看到tpcc-test数据库也正常生成了<br>可以执行如下sql进行进一步的测试：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">use database tpcc-test;</span><br><span class="line">show tables;</span><br><span class="line">select count(*) from customer;</span><br></pre></td></tr></table></figure>
+<p>如果都是正常的，代表数据都正常同步过来了</p>
+<p>经过以上测试，基本可以证明，复制是可以在x86和arm64环境上混合部署的。</p>
+<p><strong>Galera集群</strong><br>Galera集群是一个多主，多活集群，每一个节点都可以是主节点，数据在多个节点间同步，保证多个数据库节点的数据是一致的，和Oracle的RAC集群不同的是，RAC是共享存储的，Galera集群并不共享存储，每个数据库都是一个独立的存储。<br>这样有多个好处，任意一个数据库节点挂了都不会影响业务，对于读请求比较多的应用，还可以很好的分担压力，当然对于写请求，由于同步请求的存在，会比单机数据库性能下降一点。<br>Galera集群多个节点之间的数据同步是同步的，不是异步的，这样就能保证数据库在多个节点的一致性，多个节点之间无数据分歧，为了性能考虑，采用的并不是实时的同步技术，采用的是一种虚拟同步，虚拟同步技术的原理较复杂，可以参考如下文章：<br><a href="https://blog.csdn.net/wzy0623/article/details/102522268">https://blog.csdn.net/wzy0623/article/details/102522268</a></p>
+<p><strong>Galera集群部署步骤</strong><br>我们计划部署一个三节点的x86 Galera集群，然后前端部署一个GLB负载均衡器。</p>
+<p>首先在华为云上购买四个x86和一个arm的云服务器实例，规格：4vCPUs 16GB内存，CPU频率2.6GHz。OS还是采用openEuler20.03版本。<br>四个x86云服务器，一个用来部署GLB，另外三个用来部署MariaDB Galera集群。一个arm云服务器用来部署后来加入集群的MariaDB节点。</p>
+<p>在三台x86集群节点上进行如下操作：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install mariadb-server</span><br></pre></td></tr></table></figure>
+<p>创建数据文件目录</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir /var/db/mariadbdatadir</span><br></pre></td></tr></table></figure>
+<p>配置数据库配置文件：<br>修改/etc/my.cnf.d/mariadb-server.cnf，在[mariadb]下面添加如下配置(具体参数可以根据自己环境调整)：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">datadir = /var/db/mariadbdatadir</span><br><span class="line">innodb_buffer_pool_size = 6G</span><br><span class="line">innodb_log_file_size = 1G</span><br><span class="line">innodb_flush_method = O_DIRECT</span><br><span class="line">bind-address = 0.0.0.0</span><br></pre></td></tr></table></figure>
+<p>然后执行systemctl start mariadb，先把数据库启动起来</p>
+<p>每个节点再执行如下操作：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install mariadb-server-galera</span><br></pre></td></tr></table></figure>
+<p>修改/etc/my.cnf.d/galera.cnf<br>wsrep_cluster_address配置为如下值，其中各个IP地址的值为三个集群节点的内网IP</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wsrep_cluster_address="gcomm://192.168.0.159,192.168.0.78,192.168.0.23"</span><br></pre></td></tr></table></figure>
+
+<p>在第一个节点上，把数据库停掉</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl stop mariadb</span><br></pre></td></tr></table></figure>
+<p>在第一个节点上执行如下命令初始化集群</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">galera_new_cluster</span><br></pre></td></tr></table></figure>
+<p>然后在其他两个节点上重启数据库</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">systemctl restart mariadb</span><br></pre></td></tr></table></figure>
+<p>可以登陆数据库，用如下命令查看集群状态：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">show status like 'wsrep%';</span><br></pre></td></tr></table></figure>
+
+<p>现在集群搭建成功了，我们下一步准备搭建一个GLB负载均衡器。<br>GLB是一个纯TCP层的负载均衡器，简单易用。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">yum install gcc* libtool</span><br><span class="line">git clone https://github.com/codership/glb</span><br><span class="line">cd glb/</span><br><span class="line">./bootstrap.sh</span><br><span class="line">./configure</span><br><span class="line">make</span><br><span class="line">make install</span><br><span class="line">cp files/glbd.cfg /etc/default/glbd</span><br></pre></td></tr></table></figure>
+<p>编辑/etc/default/glbd<br>配置如下：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">LISTEN_ADDR="8010"</span><br><span class="line">CONTROL_ADDR="127.0.0.1:8011"</span><br><span class="line">CONTROL_FIFO="/var/run/glbd.fifo"</span><br><span class="line">THREADS="16"</span><br><span class="line">MAX_CONN=256</span><br><span class="line">DEFAULT_TARGETS="192.168.0.159:3306 192.168.0.78:3306 192.168.0.23:3306"</span><br></pre></td></tr></table></figure>
+<p>然后启动负载均衡器</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd files</span><br><span class="line">./glbd.sh</span><br></pre></td></tr></table></figure>
+<p>然后登陆集群节点任意一数据库，执行如下sql，建一个用户</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">create user 'tpcc'@'192.168.0.%' identified by '123456';</span><br><span class="line">grant all privileges on *.* to 'tpcc'@'192.168.0.%' with grant option;</span><br></pre></td></tr></table></figure>
+<p>下面开始加载一些测试数据。<br>在负载均衡器所在的节点上进行</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">yum install mariadb</span><br><span class="line">yum install mariadb-devel</span><br><span class="line">git clone https://github.com/Percona-Lab/tpcc-mysql</span><br><span class="line">cd tpcc-mysql/src</span><br><span class="line">make</span><br><span class="line">cd ..</span><br></pre></td></tr></table></figure>
+<p>加载测试数据</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mysqladmin -h 127.0.0.1 -P 8010 -u tpcc -p123456 create tpcc10</span><br><span class="line">mysql -h 127.0.0.1 -P 8010 -u tpcc -p123456 tpcc10 &lt; create_table.sql</span><br><span class="line">./tpcc_load -h127.0.0.1 -P8010 -d tpcc10  -u tpcc -p "123456" -w 10</span><br><span class="line">mysql -h 127.0.0.1 -P 8010 -u tpcc -p123456 tpcc10 &lt; add_fkey_idx.sql</span><br></pre></td></tr></table></figure>
+<p>接下来把其中一个X86集群节点停掉，准备换成arm64节点。<br>登陆其中一个集群节点<br>systemctl stop mariadb<br>然后登陆另外两个集群节点<br>把/etc/my.cnf.d/galera.cnf里面的wsrep_cluster_address的值里面停掉节点的IP改为am64节点的IP</p>
+<p>在arm64节点上进行如下操作：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install mariadb-server</span><br></pre></td></tr></table></figure>
+<p>创建数据文件目录</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir /var/db/mariadbdatadir</span><br></pre></td></tr></table></figure>
+<p>配置数据库配置文件：<br>修改/etc/my.cnf.d/mariadb-server.cnf，在[mariadb]下面添加如下配置(具体参数可以根据自己环境调整)：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">datadir = /var/db/mariadbdatadir</span><br><span class="line">innodb_buffer_pool_size = 6G</span><br><span class="line">innodb_log_file_size = 1G</span><br><span class="line">innodb_flush_method = O_DIRECT</span><br><span class="line">bind-address = 0.0.0.0</span><br></pre></td></tr></table></figure>
+<p>然后执行systemctl start mariadb，先把数据库启动起来</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install mariadb-server-galera</span><br></pre></td></tr></table></figure>
+<p>修改/etc/my.cnf.d/galera.cnf<br>wsrep_cluster_address配置为如下值，就是和另外两个X86节点保持一致。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wsrep_cluster_address="gcomm://192.168.0.159,192.168.0.78,192.168.0.173"</span><br></pre></td></tr></table></figure>
+<p>然后执行systemctl restart mariadb<br>等待重启成功，可能会比较慢。<br>然后登陆数据库，输入以下命令，查看集群状态</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">show status like 'wsrep%';</span><br></pre></td></tr></table></figure>
+<p>然后登录arm64节点上的数据库，查询数据是否都正常同步过来。<br>如果一切正常的话，我们登陆到负载均衡器节点，可以将之前的数据卸载了，再重新加载数据，测试一下大规模删除和新增数据场景。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">cd tpcc-mysql</span><br><span class="line">mysqladmin -h 127.0.0.1 -P 8010 -u tpcc -p123456 drop tpcc10</span><br><span class="line">mysqladmin -h 127.0.0.1 -P 8010 -u tpcc -p123456 create tpcc10</span><br><span class="line">mysql -h 127.0.0.1 -P 8010 -u tpcc -p123456 tpcc10 &lt; create_table.sql</span><br><span class="line">./tpcc_load -h127.0.0.1 -P8010 -d tpcc10  -u tpcc -p "123456" -w 10</span><br><span class="line">mysql -h 127.0.0.1 -P 8010 -u tpcc -p123456 tpcc10 &lt; add_fkey_idx.sql</span><br></pre></td></tr></table></figure>
+<p>然后登陆各个数据库查询，数据是否一致。<br>经过以上测试可以证明Galera集群也是可以在x86和arm64上混合部署的。</p>
+
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/10/26/ji-yu-bucardo-jian-li-postgresql-zhu-zhu-hun-he-ji-qun-x86-arm-bu-shu/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">基于Bucardo建立PostgreSQL 主主混合集群(X86 + ARM)部署</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/10/22/arm64-ban-ben-de-ubuntu-shang-an-zhuang-perf/">
+                <span class="level-item">ARM64版本的Ubuntu上安装perf</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 49,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="MariaDB集群在x86和arm64上的混合部署" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

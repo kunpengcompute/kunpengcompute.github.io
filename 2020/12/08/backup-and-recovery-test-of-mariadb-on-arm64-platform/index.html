@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>Backup and recovery test of MariaDB on arm64 platform - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="Author: zhaorenhai This article plans to test the operation of MariaDB’s backup and recovery function on the arm64 platform, and provide a reference for those interested in deploying MariaDB on the ar">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Backup and recovery test of MariaDB on arm64 platform">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/12/08/backup-and-recovery-test-of-mariadb-on-arm64-platform/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="Author: zhaorenhai This article plans to test the operation of MariaDB’s backup and recovery function on the arm64 platform, and provide a reference for those interested in deploying MariaDB on the ar">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-12-08T12:03:25.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="Backup and recovery test of MariaDB on arm64 platform" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="Backup and recovery test of MariaDB on arm64 platform" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-12-08T12:03:25.000Z">2020-12-08</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                Backup and recovery test of MariaDB on arm64 platform
+            
+        </h1>
+        <div class="content">
+            <p>Author: zhaorenhai</p>
+<p>This article plans to test the operation of MariaDB’s backup and recovery function on the arm64 platform, and provide a reference for those interested in deploying MariaDB on the arm64 platform.</p>
+<p>The test platform chooses the 8C16G Kunpeng virtual machine on Huawei Cloud, the OS is Ubuntu 18.04, and MariaDB we plan to choose the latest version on github for testing.</p>
+<a id="more"></a>
+
+
+<p>Then log in to our virtual machine and create a user:</p>
+<p><code>adduser mariadb</code><br>All subsequent work is carried out under this user.</p>
+<p>Switch to this user, download the latest code from github, and compile it.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">su - mariadb </span><br><span class="line">git clone https://github.com/mariadb/server </span><br><span class="line">sudo apt-get install build-essential libncurses5-dev gnutls-dev bison zlib1g-dev ccache libnuma-dev libxml2-dev cmake </span><br><span class="line">mkdir build-mariadb-server </span><br><span class="line">cd build-mariadb-server </span><br><span class="line">cmake ../server -DCMAKE_BUILD_TYPE = RelWithDebInfo </span><br><span class="line">cmake --build .</span><br></pre></td></tr></table></figure>
+
+<p>Now that we have a database program of the latest version, let’s continue to create the database configuration file and run the database.</p>
+<p>Create a database parameter file:<br><code>vi ~/mariadb.cnf</code></p>
+<p>Set the following parameters:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[mariadb]</span><br><span class="line">datadir&#x3D;&#x2F;home&#x2F;mariadb&#x2F;data&#x2F;dir </span><br><span class="line">lc_messages_dir&#x3D;&#x2F;home&#x2F;mariadb&#x2F;server&#x2F;sql&#x2F;share</span><br><span class="line">innodb_buffer_pool_size &#x3D; 8G </span><br><span class="line">innodb_log_file_size &#x3D; 1G </span><br><span class="line">innodb_flush_method &#x3D; O_DIRECT </span><br><span class="line">skip-grant-tables</span><br><span class="line"># open binlog</span><br><span class="line">log-bin</span><br></pre></td></tr></table></figure>
+
+<p>Run the database</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /home/mariadb/data/dir </span><br><span class="line">./scripts/mysql_install_db --srcdir=../server --defaults-file=~/mariadb.cnf </span><br><span class="line">sql/mysqld --defaults-file=~/mariadb.cnf</span><br></pre></td></tr></table></figure>
+
+<p>Now a database is up and running. </p>
+<p>The main purpose of this article is to test the backup and recovery functions. Before that, we have to load some data. We try to load more data. The tool for loading data we use the tpcc-mysql, only its data loading function.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install libmariadbclient-dev </span><br><span class="line">git clone https://github.com/Percona-Lab/tpcc-mysql </span><br><span class="line">cd tpcc-mysql/src </span><br><span class="line">make </span><br><span class="line">cd .. </span><br><span class="line">export PATH=~/build-mariadb-server/client:$PATH   </span><br><span class="line">mysqladmin create tpcc100 </span><br><span class="line">mysql tpcc100 &lt;create_table.sql </span><br><span class="line">./tpcc_load -h127.0.0.1 -d tpcc100 -u root -p "" -w 100 </span><br><span class="line">mysql tpcc100 &lt;add_fkey_idx.sql</span><br></pre></td></tr></table></figure>
+
+<p>Now start to test the database backup function.</p>
+<p>MariaDB database backup includes logical backup and physical backup.</p>
+<p>The advantage of logical backup is that the files that are backed up are SQL formatted text files, which can be used for other types of databases, and are also convenient for importing or data migration. The disadvantage is that the database performance is greatly affected during backup and during recovery. The tool MariaDB uses for logical backup is mysqldump.</p>
+<p>Physical backup is actually a backup of the physical files of the database, so the impact on the database is relatively small, but the files backed up cannot be used in other types of databases， can only be used for backup and recovery. The tool that MariaDB uses for physical backup is mariabackup.</p>
+<p>MariaDB’s logical backup and physical backup are both for the backup of the database at a certain point in time, and cannot achieve complete lossless recovery. If you want to achieve lossless recovery, you also need to use the replay function of the binlog . MariaDB implements this, the  tool is mysqlbinlog.</p>
+<p>Let’s test these three tools one by one.</p>
+<p><strong>Logical backup and recovery</strong></p>
+<p>First test the logical backup.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysqldump --all-databases --master-data=2 --single-transaction &gt; all_databases.sql</span><br></pre></td></tr></table></figure>
+
+<p>The <code>–master-data=2</code> option in the above command means to record the binlog location during the backup in the backup file. If subsequent  lossless recovery is performed, you can provide the mysqlbinlog tool with the location to start the recovery. <code>--single-transaction</code> means that the backup is executed in one transaction, so that it does not affect the normal operation of other sessions and can also ensure the consistency of the backup data.</p>
+<p>Our data directory occupy a total of 8.6G disk space, and it only took 3 minutes to complete the backup. The backup file is 7.2G, and the performance is still acceptable. Of course, this is also related to the disk used. We are using Huawei Cloud SSD, which should be faster.</p>
+<p>The recovery of logical backup is also very simple, just execute the exported sql file directly. We are only testing here, so we will execute it directly on the original database.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root &lt; all_databases.sql</span><br></pre></td></tr></table></figure>
+
+<p>The above 7.2G sql was executed for about 21 minutes, and the performance is not bad. If it is restored on a new database, it is estimated that it will be faster.</p>
+<p><strong>Physical backup and recovery</strong></p>
+<p>We continue to test the physical backup.</p>
+<p>First create a directory for storing backup files:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /home/mariadb/data/backup</span><br></pre></td></tr></table></figure>
+
+<p>Then there can be no <code>skip-grant-tables</code> option when backing up, we first delete this configuration item in the backup file, restart the database, and then execute to <code>mysql</code>enter the database and modify the root user password:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">alter</span> <span class="keyword">user</span> <span class="string">'root'</span>@<span class="string">'localhost'</span> <span class="keyword">identified</span> <span class="keyword">by</span> <span class="string">'backuptest'</span>;</span><br></pre></td></tr></table></figure>
+
+<p>The mariabackup we compiled is in the extra directory of the compilation directory, and we enter that directory to execute:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd ~/build-mariadb-server/extra/mariabackup </span><br><span class="line">./mariabackup --backup --target-dir=/home/mariadb/data/backup -uroot -pbackuptest </span><br><span class="line">./mariabackup --prepare --target-dir=/home/mariadb/data/backup</span><br></pre></td></tr></table></figure>
+
+<p>The entire backup is completed in about two minutes, and the speed is relatively fast.</p>
+<p>Let’s continue to test the recovery:</p>
+<p>Stop the database during recovery.</p>
+<p>Then we back up the original data directory and create a new directory, because the data file directory must be empty when restoring</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd /home/mariadb/data </span><br><span class="line">mv dir dirbak </span><br><span class="line">mkdir dir</span><br></pre></td></tr></table></figure>
+
+<p>Then start to restore:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd ~&#x2F;build-mariadb-server&#x2F;extra&#x2F;mariabackup </span><br><span class="line">.&#x2F;mariabackup --copy-back --target-dir&#x3D;&#x2F;home&#x2F;mariadb&#x2F;data&#x2F;backup --datadir&#x3D;&#x2F;home&#x2F;mariadb&#x2F;data&#x2F;dir&#x2F;</span><br></pre></td></tr></table></figure>
+
+<p>Recovery took only one and a half minutes</p>
+<p> <strong>Lossless recovery</strong></p>
+<p>Let me continue to test the lossless recovery.</p>
+<p>Suppose the following scenario: After a database backup is made, some new tables are created, and some data is inserted. At this time, the database data is all deleted, but the backup file and binlog are still there. We try to use the backup file and binlog to completely restore the database.</p>
+<p>Let’s use the mariabackup tool to back up the database first,  then execute the following SQL to create some tables and insert some data:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span>  <span class="keyword">database</span>  <span class="keyword">test</span> ; </span><br><span class="line"><span class="keyword">use</span>  <span class="keyword">test</span> ; </span><br><span class="line"><span class="keyword">create</span>  <span class="keyword">table</span> binlogtest( <span class="keyword">id</span>  <span class="built_in">int</span> , descs <span class="built_in">varchar</span>(<span class="number">10</span>)); </span><br><span class="line"><span class="keyword">insert</span>  <span class="keyword">into</span> binlogtest <span class="keyword">values</span> ( <span class="number">1</span> , <span class="string">'test1'</span> ); </span><br><span class="line"><span class="keyword">insert</span>  <span class="keyword">into</span> binlogtest <span class="keyword">values</span> ( <span class="number">2</span> , <span class="string">'test2'</span> ); </span><br><span class="line"><span class="keyword">commit</span> ;</span><br></pre></td></tr></table></figure>
+
+<p>Then execute the following command, to simulate data files are cleared. We use mv here, mainly to preserve the binlog file. After all, in our test environment, binlog did not make multiple copies.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd /home/mariadb/data </span><br><span class="line">mv dir dirbak2 </span><br><span class="line">mkdir dir</span><br></pre></td></tr></table></figure>
+
+<p>Now that the data files are all cleared, then we use mariabackup to restore the files during the backup, first stop the database, and then execute the following command:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd ~/build-mariadb-server/extra/mariabackup </span><br><span class="line">./mariabackup --copy-back --target-dir=/home/mariadb/data/backup --datadir=/home/mariadb/data/dir/</span><br></pre></td></tr></table></figure>
+
+<p>Then start the database, log in to the database,</p>
+<p>Use the following sql to query:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> test.binlogtest;</span><br></pre></td></tr></table></figure>
+
+<p>You will get an error message that the table does not exist.</p>
+<p>Then we try to use binlog to restore.</p>
+<p>First check the xtrabackup_binlog_info file of the backup file, and find the pos point to start the recovery:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cat xtrabackup_binlog_info</span><br></pre></td></tr></table></figure>
+
+<p>The result is as follows:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mariadb-arm-perf-test-bin.000012 358 0-1-7541</span><br></pre></td></tr></table></figure>
+
+<p>Means that the pos point to start recovery should be 358.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd /home/mariadb/data/dirbak2 </span><br><span class="line">mysqlbinlog mariadb-arm-perf-test-bin.000001 --start-position=344| mysql -uroot -pbackuptest</span><br></pre></td></tr></table></figure>
+
+<p>Then log in to the database again to query the previous binlogtest table, and you will find that the data has been restored.</p>
+<p><strong>Summary</strong></p>
+<p>After testing so far, we can find that MariaDB’s various backup and recovery functions work perfectly on the arm64 platform, and the performance is good.</p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/12/08/how-do-top-programming-languages-connect-to-mariadb-database-on-arm64-platform/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">How do top programming languages connect to MariaDB database on arm64 platform</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/12/08/hybrid-deployment-of-mariadb-cluster-on-x86-and-arm64/">
+                <span class="level-item">Hybrid deployment of MariaDB cluster on x86 and arm64</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 65,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="Backup and recovery test of MariaDB on arm64 platform" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

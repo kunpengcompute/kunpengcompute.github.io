@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>源于鲲鹏，回归社区：GNU Glibc的ARM优化小记 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者：姜逸坤 张学磊 从2019年10月初开始，我们团队开始着手Glibc在aarch64(64)架构下的优化工作，并且在2019年年底，将我们的全部优化贡献给上游开源社区。本文分享我们在Glibc的版本完成的优化以及性能测试结果，同时我们也尝试着将优化的思路进行总结，希望对其他项目的优化提供一些思路。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="源于鲲鹏，回归社区：GNU Glibc的ARM优化小记">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/04/17/yuan-yu-kun-peng-hui-gui-she-qu-gnu-glibc-de-arm-you-hua-xiao-ji/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者：姜逸坤 张学磊 从2019年10月初开始，我们团队开始着手Glibc在aarch64(64)架构下的优化工作，并且在2019年年底，将我们的全部优化贡献给上游开源社区。本文分享我们在Glibc的版本完成的优化以及性能测试结果，同时我们也尝试着将优化的思路进行总结，希望对其他项目的优化提供一些思路。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-04-17T03:44:54.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="基础库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="源于鲲鹏，回归社区：GNU Glibc的ARM优化小记" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="源于鲲鹏，回归社区：GNU Glibc的ARM优化小记" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-04-17T03:44:54.000Z">2020-04-17</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">基础库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                源于鲲鹏，回归社区：GNU Glibc的ARM优化小记
+            
+        </h1>
+        <div class="content">
+            <p>作者：姜逸坤 张学磊</p>
+<p>从2019年10月初开始，我们团队开始着手Glibc在aarch64(64)架构下的优化工作，并且在2019年年底，将我们的全部优化贡献给上游开源社区。本文分享我们在Glibc的版本完成的优化以及性能测试结果，同时我们也尝试着将优化的思路进行总结，希望对其他项目的优化提供一些思路。</p>
+<a id="more"></a>
+
+<h2 id="1-背景"><a href="#1-背景" class="headerlink" title="1. 背景"></a>1. 背景</h2><h3 id="1-1-什么是Glibc"><a href="#1-1-什么是Glibc" class="headerlink" title="1.1 什么是Glibc?"></a>1.1 什么是Glibc?</h3><p>我们先看看官方的解释：</p>
+<blockquote>
+<p>The GNU C Library project provides the core libraries for the GNU system and GNU/Linux systems, as well as many other systems that use Linux as the kernel.</p>
+</blockquote>
+<p>Glibc的全名是The GNU C Library，它为GNU系统、GNU/Linux系统以及提供了核心的底层库。比如，我们平常使用的<code>memset</code>，<code>strlen</code>等等这些非常常用的接口都由这个库提供。</p>
+<h3 id="1-2-为什么要优化？"><a href="#1-2-为什么要优化？" class="headerlink" title="1.2 为什么要优化？"></a>1.2 为什么要优化？</h3><p>在计算领域的水平场景，例如大数据、数据库、Web等领域都直接或者间接地依赖着Glibc，举个简单的例子，在数据库的代码中，我们经常使用memcpy接口，对变量进行复制，调用频次也异常的高。如果在数据复制的过程中，性能能够有所提升，那么对上层软件的性能提升也是显而易见的。</p>
+<h3 id="1-3-做了什么优化？"><a href="#1-3-做了什么优化？" class="headerlink" title="1.3 做了什么优化？"></a>1.3 做了什么优化？</h3><p>根据我们的分析，字符、内存和锁操作是最基础也是最重要的基本接口，因此，我们选择了对这三种类型的接口优先进行优化。在实现优化中，我们利用了Glibc的<a href="https://sourceware.org/glibc/wiki/GNU_IFUNC">indirect function</a>这一机制，即会根据CPU、CPU arch去自动选择匹配的函数。这一机制让我们的实现，更加灵活，也对现有系统影响最小。</p>
+<p>下图为我们这次优化主要接口：</p>
+<p><img src="https://user-images.githubusercontent.com/1736354/82533405-c5c93c00-9b75-11ea-8c71-f37f557febee.png" alt="image"></p>
+<p>在上游社区的推进过程中，我们始终坚持<strong>Upstream First</strong>的原则，希望能够将鲲鹏优化的收益共享给整个生态，真正做到<strong>源于鲲鹏，回归社区</strong>。</p>
+<p>所以，可以看到我们的优化大部分（橙色部分）都贡献到了上游社区的AArch64的generic实现中，从而使得整个生态都能够受益，而小部分（绿色部分）针对于Kunpeng CPU的特殊优化则保持了单独实现。</p>
+<h2 id="2-优化"><a href="#2-优化" class="headerlink" title="2. 优化"></a>2. 优化</h2><p>我们知道在一般的开发中，小字节数据操作的使用频率，是远远的大于大字节数据操作的使用频率，而对于大数据和数据库的场景，则有可能会出现很多大字节数据操作的使用。因此，其实我们的一个优化原则是：<strong>在保证中小字节没有负优化的前提下，提升大字节数据操作的性能</strong>。</p>
+<p>本节我们将一一解析在我们贡献的过程中，每个接口优化的关键点，并且尽可能的写的通俗易懂，希望能通过这些干货，给大家在其他的优化中带来启发。</p>
+<h3 id="2-1-memcmp，每次做更多，总时间更少"><a href="#2-1-memcmp，每次做更多，总时间更少" class="headerlink" title="2.1 memcmp，每次做更多，总时间更少"></a>2.1 memcmp，每次做更多，总时间更少</h3><p>Patch链接：<a href="http://patchwork.ozlabs.org/patch/1182191/">aarch64: Optimized implementation of memcmp</a></p>
+<h4 id="2-1-1-优化思路"><a href="#2-1-1-优化思路" class="headerlink" title="2.1.1 优化思路"></a>2.1.1 优化思路</h4><p>对于memcmp的优化，我们的核心思路是通过<strong>循环展开</strong>让每个周期内做的事情更多，从而减少循环本身的开销。下图可以直观的看出，循环展开带来的性能提升：<br><img src="https://user-images.githubusercontent.com/1736354/82417438-212ff700-9aae-11ea-941b-ee98d33a9df6.png" alt="image"><br>具体如下：</p>
+<ol>
+<li>扩展循环间隔长度<br>memcmp的aarch64原实现是以16bit的长度作为循环的周期长度，在无形中增加了很多次循环的消耗，尤其是在进行大字节数据比较中，有较大的性能损失。因此，我们这次优化的核心思路是：<strong>将16bit的循环扩展的64bit的循环</strong>，简单的说就是现在一次循环会比较64bit的数据。</li>
+<li>寻址方式优化<br>除此之外，我们还改变了LDP的寻址方式，从原来的后变址寻址（Post Index Addressing）变成了偏移寻址（Base Plus index）。</li>
+</ol>
+<h4 id="2-1-2-性能测试"><a href="#2-1-2-性能测试" class="headerlink" title="2.1.2 性能测试"></a>2.1.2 性能测试</h4><p><img src="https://user-images.githubusercontent.com/1736354/79631884-7f577a80-818e-11ea-8dba-b5d4d92718e1.png" alt="image"></p>
+<p>可以从我们实际的测试结果看到整体在中大字节的性能有不错的提升，尤其是在128字节以上的场景，性能提升更是达到了18%。</p>
+<h3 id="2-2-memcpy，他山之石，可以为玉"><a href="#2-2-memcpy，他山之石，可以为玉" class="headerlink" title="2.2 memcpy，他山之石，可以为玉"></a>2.2 memcpy，他山之石，可以为玉</h3><p>Patch链接：<a href="http://patchwork.ozlabs.org/patch/1215732/">add default memcpy version for kunpeng920</a><br>memcpy优化，因为社区的falkor版本在大、小字节的性能表现，已经很完善，因此最终，我们直接使用了Flakor版本作为优化版本。</p>
+<p>Falkor版本的将字符分为3种场景：</p>
+<ol>
+<li>对于small(&lt; 32)的场景，优先处理，避免过多判断，影响性能。</li>
+<li>对于medium(33-128)的场景，做展开，避免多次循环带来的性能损失。</li>
+<li>对于large(&gt;128)的场景，4字节对齐处理，并做循环展开每次循环处理64字节。</li>
+</ol>
+<p>有兴趣的可以看看源码的实现<a href="http://patchwork.ozlabs.org/project/glibc/patch/1502134812-31816-1-git-send-email-siddhesh@sourceware.org/">链接</a>，整体性能提升13-18%。</p>
+<h3 id="2-3-memrchr，站在巨人的肩上"><a href="#2-3-memrchr，站在巨人的肩上" class="headerlink" title="2.3 memrchr，站在巨人的肩上"></a>2.3 memrchr，站在巨人的肩上</h3><p>Patch链接：<a href="http://patchwork.ozlabs.org/patch/1178706/">aarch64: Optimized implementation of memrchr</a></p>
+<h4 id="2-3-1-优化思路"><a href="#2-3-1-优化思路" class="headerlink" title="2.3.1 优化思路"></a>2.3.1 优化思路</h4><p>memrchr整体的优化思路是，参考memchr设计的魔鬼数字算法，通过汇编实现逻辑适配，实现对特定字符逆向查找的功能，替代原有的C语言实现方案达到优化，具体实现见上链接。</p>
+<h4 id="2-3-2-性能测试"><a href="#2-3-2-性能测试" class="headerlink" title="2.3.2 性能测试"></a>2.3.2 性能测试</h4><p><img src="https://user-images.githubusercontent.com/1736354/82403228-ed92a400-9a90-11ea-9a35-9ec4899cc9ea.png" alt="image"><br>最终，我们获得了58%的性能提升，最终在大字节的场景，比generic版本提升了4倍左右。</p>
+<h3 id="2-4-memset，定向优化，更懂硬件"><a href="#2-4-memset，定向优化，更懂硬件" class="headerlink" title="2.4 memset，定向优化，更懂硬件"></a>2.4 memset，定向优化，更懂硬件</h3><p>Patch链接：<a href="http://patchwork.ozlabs.org/patch/1188834/">aarch64: Optimized memset for Kunpeng processor. </a></p>
+<h4 id="2-4-1-优化思路"><a href="#2-4-1-优化思路" class="headerlink" title="2.4.1 优化思路"></a>2.4.1 优化思路</h4><p>我们进行了通过循环展开和特殊的定制优化来更好的适配硬件分支预测的特性，从而达到优化的效果。</p>
+<p>特别说明的是，对于memset来说，置零场景是非常常用的场景，我们发现原有的实现使用DZ_ZVA指令并未在置零场景有显著效果，反而增加了许多条件分支，因此我们使用set_long代替了置零，由于set_long本身有更少的分支及更少的预测，所以性能与原实现比也有所提升。</p>
+<h4 id="2-4-2-性能测试"><a href="#2-4-2-性能测试" class="headerlink" title="2.4.2 性能测试"></a>2.4.2 性能测试</h4><p><img src="https://user-images.githubusercontent.com/1736354/82403298-19158e80-9a91-11ea-8b50-9542edcc15ca.png" alt="image"></p>
+<h3 id="2-5-strcpy，加速的武器，vector-loads"><a href="#2-5-strcpy，加速的武器，vector-loads" class="headerlink" title="2.5 strcpy，加速的武器，vector loads"></a>2.5 strcpy，加速的武器，vector loads</h3><p>Patch链接：<a href="http://patchwork.ozlabs.org/patch/1181183/">aarch64: Optimized implementation of strcpy</a><br>strlen使用了neon寄存器，通过vector operations对函数进行了优化，对比原有的汇编实现，在64字节以上的场景，获得了5%-18%的提升：</p>
+<p><img src="https://user-images.githubusercontent.com/1736354/82403315-2763aa80-9a91-11ea-82f4-441c90b52962.png" alt="image"></p>
+<h3 id="2-6-strlen-strnlen-循环展开，判断更少，性能更优"><a href="#2-6-strlen-strnlen-循环展开，判断更少，性能更优" class="headerlink" title="2.6 strlen/strnlen 循环展开，判断更少，性能更优"></a>2.6 strlen/strnlen 循环展开，判断更少，性能更优</h3><p>strlen Patch链接：<a href="https://patches-gcc.linaro.org/patch/25209/">aarch64: Optimized strlen for strlen_asimd</a><br>strnlen Patch链接：<a href="http://patchwork.ozlabs.org/patch/1181184/">aarch64: Optimized implementation of strnlen</a></p>
+<p>strlen和strnlen同样使用了vector operations和循环展开，对主循环仅行了改造</p>
+<p>strlen有7%-18%的提升:<br><img src="https://user-images.githubusercontent.com/1736354/82403331-321e3f80-9a91-11ea-9703-ab92470b2178.png" alt="image"></p>
+<p>strnlen有11%-24%的提升:<br><img src="https://user-images.githubusercontent.com/1736354/82403342-39dde400-9a91-11ea-9fc8-5f68df97887b.png" alt="image"></p>
+<h2 id="3-总结"><a href="#3-总结" class="headerlink" title="3. 总结"></a>3. 总结</h2><p>经过上面的介绍，相信大家已经了解了我们是怎么去优化这些函数的版本的，虽说大部分的优化都是比较晦涩的汇编语言，但是其实实际原理还是非常易懂的。</p>
+<p>最后，我们再总结下我们应该从哪些方面考虑，去完成优化：</p>
+<ul>
+<li>使用Neon汇编指令提高指令速度</li>
+<li>使用Prefetch机制充分利用cache</li>
+<li>避免非对齐的内存访问</li>
+<li>指令重排，减少数据依赖</li>
+<li>循环展开，减少高频判断</li>
+<li>结合硬件特性，用软件补齐硬件缺陷</li>
+</ul>
+<h2 id="4-写在最后"><a href="#4-写在最后" class="headerlink" title="4. 写在最后"></a>4. 写在最后</h2><p>本书所提及的所有代码，均已贡献到Glibc上游社区，并且随着<a href="https://sourceware.org/legacy-ml/libc-announce/2020/msg00001.html">Glibc 2.31</a>已经在社区完成发布，有需要的可以直接从社区上游获取使用，有任何问题也可以在本文留言。</p>
+<p>另外，Glibc优化，也全部<a href="https://gitee.com/src-openeuler/glibc/pulls/17">合入到</a>集成在当前版本的openeuler中，有兴趣的，也可以直接使用openEuler最新版本进行体验。</p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/" rel="tag">基础库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/04/22/arm-vs-x86-mysql-xing-neng-da-bi-pin/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">ARM vs X86 Mysql性能大比拼</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/04/15/rang-github-action-zai-ni-de-arm-ji-qi-shang-pao-qi-lai/">
+                <span class="level-item">让Github Action在你的ARM机器上跑起来</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 16,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="源于鲲鹏，回归社区：GNU Glibc的ARM优化小记" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

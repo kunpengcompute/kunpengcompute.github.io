@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>PostgreSQL ARM和X86性能比拼 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2020&#x2F;05&#x2F;postgresql-on-arm.html 由团队内部PostgreSQL大牛Amit在ARM和X86上针对PostgreSQL的性能比拼测试。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PostgreSQL ARM和X86性能比拼">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/05/22/postgresql-arm-he-x86-xing-neng-bi-pin/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2020&#x2F;05&#x2F;postgresql-on-arm.html 由团队内部PostgreSQL大牛Amit在ARM和X86上针对PostgreSQL的性能比拼测试。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-05-22T09:03:28.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="PostgreSQL ARM和X86性能比拼" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="PostgreSQL ARM和X86性能比拼" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-05-22T09:03:28.000Z">2020-05-22</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                PostgreSQL ARM和X86性能比拼
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Amit Dattatray Khandekar<br>原文链接: <a href="https://amitdkhan-pg.blogspot.com/2020/05/postgresql-on-arm.html">https://amitdkhan-pg.blogspot.com/2020/05/postgresql-on-arm.html</a></p>
+<p>由团队内部PostgreSQL大牛Amit在ARM和X86上针对PostgreSQL的性能比拼测试。</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<h3 id="PostgreSQL-on-ARM"><a href="#PostgreSQL-on-ARM" class="headerlink" title="PostgreSQL on ARM"></a>PostgreSQL on ARM</h3><h2 id=""><a href="#" class="headerlink" title=""></a></h2><p>在我的<a href="https://amitdkhan-pg.blogspot.com/2020/04/arm-points-to-be-noted.html">上个博客</a>, 我写道，如果那些已经运行在X86的应用程序要在不同的架构上运行，比如 ARM，那么这些应用程序可能需要进行一些优化。 让我们来看看它具体指的是什么。</p>
+<p>最近我一直在使用 ARM64机器测试 PostgreSQL RDBMS。几个月前，我甚至不知道它是否可以在 ARM 上编译，因为忽略了一个事实，即我们有一个用于 ARM64的常规构建机器，<a href="https://buildfarm.postgresql.org/cgi-bin/show_history.pl?nm=eelpout&br=HEAD">已经很长时间了</a>. 现在甚至连 PostgreSQL apt 库也开始制作<a href="https://www.df7cb.de/blog/2020/arm64-on-apt.postgresql.org.html">ARM64 PostgreSQL</a> 的包了。但是在我用不同的场景测试了 PostgreSQL-on-ARM 之后，我才真正对它的可靠性有了信心。</p>
+<p>我从read-only pgbench 测试开始，比较了 x86_64和 ARM_64虚机的测试结果。 目的不是比较任何特定的 CPU 实现。 这个想法是为了找出ARM 上的 PostgreSQL 与X86相比表现不尽如人意的场景。</p>
+<p><strong>Test Configuration</strong></p>
+<p>ARM64 VM:<br>  Ubuntu 18.04.3; 8 CPUs; CPU frequency: 2.6 GHz; available RAM : 11GB<br>x86_64 VM:<br>  Ubuntu 18.04.3; 8 CPUs; CPU frequency: 3.0 GHz; available RAM : 11GB</p>
+<p>以下是所有测试的共用的配置:</p>
+<p>PostgreSQL parameters changed : shared_buffers = 8GB<br>pgbench scale factor : 30<br>pgbench command :<br>for num in 2 4 6 8 10 12 14<br>do<br>  pgbench [-S] -c $num -j $num -M prepared -T 40<br>done<br>它的意思是: pgbench 运行的并行client数量越来越多，从2个到14个不等。</p>
+<p><strong>Select-only workload</strong></p>
+<p>pgbench -S 选项应用在 read-only workload.</p>
+<p><a href="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-only.jpeg"><img src="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-only.jpeg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="img"></a></p>
+<p> 在2个线程和4个线程之间，x86的性能比 ARM 高出30% ，而且差距越来越大。 当线程数在4到6之间，曲线变得平坦了一点，再到线程数6到8之间，曲线突然变得陡峭。 然后线程数到达8之后，由于测试机上有8个 cpu，预计它会变平或下降。 但是还有更多的原因。 这里Pgbench client运行在与安装 PostgreSQL server相同的一台机器上。 通过充分利用 cpu，Pgbench client 占用了大约20% 的 cpu。 所以client从6个线程开始对测试产生干扰。 尽管如此，ARM 和 x86的性能差距还是在线程数6到8之间急剧上涨。 我还没有理解为什么会这样，可能与 Linux 调度程序以及 pgbench client和PostgreSQL server之间的交互有关。 注意，x86和 ARM 的曲线形状基本相似。 所以这种行为并不是架构特有的。 不过，这些曲线的一个不同之处在于: ARM 曲线从8个线程开始下降幅度稍大一些。 此外，线程数在6到8之间时，ARM 的处理事务量的增长并不像 x86那样剧烈。 因此，这种情况的最终结果是: 随着 cpu 变得越来越忙，ARM 上的 PostgreSQL 越来越落后于 x86。 让我们看看如果移除 pgbench client带来的干扰会发生什么。</p>
+<p><strong>select exec_query_in_loop(n)</strong></p>
+<p>因此，为了避免由于同一台机器上的pgbench client对PostgreSQL server造成的干扰，我想测试一下它的查询性能。为此，pgbench client运行在另一台机器上，但这可能会产生另一种的噪音: 网络延迟。 所以，我写了一个 PostgreSQL <a href="https://drive.google.com/file/d/1HcnHV5u0unyuH3ve-Jnp8XLqLicOI_PC/view?usp=sharing">C language user-defined function</a> ，用来循环执行与 pgbench 测试运行的完全相同的 SQL 查询。 使用 pgbench 自定义脚本执行此函数。现在，pgbench client大部分都是空闲的。 另外，这不会占用提交 / 回滚程度时间，因为大部分时间将花费在这个C 函数上。</p>
+<p>pgbench 自定义脚本 : select exec_query_in_loop(n);<br>其中 n 是 pgbench 查询在PostgreSQL server上一次循环执行的次数<br>与pgbench -S选项作用下的普通循环查询：<br>SELECT abalance FROM pgbench_accounts WHERE aid = $1<br>详情参看 <a href="https://drive.google.com/file/d/1HcnHV5u0unyuH3ve-Jnp8XLqLicOI_PC/view?usp=sharing">exec_query_in_loop</a>()</p>
+<p><a href="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-exec_query_in_loop.jpeg"><img src="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-exec_query_in_loop.jpeg?imageMogr2/auto-orient/strip%7CimageView2/2/w/620" alt="img"></a></p>
+<p>现在，你看到一个非常不同的曲线。 对于这两条曲线，最多为8个线程，事务率与线程数成线性比例。 正如预期的那样，在线程数达到8以后，处理的事务就不会上升了。 而且，即使对 ARM 来说，它也有相同的行为。 与 x86相比，PostgreSQL 在 ARM上从头到尾慢了35% 左右。 考虑到 ARM 处理器的频率是2.6 GHz，而 x86是3.0 GHz，这么一说看起来这性能还不错。 注意，事务率是个位数，因为函数 exec_query_in_loop(n)中是用 n=100000来执行的。</p>
+<p>这个实验还表明，之前使用内置 pgbench 脚本的性能测试结果与 pgbench client干扰有关。 而且，ARM 对于竞争线程的倾斜曲线不是由服务器中的争用引起的。 请注意，事务率是在客户端计算的。 因此，特别是在高争用场景中, 即使查询中的结果已经准备就绪，然而client请求结果、计算时间戳等仍然可能会有一些延迟。</p>
+<p><strong>select exec_query_in_loop(n) - PL/pgSQL function</strong></p>
+<p>在使用用户定义的 c 函数之前，我使用了 <a href="https://drive.google.com/file/d/1-jiYEOIVHdtp8Yfv6QrYhrO06urHILd5/view?usp=sharing">PL/pgSQL function来做同样的事</a>. 我偶然发现了一种不同的表现行为。</p>
+<p><a href="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-exec_query_in_loop2.jpeg"><img src="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-exec_query_in_loop2.jpeg?imageMogr2/auto-orient/strip%7CimageView2/2/w/620" alt="img"></a></p>
+<p>在这里，无论线程数量如何，ARM 上的 PostgreSQL 都比 x86慢65% 左右。 与之前使用 C 函数的结果相比，由于某种原因，很明显 PL/pgsql 在 ARM 上的执行速度非常慢。 我检查了 perf 输出的报告，在 ARM 和 x86中看到的热点函数大致相同。 但由于某些原因，在 PL/pgsql 函数内执行的任何操作在 ARM 上都比在 x86上慢得多。</p>
+<p>我还没有检查缓存失败，看看缓存失败是否在 ARM 上会更多。 在撰写本文时，我所做的是这样的(在PostgreSQL内部是这样的) : exec_stmt_foreach_a()调用exec_stmt()。 我将 exec_stmt()克隆为 exec_stmt_clone() ，并将 exec_stmt_foreach_a()调用 exec_stmt_clone()。 这加快了整体执行的速度，对于 ARM 来说却加快了20%多 。 到目前为止，这种变化为什么会导致这种行为，对我来说还是一个谜。 可能与程序中某个代码位置有关，这点我还不确定。</p>
+<p><strong>Updates</strong></p>
+<p>默认 pgbench 选项运行与 tpcb类似的内置脚本，该脚本对多个表进行了一些更新操作。</p>
+<p><a href="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/tpcb-like-updates.jpeg"><img src="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/tpcb-like-updates.jpeg?imageMogr2/auto-orient/strip%7CimageView2/2/w/620" alt="img"></a></p>
+<p>与 x86相比，ARM 上的事务处理率大约比X86慢1%-10% 。 这可能是因为大部分时间用于等待锁，而在提交过程中的磁盘写操作。 我使用的磁盘是非 SSD 磁盘。 但总体来看，PostgreSQL在 ARM 上的更新表操作在 ARM 上运行良好。</p>
+<p>接下来，我将测试聚合查询、分页、更多CPU核数 (32 / 64 / 128)、更大的 RAM 和更高的规模因数，以便相对地了解 PostgreSQL 在拥有大量资源的两个平台上的性能扩展情况。</p>
+<p><strong>结论</strong></p>
+<p>我们看到，PostgreSQL RDBMS 在 ARM64上工作得相当稳定。 虽然在比较两个不同平台上的性能很棘手，但是我们仍然可以通过比较两个平台中不同场景中的行为来判断它哪些方面做得不好。</p>
+</div>
+<div id="English" class="tab-content">
+
+<h3 id="PostgreSQL-on-ARM-1"><a href="#PostgreSQL-on-ARM-1" class="headerlink" title="PostgreSQL on ARM"></a>PostgreSQL on ARM</h3><h2 id="-1"><a href="#-1" class="headerlink" title=""></a></h2><p>In my <a href="https://amitdkhan-pg.blogspot.com/2020/04/arm-points-to-be-noted.html">last blog</a>, I wrote that applications that have been running on x86 might need to undergo some adaptation if they are to be run on a different architecture such as ARM. Let’s see what it means exactly.</p>
+<p>Recently I have been playing around with PostgreSQL RDBMS using an ARM64 machine. A few months back, I even didn’t know whether it can be compiled on ARM, being oblivious of the fact that we already have a regular build farm member for ARM64 for <a href="https://buildfarm.postgresql.org/cgi-bin/show_history.pl?nm=eelpout&br=HEAD">quite a while</a>. And now even the PostgreSQL apt repository has started making PostgreSQL packages <a href="https://www.df7cb.de/blog/2020/arm64-on-apt.postgresql.org.html">available for ARM64</a> architecture. But the real confidence on the reliability of PostgreSQL-on-ARM came after I tested it with different kinds of scenarios.</p>
+<p>I started with read-only pgbench tests and compared the results on the x86_64 and the ARM64 VMs available to me. The aim was not to compare any specific CPU implementation. The idea was to find out scenarios where PostgreSQL on ARM does not perform in one scenario as good as it performs in other scenarios, when compared to x86.</p>
+<p><strong>Test Configuration</strong></p>
+<p>ARM64 VM:<br>  Ubuntu 18.04.3; 8 CPUs; CPU frequency: 2.6 GHz; available RAM : 11GB<br>x86_64 VM:<br>  Ubuntu 18.04.3; 8 CPUs; CPU frequency: 3.0 GHz; available RAM : 11GB</p>
+<p>Following was common for all tests :</p>
+<p>PostgreSQL parameters changed : shared_buffers = 8GB<br>pgbench scale factor : 30<br>pgbench command :<br>for num in 2 4 6 8 10 12 14<br>do<br>  pgbench [-S] -c $num -j $num -M prepared -T 40<br>done<br>What it means is : pgbench is run with increasing number of parallel clients, starting from 2 to 14.</p>
+<p><strong>Select-only workload</strong></p>
+<p>pgbench -S option is used for read-only workload.</p>
+<p><a href="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-only.jpeg"><img src="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-only.jpeg?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240" alt="img"></a></p>
+<p>Between 2 and 4 threads, the x86 performance is 30% more than ARM, and the difference rises more and more. Between 4 and 6, the curves flatten a bit, and between 6 and 8, the curves suddenly become steep. After 8, it was expected to flatten out or dip, because the machines had 8 CPUs. But there is more to it. The pgbench clients were running on the same machines where servers were installed. And with fully utilized CPUs, the clients took around 20% of the CPUs. So they start to interfere from 6 threads onward. In spite of that, there is a steep rise between 6 and 8, for both ARM and x86. This is not yet understood by me, but possibly it has something to do with the Linux scheduler, and the interaction between the pgbench clients and the servers. Note that, the curve shape is mostly similar on both x86 and ARM. So this behaviour is not specific to architectures. One difference in the curves, though, is : the ARM curve has a bit bigger dip from 8 threads onward. Also, betweeen 6 and 8, the sudden jump in transactions is not that steep for ARM compared to x86. So the end result in this scenario is : As the CPUs become more and more busy, PostgreSQL on ARM lags behind x86 more and more. Let’s see what happens if we remove the interference created by pgbench clients.</p>
+<p><strong>select exec_query_in_loop(n)</strong></p>
+<p>So, to get rid of the noise occurring because of both client and server on the same machines, I arranged for testing exactly what I intended to test: query performance. For this, pgbench clients can run on different machines, but that might create a different noise: network latency. So instead, I wrote a PostgreSQL <a href="https://drive.google.com/file/d/1HcnHV5u0unyuH3ve-Jnp8XLqLicOI_PC/view?usp=sharing">C language user-defined function</a> that keeps on executing in a loop the same exact SQL query that is run by this pgbench test. Execute this function using the pgbench custom script. Now, pgbench clients would be mostly idle. Also, this won’t take into account the commit/rollback time, because most of the time will be spent inside the C function.</p>
+<p>pgbench custom script : select exec_query_in_loop(n);<br>where n is the number of times the pgbench query will be executed on the server in a loop.<br>The loop query is the query that gets normally executed with pgbench -S option:<br>SELECT abalance FROM pgbench_accounts WHERE aid = $1<br>Check details in <a href="https://drive.google.com/file/d/1HcnHV5u0unyuH3ve-Jnp8XLqLicOI_PC/view?usp=sharing">exec_query_in_loop</a>()</p>
+<p><a href="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-exec_query_in_loop.jpeg"><img src="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-exec_query_in_loop.jpeg?imageMogr2/auto-orient/strip%7CimageView2/2/w/620" alt="img"></a></p>
+<p>Now, you see a very different curve. For both curves, upto 8 threads, transactions rate is linearly proportional to number of threads. After 8, as expected, the transactions rate doesn’t rise. And it has not dipped, even for ARM. PostgreSQL is consistently around 35% slower on x86 compared to ARM. This sounds not that bad when we consider that the ARM CPU frequency is 2.6 GHz whereas x86 is 3.0 Gz. Note that the transaction rate is single digit, because the function exec_query_in_loop(n) is executed with n=100000.</p>
+<p>This experiment also shows that the previous results using built-in pgbench script have to do with pgbench client interference. And that, the dip in curve for ARM for contended threads is not caused by the contention in the server. Note that, the transactions rates are calculated at client side. So even when a query is ready for the results, there may be some delay in the client requesting the results , calculating the timestamp, etc, especially in high contention scenarios.</p>
+<p><strong>select exec_query_in_loop(n) - PLpgSQL function</strong></p>
+<p>Before using the user-defined C function, I had earlier used a <a href="https://drive.google.com/file/d/1-jiYEOIVHdtp8Yfv6QrYhrO06urHILd5/view?usp=sharing">PL/pgSQL function to do the same work</a>. There, I stumbled across a different kind of performance behaviour.</p>
+<p><a href="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-exec_query_in_loop2.jpeg"><img src="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/select-exec_query_in_loop2.jpeg?imageMogr2/auto-orient/strip%7CimageView2/2/w/620" alt="img"></a></p>
+<p>Here, PostgreSQL on ARM is around 65% slower than on x86, regardless of number of threads. Comparing with the previous results that used a C function, it is clear that PL/pgSQL execution is remarkably slower on ARM, for some reason. I checked the perf report, but more or less the same hotspot functions are seen in both ARM and x86. But for some reason, anything executed inside PL/pgSQL function becomes much slower on ARM than on x86.</p>
+<p>I am yet to check the cache misses to see if those are more on ARM. As of this writing, what I did was this (some PostgreSQL-internals here) : exec_stmt_foreach_a() calls exec_stmt(). I cloned exec_stmt() to exec_stmt_clone(), and made exec_stmt_foreach_a() call exec_stmt_clone() instead. This sped up the overall execution, but it sped up 20% more for ARM. Why just this change caused this behaviour is kind of a mystery to me as of now. May be it has to do with the location of a function in the program; not sure.</p>
+<p><strong>Updates</strong></p>
+<p>The default pgbench option runs the tpcb-like built-in script, which has some updates on multiple tables.</p>
+<p><a href="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/tpcb-like-updates.jpeg"><img src="https://raw.githubusercontent.com/bzhaoopenstack/dockertoy/master/images/tpcb-like-updates.jpeg?imageMogr2/auto-orient/strip%7CimageView2/2/w/620" alt="img"></a></p>
+<p>Here, the transaction rate is only around 1-10% percent less on ARM compared to x86. This is probably because major portion of the time goes in waiting for locks, and in disk writes during commits. And the disks I used are non-SSD disks. But overall it looks like, updates on PostgreSQL are working good on ARM.</p>
+<p>Next thing, I am going to test with aggregate queries, partitions, high number of CPUs (32/64/128), larger RAM and higher scale factor, to relatively see how PostgreSQL scales on the two platforms with large resources.</p>
+<p><strong>Conclusion</strong></p>
+<p>We saw that PostgreSQL RDBMS works quite robustly on ARM64. While it is tricky to compare the performance on two different platforms, we could still identify which areas it is not doing good by comparing patterns of behaviour in different scenarios in the two platforms.</p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/05/28/numa-zhi-neng-quan-ju-ji-shu-qi-lai-zi-mysql-de-ling-gan/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">NUMA 智能全局计数器 -- 来自MySQL的灵感</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/05/20/rang-ya-suo-ku-zstd-zai-aarch64-geng-shun-hua/">
+                <span class="level-item">让压缩库ZSTD在aarch64更顺滑</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 31,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="PostgreSQL ARM和X86性能比拼" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>在arm64平台上测试Percona Toolkit - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: zhaorenhai Percona Toolkit是Mysql， MariaDB数据库领域一个很流行的工具箱，里面包含了很多个有用的工具。今天我们就来测试下这些工具是否可以在arm64平台上良好运行。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在arm64平台上测试Percona Toolkit">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/11/26/zai-arm64-ping-tai-shang-ce-shi-percona-toolkit/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: zhaorenhai Percona Toolkit是Mysql， MariaDB数据库领域一个很流行的工具箱，里面包含了很多个有用的工具。今天我们就来测试下这些工具是否可以在arm64平台上良好运行。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-11-26T13:07:56.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="在arm64平台上测试Percona Toolkit" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="在arm64平台上测试Percona Toolkit" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-11-26T13:07:56.000Z">2020-11-26</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                在arm64平台上测试Percona Toolkit
+            
+        </h1>
+        <div class="content">
+            <p>作者: zhaorenhai</p>
+<p>Percona Toolkit是Mysql， MariaDB数据库领域一个很流行的工具箱，里面包含了很多个有用的工具。今天我们就来测试下这些工具是否可以在arm64平台上良好运行。</p>
+<a id="more"></a>
+<p>测试平台仍然选用华为云的鲲鹏虚拟机，OS采用Ubuntu18.04。 并提前已经在同内网内其他虚拟机上部署好了一对MariaDB主从数据库，并建好了供远程连接的数据库用户名和密码。MariaDB采用Ubuntu自带的10.1版本。</p>
+<p>安装Percona Toolkit很简单，arm64版本的Ubuntu上面就已经自带了安装源，直接用如下命令安装即可</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install percona-toolkit</span><br></pre></td></tr></table></figure>
+
+<p>当然也可以直接从源码编译，可以参考官网指导：</p>
+<p><a href="https://github.com/percona/percona-toolkit">https://github.com/percona/percona-toolkit</a></p>
+<p>安装好后，用<code>man percona-toolkit</code>可以看到工具列表，然后man 各个具体的工具名字，能看到进一步详细的说明。</p>
+<p>工具本身的配置参数，在 <code>/etc/percona-toolkit</code>目录下面，所有工具的全局配置文件为<code>percona-toolkit.conf</code>, 每个工具单独的配置也在这个目录下面，配置文件就是 工具的名称.conf 这样的格式。 一般刚安装默认不需要配置什么东西，除非后续你有特殊的需求。</p>
+<p>接下来我们从中挑一些工具来测试一下，看看是否能在arm64平台上良好运行。</p>
+<p><strong>pt-align</strong></p>
+<p>pt-align严格来说并不能算一个数据库工具，因为运行的时候，并不需要连接到数据库，这个是将输出对齐用的一个小工具。</p>
+<p>比如有文件<code>test.txt</code>,内容如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">DATABASE TABLE   ROWS</span><br><span class="line">          foo      bar      100</span><br><span class="line">          long_db_name table  1</span><br><span class="line">          another  long_name 500</span><br></pre></td></tr></table></figure>
+
+<p>用<code>pt-align test.txt</code>对齐以后，格式如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">DATABASE     TABLE     ROWS</span><br><span class="line">foo          bar        100</span><br><span class="line">long_db_name table        1</span><br><span class="line">another      long_name  500</span><br></pre></td></tr></table></figure>
+
+<p>是不是好看多了。</p>
+<p>再比如有<code>test1.csv</code>文件，内容如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">visit_district,pv_count,visitor_count,avg_visit_time,avg_visit_pages,new_visitor_count,ip_count</span><br><span class="line">中国,1285315,492801,300,3.9,453298,413898</span><br><span class="line">广东,226512,63361,320,4.3,52541,54010</span><br><span class="line">江苏,151617,62896,320,3.9,55049,59432</span><br><span class="line">北京,120757,44391,299,3.5,39392,35887</span><br><span class="line">上海,96754,41583,278,3.6,39806,33524</span><br><span class="line">新加坡,87186,11359,409,5.3,3875,8955</span><br><span class="line">浙江,84031,36488,264,3.2,34423,30087</span><br><span class="line">湖北,74910,34522,258,3.4,33746,25516</span><br><span class="line">山东,58738,25100,250,3.2,24352,19409</span><br></pre></td></tr></table></figure>
+
+<p>将逗号替换成空格，再用pt-align对齐</p>
+<p>命令如下</p>
+<p><code>sed &#39;s/,/ /g&#39; test1.csv |pt-align</code></p>
+<p>对齐后格式如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">visit_district pv_count visitor_count avg_visit_time avg_visit_pages new_visitor_count ip_count</span><br><span class="line">中国           1285315       492801            300             3.9            453298   413898</span><br><span class="line">广东           226512         63361            320             4.3             52541    54010</span><br><span class="line">江苏           151617         62896            320             3.9             55049    59432</span><br><span class="line">北京           120757         44391            299             3.5             39392    35887</span><br><span class="line">上海            96754         41583            278             3.6             39806    33524</span><br><span class="line">新加坡          87186         11359            409             5.3              3875     8955</span><br><span class="line">浙江            84031         36488            264             3.2             34423    30087</span><br><span class="line">湖北            74910         34522            258             3.4             33746    25516</span><br><span class="line">山东            58738         25100            250             3.2             24352    19409</span><br></pre></td></tr></table></figure>
+
+<p>更容易方便人看文件的内容</p>
+<p><strong>pt-archiver</strong></p>
+<p>pt-archiver 是一个归档工具，可以把表的内容归档到一个文件，文件以后可以被其他导入工具或者导入命令用来导入数据库。也可以直接归档到另外一个数据库的表里面。这个工具可以添加where条件，只导表的一部分内容也可以。 </p>
+<p>需要注意的一点是，这个工具归档完表里的内容，会把原表的内容删掉，如果不想删除原表的内容，要加<code>--no-delete</code>参数</p>
+<p>我们来实际用一下，我们先把<code>testdb</code>数据库里面的表<code>cars</code>，归档到<code>cars_bak</code>里面（仅仅是演示，环境限制，就不归档到远程数据库了，大家明白这个工具有这个能力即可），然后再把这个<code>cars_bak</code>表归档到一个文件里。</p>
+<p>首先登陆到数据库里面，创建一个<code>cars_bak</code>空表，然后再创建一个索引(pt-archiver默认要求表至少有一个索引才能正常被归档)，</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> testdb.cars_bak <span class="keyword">as</span> <span class="keyword">select</span> * <span class="keyword">from</span> testdb.cars <span class="keyword">where</span> <span class="number">1</span>=<span class="number">2</span>;</span><br><span class="line"><span class="keyword">create</span> <span class="keyword">index</span> idx_cars <span class="keyword">on</span> testdb.cars_bak(<span class="keyword">name</span>);</span><br></pre></td></tr></table></figure>
+
+<p>然后执行如下命令，测试归档到表的功能</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">pt-archiver --source h=192.168.0.204,u=proxysql,p=proxypassword,D=testdb,t=cars \</span><br><span class="line">            --dest h=192.168.0.204,u=proxysql,p=proxypassword,D=testdb,t=cars_bak \</span><br><span class="line">            --where "1=1" --limit 1000 --commit-each</span><br></pre></td></tr></table></figure>
+
+<p>命令执行完没有任何提示（可以加–progress参数,能看到导的过程），我们把这个表导出来，看看里面的内容</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /var/log/archive</span><br><span class="line">pt-archiver --source h=192.168.0.204,u=proxysql,p=proxypassword,D=testdb,t=cars_bak \</span><br><span class="line">            --file '/var/log/archive/%Y-%m-%d-%D.%t' \</span><br><span class="line">            --where "1=1" --limit 1000</span><br></pre></td></tr></table></figure>
+
+<p>查看文件内容</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cat /var/log/archive/2020-11-25-testdb.cars_bak</span><br></pre></td></tr></table></figure>
+
+<p>内容如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">1       Audi    52642</span><br><span class="line">3       Skoda   9000</span><br><span class="line">2       Volkswagen      21600</span><br></pre></td></tr></table></figure>
+
+<p>pt-archiver这个工具还有很多其他参数，有兴趣的小伙伴可以自行研究一下</p>
+<p><strong>pt-config-diff</strong></p>
+<p>pt-config-diff是一个比较Mysql或者MariaDB配置的工具，这个配置可以是两个配置文件，也可以是两个不同的数据库实例上<code>show variables</code>命令的结果（也就是内存里实际正在生效的配置），也可以一个是数据库实例上内存里的配置，另外一个是配置文件。</p>
+<p>根据我们的环境，我们先比较一下主库上的配置文件和从库上的配置文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">scp 192.168.0.204:/etc/mysql/mariadb.conf.d/50-server.cnf primary.cnf</span><br><span class="line">scp 192.168.0.64:/etc/mysql/mariadb.conf.d/50-server.cnf replica.cnf</span><br><span class="line">pt-config-diff primary.cnf replica.cnf</span><br></pre></td></tr></table></figure>
+
+<p>两个配置文件没啥不同，输出为空</p>
+<p>我们再比较下主库和从库上内存里的配置</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pt-config-diff h=192.168.0.204,u=proxysql,p=proxypassword h=192.168.0.64,u=proxysql,p=proxypassword</span><br></pre></td></tr></table></figure>
+
+<p>这下可以看到不同了</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">17 config differences</span><br><span class="line">Variable                  mariadb-2                 mariadb-3</span><br><span class="line">&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D; &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D; &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</span><br><span class="line">binlog_format             MIXED                     STATEMENT</span><br><span class="line">general_log_file          primary1.log              mariadb-3.log</span><br><span class="line">gtid_binlog_pos           0-1-129</span><br><span class="line">gtid_binlog_state         0-1-129</span><br><span class="line">gtid_slave_pos                                      0-1-129</span><br><span class="line">hostname                  mariadb-2                 mariadb-3</span><br><span class="line">log_bin                   ON                        OFF</span><br><span class="line">log_bin_basename          &#x2F;var&#x2F;lib&#x2F;mysql&#x2F;primary...</span><br><span class="line">log_bin_index             &#x2F;var&#x2F;lib&#x2F;mysql&#x2F;primary...</span><br><span class="line">log_error                 .&#x2F;primary1.err            &#x2F;var&#x2F;log&#x2F;mysql&#x2F;error.log</span><br><span class="line">pid_file                  &#x2F;var&#x2F;lib&#x2F;mysql&#x2F;primary... &#x2F;var&#x2F;run&#x2F;mysqld&#x2F;mysqld...</span><br><span class="line">relay_log                 primary1-relay-bin</span><br><span class="line">relay_log_basename        &#x2F;var&#x2F;lib&#x2F;mysql&#x2F;primary...</span><br><span class="line">relay_log_index           &#x2F;var&#x2F;lib&#x2F;mysql&#x2F;primary...</span><br><span class="line">server_id                 1                         2</span><br><span class="line">slow_query_log_file       primary1-slow.log         mariadb-3-slow.log</span><br><span class="line">wsrep_node_name           mariadb-2                 mariadb-3</span><br></pre></td></tr></table></figure>
+
+<p>我们再比较下主库的内存和配置文件的不同</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pt-config-diff h=192.168.0.204,u=proxysql,p=proxypassword primary.cnf</span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到也是有两个不同的</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">2 config differences</span><br><span class="line">Variable                  mariadb-2                 primary.cnf</span><br><span class="line">&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D; &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D; &#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</span><br><span class="line">log_error                 .&#x2F;primary1.err            &#x2F;var&#x2F;log&#x2F;mysql&#x2F;error.log</span><br><span class="line">pid_file                  &#x2F;var&#x2F;lib&#x2F;mysql&#x2F;primary... &#x2F;var&#x2F;run&#x2F;mysqld&#x2F;mysqld...</span><br></pre></td></tr></table></figure>
+
+<p><strong>pt-diskstats</strong></p>
+<p>pt-diskstats是一个查看磁盘io信息的工具，输出和iostat差不多，比iostat稍微详细点。另外这个工具可以把io信息保存到文件里，后续可以用pt-diskstats再打开这个文件分析，相当于一个io信息采集工具，这个用法用<code>man pt-diskstats</code>可以看到，我们就不再演示。这里只演示下默认的直接显示当前主机io的效果, 直接输入<code>pt-diskstats</code>回车即可</p>
+<p>默认输出效果如下</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">ts device    rd_s rd_avkb rd_mb_s rd_mrg rd_cnc   rd_rt    wr_s wr_avkb wr_mb_s wr_mrg wr_cnc   wr_rt busy in_prg    io_s  qtime stime</span></span><br><span class="line">0.5 vda        0.0     0.0     0.0     0%    0.0     0.0     6.6   204.0     1.3    98%    0.0     0.0   0%      0     6.6    0.0   0.0</span><br><span class="line">0.5 vda2       0.0     0.0     0.0     0%    0.0     0.0     6.6   204.0     1.3    98%    0.0     0.0   0%      0     6.6    0.0   0.0</span><br><span class="line"></span><br><span class="line">1.0 vda        2.0     4.0     0.0     0%    0.0     0.0   109.0   718.6    76.5     7%    0.4     3.5   8%      0   111.0    1.6   0.6</span><br><span class="line">1.0 vda2       2.0     4.0     0.0     0%    0.0     0.0   109.0   718.6    76.5     7%    0.4     3.5   8%      8   111.0    1.5   0.6</span><br><span class="line"></span><br><span class="line">1.0 vda        3.0     4.0     0.0     0%    0.0     0.0   768.0   563.0   422.3     2%   20.4    26.0  66%      0   771.0   23.5   0.8</span><br><span class="line">1.0 vda2       3.0     4.0     0.0     0%    0.0     0.0   768.0   563.0   422.3     2%   20.4    26.0  84%     24   771.0   28.1   1.1</span><br><span class="line"></span><br><span class="line">1.0 vda        8.0    15.5     0.1     0%    0.0     0.5   444.0   577.2   250.3     2%   19.4    42.8  69%      0   452.0   29.6   1.5</span><br><span class="line">1.0 vda2       8.0    15.5     0.1     0%    0.0     0.5   444.0   577.2   250.3     2%   19.4    42.8  98%      2   452.0   31.8   2.1</span><br><span class="line"></span><br><span class="line">1.0 vda        3.0     4.0     0.0     0%    0.8   273.3   432.0   557.1   235.0     3%    2.7     6.0  76%      0   435.0    2.2   1.7</span><br><span class="line">1.0 vda2       3.0     4.0     0.0     0%    0.8   273.3   430.0   559.7   235.0     3%    2.7     6.0  76%      8   433.0    2.2   1.7</span><br></pre></td></tr></table></figure>
+
+<p>按个<code>?</code>键，就可以显示用于交互的命令键</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">You can control this program by key presses:</span><br><span class="line">------------------- Key ------------------- ---- Current Setting ----</span><br><span class="line">A, D, S) Set the group-by mode              A</span><br><span class="line">c) Enter a Perl regex to match column names .</span><br><span class="line">&#x2F;) Enter a Perl regex to match disk names   (none)</span><br><span class="line">z) Set the sample size in seconds           1</span><br><span class="line">i) Hide inactive disks                      yes</span><br><span class="line">p) Pause the program</span><br><span class="line">q) Quit the program</span><br><span class="line">space) Print headers</span><br><span class="line">------------------- Press any key to continue -----------------------</span><br></pre></td></tr></table></figure>
+
+<p><strong>pt-find</strong></p>
+<p>pt-find是一个数据库搜索工具，可以根据你提供的条件搜索满足符合这些条件的对象，还可以加一个执行动作，对这些搜索出来的对象批量执行这个动作，这是一个很有用的工具。</p>
+<p>我们来测试一下</p>
+<p>比如我们要找到testdb数据库里面的空表</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pt-find --empty -h192.168.0.204 -uproxysql -pproxypassword testdb</span><br></pre></td></tr></table></figure>
+
+<p>输出如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">&#96;testdb&#96;.&#96;cars_bak&#96;</span><br><span class="line">&#96;testdb&#96;.&#96;football_clubs&#96;</span><br><span class="line">&#96;testdb&#96;.&#96;testtable&#96;</span><br></pre></td></tr></table></figure>
+
+<p>如果想找到空表的同时，还要把这些表删掉，可以这么操作</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pt-find --empty -h192.168.0.204 -uproxysql -pproxypassword testdb --exec-plus "DROP TABLE %s"</span><br></pre></td></tr></table></figure>
+
+<p>pt-find还有很多其他各种各样的搜索条件，以及可以加各种各样的执行动作，具体的请参考 <code>man pt-find</code></p>
+<p>这是一个很强大的工具，但是操作起来，也有一定得风险，特别是你的执行动作是删除之类的操作的话，建议研究测试清楚以后，再执行。</p>
+<p><strong>pt-heartbeat</strong></p>
+<p>pt-heartbeat是一个监控主从数据库之间有没有延迟的工具。原理很简单，在主库起一个后台进程，这个进程会在数据库里创建一个心跳表，然后不停的往里更新数据。然后在从库上监控这些更新的数据有没有过来。</p>
+<p>用法也很简单，首先在主数据库上起一个daemon进程。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pt-heartbeat -D testdb --update -h 192.168.0.204 -uproxysql -pproxypassword --daemonize --create-table</span><br></pre></td></tr></table></figure>
+
+<p>然后在从库上监控</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pt-heartbeat -D testdb --monitor -h 192.168.0.64 -uproxysql -pproxypassword</span><br></pre></td></tr></table></figure>
+
+<p>输出如下, 第一列是当前延时，括号里面的分别是过去1分钟，5分钟，15分钟的延时平均值。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">1.00s [  0.02s,  0.00s,  0.00s ]</span><br><span class="line">1.00s [  0.03s,  0.01s,  0.00s ]</span><br><span class="line">2.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br><span class="line">0.00s [  0.07s,  0.01s,  0.00s ]</span><br></pre></td></tr></table></figure>
+
+<p>如果只想查看一下，可以用check命令</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pt-heartbeat -D testdb --check -h 192.168.0.64 -uproxysql -pproxypassword</span><br></pre></td></tr></table></figure>
+
+<p>只会输出一个时间延迟</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">0.00</span><br></pre></td></tr></table></figure>
+
+<p><strong>pt-mysql-summary</strong></p>
+<p>pt-mysql-summary是一个查看数据库信息的工具，这个工具可以看到数据库各个方面的信息，参数，配置，进程列表，对象数目，存储引擎信息，各项指标等等。 如果一下子想摸清数据库的基本情况，这个工具必不可少。</p>
+<p>使用起来也很简单</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pt-mysql-summary -h 192.168.0.204 -u proxysql -p proxypassword --databases testdb</span><br></pre></td></tr></table></figure>
+
+<p>具体的输出太多了，就不贴在这里了。</p>
+<p>有兴趣的小伙伴可以自己试用一下。</p>
+<p><strong>总结</strong>：</p>
+<p>在我们测试的几款工具里，都可以正确的在arm64平台上运行，和x86上并没有差异。当然toolkit里还有很多其他好用的工具，篇幅所限，这里就不一一测试了，这些工具都是用perl编写的，理论上都是可以跨平台使用的。感兴趣的小伙伴可以自己试用一下。用<code>man percona-toolkit</code>命令可以看到具体的工具列表。</p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/11/27/zai-arm-ping-tai-shang-wan-zhuan-perl/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">在ARM平台上玩转perl</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/11/26/pg-nei-jian-de-pg-basebackup-zai-arm-ping-tai-de-biao-xian/">
+                <span class="level-item">PG内建的pg_basebackup在ARM平台的表现</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 59,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="在arm64平台上测试Percona Toolkit" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

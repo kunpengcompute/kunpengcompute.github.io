@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>关于原子操作和弱内存序 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者：赵仁海 什么是原子操作大家都知道在多核系统上，可以多个CPU核并行执行，即使是在单核系统上，也可以通过中断的方式模拟并行执行。但是内存只有一个，或者确切的说，某一个地址上的数据在内存里只有一个，当有可能出现多个线程对某一个内存地址上的数据同时进行操作的时候，由于这个操作一般会被翻译成CPU的多个指令，当你想实现： 让这多个指令的执行不能被中断，或者同一个内存地址当当前线程在操作的时候其他CP">
+<meta property="og:type" content="article">
+<meta property="og:title" content="关于原子操作和弱内存序">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/09/20/guan-yu-yuan-zi-cao-zuo-he-ruo-nei-cun-xu/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者：赵仁海 什么是原子操作大家都知道在多核系统上，可以多个CPU核并行执行，即使是在单核系统上，也可以通过中断的方式模拟并行执行。但是内存只有一个，或者确切的说，某一个地址上的数据在内存里只有一个，当有可能出现多个线程对某一个内存地址上的数据同时进行操作的时候，由于这个操作一般会被翻译成CPU的多个指令，当你想实现： 让这多个指令的执行不能被中断，或者同一个内存地址当当前线程在操作的时候其他CP">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-09-20T12:02:59.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="关于原子操作和弱内存序" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="关于原子操作和弱内存序" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-09-20T12:02:59.000Z">2020-09-20</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">基础库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                关于原子操作和弱内存序
+            
+        </h1>
+        <div class="content">
+            <p>作者：赵仁海</p>
+<h3 id="什么是原子操作"><a href="#什么是原子操作" class="headerlink" title="什么是原子操作"></a>什么是原子操作</h3><p>大家都知道在多核系统上，可以多个CPU核并行执行，即使是在单核系统上，也可以通过中断的方式模拟并行执行。但是内存只有一个，或者确切的说，某一个地址上的数据在内存里只有一个，当有可能出现多个线程对某一个内存地址上的数据同时进行操作的时候，由于这个操作一般会被翻译成CPU的多个指令，当你想实现： 让这多个指令的执行不能被中断，或者同一个内存地址当当前线程在操作的时候其他CPU核不能访问，即使被中断了，或者被其他核访问了，对当前线程也没有任何影响的操作，就可以称之为原子操作。</p>
+<a id="more"></a>
+
+<p>上面一段话有点绕，我们举个具体的例子：<br>对一个全局变量i的加一操作，比如i++这行代码，在ARM上，实际编译为底层指令之后，是三个指令，ldr，add，str，也就是首先从内存把i这个变量的值加载到寄存器里面，然后在寄存器上加1，然后再存储到内存里面去。 假设i的值初始为0，这时候一个线程执行了前面两个指令，将寄存器的值加为了1，这个时候另外一个核也执行了同样的代码，或者说当前线程被中断了，被调度给了另外一个执行同样代码的线程，另外一个线程执行完毕之后，i的值为1，当前线程获得执行机会继续执行，但是由于当前线程的前面两个指令执行完了，最后一个指令还没执行，当前线程就会把寄存器里面的值1给存储到内存里面去，i的值仍然是1， 这样就产生了错误。本来两个线程的目的都是加1，结果应该是2，但是执行完结果却是1， 所以在这种时候，就需要原子操作，来保证这三个指令不能被中断，或者说即使被中断了，也不会对结果有什么影响。</p>
+<h3 id="原子操作是怎么实现的"><a href="#原子操作是怎么实现的" class="headerlink" title="原子操作是怎么实现的"></a>原子操作是怎么实现的</h3><p>上面简单举了个例子供大家来初步认识下什么是原子操作。具体的实现还是比较复杂的。<br>我们先来看看X86是怎么实现原子操作的，首先我们来看看单核系统的情况，单核系统比较简单，而且在X86上，由于是CISC指令集，是有单独的对内存上的数据直接加1的指令的，也就是说在X86的单核系统上，i++是可以直接被编译成一个原子的指令的，不需要什么额外的操作。但是在多核系统上，由于多个核有可能执行同样的代码，同时访问内存，这个时候也会有可能出现混乱的情况，所以每个核在执行前就需要先锁住内存上的数据，保证在这个指令完成之前，其他CPU不能访问内存这个地址上的数据。 所以如果是在多核的X86系统上，对一个全局变量i++，最后翻译成的汇编指令通常类似于这样的代码：LOCK “incl %0”，其中LOCK的意思就是锁住内存的意思。（最新的X86的CPU实现不是锁内存，而是锁Cache，然后由MESI协议来保证Cache一致性，可以参考这篇文章<a href="https://cloud.tencent.com/developer/article/1367365">https://cloud.tencent.com/developer/article/1367365</a> ，关于MESI协议，是一个更复杂的话题，本文暂不涉及）<br>再来看看在ARM上，ARM是RISC指令集，一开始我们举得例子也说了，同样的一行代码，ARM要翻译成3个指令，这就说明了，即使在单核的ARM系统上，线程在执行这行代码的时候也有可能被中断，所以如果要实现原子指令，在单核系统上最简单的方法就是关闭中断。<br>原子操作开始前，先把中断关闭，执行完后再打开，就实现了原子操作。 但是这种方法在多核系统上也不好用了，ARM在多核系统上采用了另外一种方法来实现原子操作。<br>（下面这段关于多核系统上ARM实现原子指令的描述来自于知乎兰新宇大神的文章，因为写的比较好，我就不重复写了，为了保持叙述的完整性，我把这段copy了过来，原文在这里<a href="https://zhuanlan.zhihu.com/p/89299392">https://zhuanlan.zhihu.com/p/89299392</a>  ）<br>在ARM V8.1之前，为实现RMW的原子操作采用的方法主要是LL/SC(Load-Link/Store-Conditional)。ARMv7中实现LL/SC的指令是LDREX/STREX，其实就是比基础的LDR和STR指令多了一个”EX”，”EX”表示exclusive（独占）。具体说来就是，当用LDREX指令从内存某个地址取出数据放到寄存器后，一个硬件的monitor会将此地址标记为exclusive。<br>假设CPU A先进行load操作，并标记了变量v所在的内存地址为exclusive，在CPU A进行下一步的store操作之前，CPU B也进行了对变量v的load操作，那么这个内存地址的exclusive就成了CPU B标记的了。<br>之后CPU A使用STREX进行store操作，它会测试store的目标地址的exclusive是不是自己标记的（是否为自己独占），结果不是，那么store失败。接下来CPU B也执行STREX，因为exclusive是自己标记的，所以可以store成功，exclusive标记也同步失效。此时CPU A会再次尝试一轮LL/SC的操作，直到store成功。<br>ARM64使用LL/SC模式实现原子操作的相关代码位于”/arch/arm64/include/asm/atomic_ll_sc.h”，它通过对”##”粘合符的运用，将不同原子操作的实现放进了同一段代码中。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">__LL_SC_PREFIX(arch_atomic_##op(<span class="keyword">int</span> i, <span class="keyword">atomic_t</span> *v))			</span><br><span class="line">&#123;									</span><br><span class="line">	<span class="keyword">unsigned</span> <span class="keyword">long</span> tmp;						</span><br><span class="line">	<span class="keyword">int</span> result;							</span><br><span class="line">									</span><br><span class="line">	<span class="function"><span class="keyword">asm</span> <span class="title">volatile</span><span class="params">(<span class="string">"// atomic_"</span> #op <span class="string">"\n"</span>				</span></span></span><br><span class="line"><span class="function"><span class="params"><span class="string">"	prfm	pstl1strm, %2\n"</span>    <span class="comment">// prefetch memory			</span></span></span></span><br><span class="line"><span class="function"><span class="params"><span class="string">"1:	ldxr	%w0, %2\n"</span>    <span class="comment">// w0 = %2(v-&gt;counter)				</span></span></span></span><br><span class="line"><span class="function"><span class="params"><span class="string">"	"</span> #asm_op <span class="string">"	%w0, %w0, %w3\n"</span>     <span class="comment">// w0 = w0 + w3 （假设是add）				</span></span></span></span><br><span class="line"><span class="function"><span class="params"><span class="string">"	stxr	%w1, %w0, %2\n"</span>     <span class="comment">// %2(v-&gt;counter) = w0, 执行结果存储在w1</span></span></span></span><br><span class="line"><span class="function"><span class="params"><span class="string">"	cbnz	%w1, 1b"</span>	   <span class="comment">// 若w1 != 0，说明store失败，跳转到标号1重试      		</span></span></span></span><br><span class="line"><span class="function"><span class="params">	<span class="string">"=&amp;r"</span> (result), <span class="string">"=&amp;r"</span> (tmp), <span class="string">"+Q"</span> (v-&gt;counter)	<span class="comment">// input+output	</span></span></span></span><br><span class="line"><span class="function"><span class="params">	: <span class="string">"Ir"</span> (i))</span></span>;	 <span class="comment">// input						</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>这里的”ldxr”和”stxr”就是前面讲的”ldrex”和”strex”，只不过到了ARMv8.0中被改了个名字而已。可以看到，代码实现中会有个比较和循环，失败则会重试。<br>重试一次还好，如果CPU之间竞争比较激烈，可能导致重试的次数较多，所以从2014年的ARMv8.1开始，ARM推出了用于原子操作的LSE(Large System Extension)指令集扩展，新增的指令包括CAS, SWP和LD<OP>, ST<OP>等，其中<OP>可以是ADD, CLR, EOR, SET等。这些指令也类似于X86上，可以直接对内存上的数据进行原子计算。ARM64使用LSE指令实现原子操作的相关代码位于”/arch/arm64/include/asm/atomic_lse.h”。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">inline</span> <span class="keyword">void</span> arch_atomic_#<span class="meta">#op(int i, atomic_t *v)			</span></span><br><span class="line">&#123;									</span><br><span class="line">	<span class="function"><span class="keyword">register</span> <span class="keyword">int</span> w0 <span class="title">asm</span> <span class="params">(<span class="string">"w0"</span>)</span> </span>= i;					</span><br><span class="line">	<span class="function"><span class="keyword">register</span> <span class="keyword">atomic_t</span> *x1 <span class="title">asm</span> <span class="params">(<span class="string">"x1"</span>)</span> </span>= v;				</span><br><span class="line">									</span><br><span class="line">	<span class="function"><span class="keyword">asm</span> <span class="title">volatile</span><span class="params">(ARM64_LSE_ATOMIC_INSN(__LL_SC_ATOMIC(op),	<span class="string">" "</span> #asm_op <span class="string">"	%w[i], %[v]\n"</span>)					</span></span></span><br><span class="line"><span class="function"><span class="params">	: [i] <span class="string">"+r"</span> (w0), [v] <span class="string">"+Q"</span> (v-&gt;counter)   <span class="comment">// nput+output				</span></span></span></span><br><span class="line"><span class="function"><span class="params">	: <span class="string">"r"</span> (x1)      <span class="comment">// input						</span></span></span></span><br><span class="line"><span class="function"><span class="params">	: <span class="string">"x16"</span>, <span class="string">"x17"</span>, <span class="string">"x30"</span>)</span></span>;    <span class="comment">// clobber list  					</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>确实比LL/SC的实现方式简洁了很多，一条指令就可以搞定，比如实现arch_atomic_add()，只用LDADD指令即可，load操作和store操作合二为一，比较类似于x86的实现（用add指令）。<br>既然load和store都二合一了，那为啥还分别有LD<OP>和ST<OP>呢？其实，两者的效果是一样的，比如STADD就可以看做是LDADD的别名(alias)。<br><code>STADD &lt;Xs&gt;, [&lt;Xn|SP&gt;]</code><br>等同于<br><code>LDADD &lt;Xs&gt;, XZR, [&lt;Xn|SP&gt;]</code><br>（Copy兰新宇大神文章的内容到此为止）</p>
+<p>关于ARMv8.1新的原子指令，这里多说一下，只有在很高的并发下才能显示出性能优势，一般情况下和老的原子指令性能差不多，在一般系统的性能测试下显示不出来差别。关于如何启用新版本的原子指令的方法，可以参考这篇文章：<br><a href="https://kunpengcompute.github.io/2020/08/29/aarch64-fu-wu-qi-ying-yong-ruan-jian-kai-fa-xu-yao-tian-jia-de-bian-yi-can-shu/">https://kunpengcompute.github.io/2020/08/29/aarch64-fu-wu-qi-ying-yong-ruan-jian-kai-fa-xu-yao-tian-jia-de-bian-yi-can-shu/</a></p>
+<h3 id="原子操作有什么用"><a href="#原子操作有什么用" class="headerlink" title="原子操作有什么用"></a>原子操作有什么用</h3><p>原子操作的用途通过之前的描述，大家应该也清楚了，最简单的，需要全局计数器的场景。<br>还有像实现自旋锁，信号量等多线程同步机制的地方，都会用到。比如对信号量的count值进行增加，都必须要是原子的。<br>另外有时候无锁编程的时候也需要原子变量，我们来看一个简单的例子，什么是无锁编程。<br>还是一开始那个对变量加一的操作例子，假设有两种线程，一种是读线程，负责读取这个变量的值并进行打印，一种是写线程，对这个变量，进行自增。我们现在知道写线程本质上不是原子的，因为它由三个不同的步骤组成，读取值，将其递增，然后将新值存储回去。如果使用锁，伪代码大概是这个样子的：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">mutex = initialize_mutex()</span><br><span class="line">i = <span class="number">0</span></span><br><span class="line">reader_thread()</span><br><span class="line">    mutex.lock()</span><br><span class="line">    <span class="built_in">print</span>(i)</span><br><span class="line">    mutex.unlock()</span><br><span class="line"></span><br><span class="line">writer_thread()</span><br><span class="line">    mutex.lock()</span><br><span class="line">    i++</span><br><span class="line">    mutex.unlock()</span><br></pre></td></tr></table></figure>
+<p>获取锁的第一个线程可以执行，而其他线程必须排队等待。</p>
+<p>相反，无锁方法引入了另一种模式：通过采用原子操作，线程可以不受任何阻碍地自由运行。例如：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">i = <span class="number">0</span></span><br><span class="line">reader_thread()</span><br><span class="line">    <span class="built_in">print</span>(load(i))</span><br><span class="line"></span><br><span class="line">writer_thread()</span><br><span class="line">    fetch_and_add(i, <span class="number">1</span>)</span><br></pre></td></tr></table></figure>
+<p>这里fetch_and_add()和load()是基于相应硬件指令的原子操作伪代码。这里没有任何东西被锁定。原子性load()确保没有读线程将读取共享值的一半完成，并且没有写线程会由于造成部分写入而损坏共享值。</p>
+<h3 id="什么是弱内存序"><a href="#什么是弱内存序" class="headerlink" title="什么是弱内存序"></a>什么是弱内存序</h3><p>内存序，顾名思义就是CPU访问内存的顺序。<br>举个简单的例子，如下代码</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">a = <span class="number">1</span></span><br><span class="line">b = <span class="number">2</span></span><br><span class="line">c = a + b</span><br></pre></td></tr></table></figure>
+<p>强内存序的机器，就会按顺序执行，a =1 ，b=2， c=a+b<br>但是弱内存序的机器，有可能会执行成，b=2， a=1，c=a+b，因为a =1和b=2之间先后没什么逻辑依赖，先执行哪个，都不会导致结果有问题，编译器或者CPU就会自动的做一些优化，因为根据现代CPU结构的设计，指令执行流水线的重新排序或者乱序执行可能会带来性能的提升。这就是弱内存序。<br>那有人会问，那c = a+b会不会先执行？有可能还真会，但是在ARM和X86上都不会，在Alpha上会。上面说的强内存序和弱内存序也都是为了方便理解，简单的说法，实际上有多种内存序，不同的CPU架构上有不同的内存序。我们可以看看下表（转自<a href="https://zh.wikipedia.org/wiki/%E5%86%85%E5%AD%98%E6%8E%92%E5%BA%8F">https://zh.wikipedia.org/wiki/%E5%86%85%E5%AD%98%E6%8E%92%E5%BA%8F</a>   考虑到国内有人无法访问维基，把表截过来）</p>
+<table>
+<thead>
+<tr>
+<th>类型</th>
+<th>Alpha</th>
+<th>ARMv7</th>
+<th>MIPS</th>
+<th>LoongISA</th>
+<th>PA-RISC</th>
+<th>POWER</th>
+<th>SPARC RMO</th>
+<th>SPARC PSO</th>
+<th>SPARC TSO</th>
+<th>x86</th>
+<th>x86 oostore</th>
+<th>AMD64</th>
+<th>IA-64</th>
+<th>z/Architecture</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Loads reordered after loads</td>
+<td>Y</td>
+<td>Y</td>
+<td>架构本身不规定</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td></td>
+<td></td>
+<td>Y</td>
+<td></td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Loads reordered after stores</td>
+<td>Y</td>
+<td>Y</td>
+<td>微架构/芯片的实现决定</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td></td>
+<td></td>
+<td>Y</td>
+<td></td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Stores reordered after stores</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td></td>
+<td>Y</td>
+<td></td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Stores reordered after loads</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+</tr>
+<tr>
+<td>Atomic reordered with loads</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td></td>
+<td></td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Atomic reordered with stores</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td></td>
+<td></td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>Y</td>
+<td></td>
+</tr>
+<tr>
+<td>Dependent loads reordered</td>
+<td>Y</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>Incoherent instruction cache pipeline</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td></td>
+<td></td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td>Y</td>
+<td></td>
+<td>Y</td>
+<td></td>
+</tr>
+</tbody></table>
+<p>可以看出来，内存序分了读读是否会乱序，读写是否会乱序，写写是否会乱序，写读是否会乱序，依赖是否会乱序等多种，在不同的架构上支持各种不同的内存访问顺序。 可以看出来，ARM对于上下文有依赖的指令，还是不会乱序执行的。<br>为了简单理解起见，后文我们就简单认为ARM是弱内存序模型，X86是强内存序模型。</p>
+<h3 id="弱内存序会导致什么问题"><a href="#弱内存序会导致什么问题" class="headerlink" title="弱内存序会导致什么问题"></a>弱内存序会导致什么问题</h3><p>如果所有代码都是单线程的，当然不会有什么问题，但是如果代码是多线程的，就可能会了。考虑如下代码：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">foo</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">   a = <span class="number">1</span>;</span><br><span class="line">   b = <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">bar</span><span class="params">(<span class="keyword">void</span>)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">   <span class="keyword">while</span> (b == <span class="number">0</span>) <span class="keyword">continue</span>;</span><br><span class="line">   assert(a == <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>假如一个线程执行foo，另外一个线程执行bar，在强内存序机器上，不会有问题，肯定可以确保，当b的值不为0以后，a的值肯定是1。但是在弱内存序机器上就会出现问题，因为b=1有可能先于a=1执行，因为在执行foo的线程来看，这两个并没有什么逻辑关系。 这个时候执行bar的线程如果在b=1执行完之后得到了执行的机会，这个时候，assert（a==1）就会返回错误了。</p>
+<h3 id="怎么避免弱内存序带来的问题"><a href="#怎么避免弱内存序带来的问题" class="headerlink" title="怎么避免弱内存序带来的问题"></a>怎么避免弱内存序带来的问题</h3><p>内存屏障可以避免弱内存序带来的问题。<br>内存屏障有两种，一种是编译器的内存屏障，这种内存屏障对避免弱内存序的问题，其实没什么用，这种内存屏障只是保证了编译器编译出来的汇编指令，b=1肯定会在a=1后面，但是实际CPU执行的时候到底谁在先，谁在后就不一定了。（编译器的内存屏障，在ARM上就是这么一行代码，<strong>asm</strong> <strong>volatile</strong>(“”: : :”memory”)，在一些特殊的场景有用，比如明确需要避免编译器自动优化的场景）</p>
+<p>另外一种就是CPU的内存屏障，这种可以解决弱内存序的问题。<br>CPU内存屏障分为三种，读内存屏障，写内存屏障，还有就是读写内存屏障。<br>读内存屏障的意思就是本线程所有后续的读操作均在本条指令以后执行，写内存屏障就是本线程所有之前的写操作均在本条指令以前执行。<br>X86上的CPU内存屏障指令要简单一些，就分了三种：lfence，sfence，mfence，分别对应读屏障，写屏障，读写屏障。<br>(有人会问X86既然是强内存序，为什么还需要内存屏障，其实X86，并不是完全有序的，根据上面的表格，X86在某些场景也会乱序执行，可以参考这篇文章 <a href="https://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/">https://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/</a>  ）<br>ARM上的稍微有点复杂，又分了几种情况：<br>DMB<br>全称 Data Memory Barrier，仅当所有在它前面的存储器访问都执行完毕后，才执行它后面的存储器访问动作（注意只对存储器访问敏感），其它非内存访问指令依然可以乱序执行。<br>DSB<br>全称Data Synchronous Barrier，比DMB严格：仅当所有在它前面的存储器访问都执行完毕后，才执行它在后面的指令（亦即任何指令都要等待）。<br>ISB<br>全称 Instruction Synchronous Barrier，该指令将刷新CPU pipeline和prefetch buffer，ISB之后的指令需要重新从cache或memory取指，以保证所有它前面的指令都执行完毕之后，才执行它后面的指令。<br>其中每种指令，根据内存和Cache共享域又分了这么些参数：</p>
+<table>
+<thead>
+<tr>
+<th>参数</th>
+<th>访问控制(before-after)</th>
+<th>共享域</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>OSHLD</td>
+<td>Load - Load,   Load - Store</td>
+<td>Outer   shareable</td>
+</tr>
+<tr>
+<td>OSHST</td>
+<td>Store - Store</td>
+<td>Outer   shareable</td>
+</tr>
+<tr>
+<td>OSH</td>
+<td>Any - Any</td>
+<td>Outer   shareable</td>
+</tr>
+<tr>
+<td>NSHLD</td>
+<td>Load - Load,   Load - Store</td>
+<td>Non-shareable</td>
+</tr>
+<tr>
+<td>NSHST</td>
+<td>Store - Store</td>
+<td>Non-shareable</td>
+</tr>
+<tr>
+<td>NSH</td>
+<td>Any - Any</td>
+<td>Non-shareable</td>
+</tr>
+<tr>
+<td>ISHLD</td>
+<td>Load -Load,   Load - Store</td>
+<td>Inner   shareable</td>
+</tr>
+<tr>
+<td>ISHST</td>
+<td>Store - Store</td>
+<td>Inner   shareable</td>
+</tr>
+<tr>
+<td>ISH</td>
+<td>Any - Any</td>
+<td>Inner   shareable</td>
+</tr>
+<tr>
+<td>LD</td>
+<td>Load -Load,   Load - Store</td>
+<td>Full system</td>
+</tr>
+<tr>
+<td>ST</td>
+<td>Store - Store</td>
+<td>Full system</td>
+</tr>
+<tr>
+<td>SY</td>
+<td>Any - Any</td>
+<td>Full system</td>
+</tr>
+</tbody></table>
+<p>其中共享域的含义如下：<br>Non-shareable：core独享区域<br>Inner shareable：可被多核共享，但不需要都可访问。一个系统中可能有多个Inner shareable区域<br>Outer shareable：影响Outer Shareable的操作，隐性的会影响其中的所有Inner Shareable区域。反过来不成立<br>Full System：影响系统中的所有observer</p>
+<p>如果考虑到X86到ARM的移植，一般对应关系是这样的：</p>
+<table>
+<thead>
+<tr>
+<th>屏障名称</th>
+<th>x86</th>
+<th>arm</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>读屏障</td>
+<td>asm   volatile(“lfence” ::: “memory”)</td>
+<td>asm   volatile(“dmb ishld” ::: “memory”)</td>
+</tr>
+<tr>
+<td>写屏障</td>
+<td>asm   volatile(“sfence” ::: “memory”)</td>
+<td>asm   volatile(“dmb ishst” ::: “memory”)</td>
+</tr>
+<tr>
+<td>内存屏障</td>
+<td>asm   volatile(“mfence” ::: “memory”)</td>
+<td>asm   volatile(“dmb ish” ::: “memory”)</td>
+</tr>
+</tbody></table>
+<p>建议平时如果新写的代码的话，尽量用linux提供的API，列表如下：</p>
+<table>
+<thead>
+<tr>
+<th>接口名称</th>
+<th>作用</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>barrier()</td>
+<td>优化屏障，阻止编译器为了进行性能优化而进行的memory access reorder</td>
+</tr>
+<tr>
+<td>mb()</td>
+<td>内存屏障（包括读和写），用于SMP和UP</td>
+</tr>
+<tr>
+<td>rmb()</td>
+<td>读内存屏障，用于SMP和UP</td>
+</tr>
+<tr>
+<td>wmb()</td>
+<td>写内存屏障，用于SMP和UP</td>
+</tr>
+<tr>
+<td>smp_mb()</td>
+<td>用于SMP场合的内存屏障，对于UP不存在memory order的问题（对汇编指令），因此，在UP上就是一个优化屏障，确保汇编和c代码的memory order是一致的</td>
+</tr>
+<tr>
+<td>smp_rmb()</td>
+<td>用于SMP场合的读内存屏障</td>
+</tr>
+<tr>
+<td>smp_wmb()</td>
+<td>用于SMP场合的写内存屏障</td>
+</tr>
+</tbody></table>
+<p>其中barrier就是我们所说的编译器屏障，其余都是CPU屏障<br>在内核中，tools/arch/arm64/include/asm/barrier.h文件给出了常用的内存屏障相关的宏定义，实际上和上面x86和arm对应表格里面的内容一样的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#define smp_mb()    asm volatile(&quot;dmb ish&quot; ::: &quot;memory&quot;)</span><br><span class="line">#define smp_wmb()   asm volatile(&quot;dmb ishst&quot; ::: &quot;memory&quot;)</span><br><span class="line">#define smp_rmb()   asm volatile(&quot;dmb ishld&quot; ::: &quot;memory&quot;)</span><br></pre></td></tr></table></figure>
+<h3 id="原子操作怎么会和弱内存序扯到一块"><a href="#原子操作怎么会和弱内存序扯到一块" class="headerlink" title="原子操作怎么会和弱内存序扯到一块"></a>原子操作怎么会和弱内存序扯到一块</h3><p>在ARM平台上，从ARMv8开始，在很多指令里面就直接加上了内存屏障的语义，比如ldxr/stxr汇编指令 和ldaxr/stlxr汇编指令，如果在需要内存屏障的场景，用ldxr或者stxr的话，还需要再加上单独的内存屏障的指令，但是如果用ldaxr和stlxr的话，就不再需要内存屏障了。实测效果，后者要比前者性能更好。从ARMv8.1开始，新加入的原子指令，也有实现了内存屏障语义的版本，可以参考这篇文章：<br><a href="https://blog.csdn.net/Roland_Sun/article/details/107552574">https://blog.csdn.net/Roland_Sun/article/details/107552574</a><br>当然上面用汇编指令讲解，只是为了方便大家理解，平时如果是新开发代码的话，建议不要直接使用汇编指令，建议使用gcc内置的函数，这样平台通用性更强，具体函数列表可以参考这个链接：<br><a href="https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html">https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html</a><br>里面的内存屏障参数语义含义如下：</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Explanation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>memory_order_relaxed</td>
+<td>不对执行顺序做任何保障</td>
+</tr>
+<tr>
+<td>memory_order_consume</td>
+<td>本线程中，所有后续的有关本原子类型的操作，必须在本条原子操作完成后执行</td>
+</tr>
+<tr>
+<td>memory_order_acquire</td>
+<td>本线程中，所有后续的读操作均在本条原子操作完成后执行</td>
+</tr>
+<tr>
+<td>memory_order_release</td>
+<td>本线程中，所有之前的写操作完成后才能执行本操作</td>
+</tr>
+<tr>
+<td>memory_order_acq_rel</td>
+<td>同时包含以上两条的语义</td>
+</tr>
+<tr>
+<td>memory_order_seq_cst</td>
+<td>全部按顺序执行</td>
+</tr>
+</tbody></table>
+<h3 id="我们为什么要学习原子操作和弱内存序"><a href="#我们为什么要学习原子操作和弱内存序" class="headerlink" title="我们为什么要学习原子操作和弱内存序"></a>我们为什么要学习原子操作和弱内存序</h3><p>有人说这些东西是不是太底层了，平时是不是用不到这些知识。其实不是，除了上面所说的无锁编程场景之外，至少以下几种场景还是要用到的。<br>1 C和C++多线程编程，如果不了解弱内存序的知识，还是很可能会产生一些bug的，而且这些bug都很难定位。<br>2 定位由于弱内存序产生的bug，即使是业界知名的软件，比如mysql等一些软件，在兼容ARM的过程中，由于弱内存序的问题，也会有很多bug，定位这些bug，也需要这方面的相关知识。<br>3 如果一些软件一开始只支持了X86，并且使用了底层的原子操作，你如果想要将这些软件兼容ARM，并进行相关开发工作的话，你就要对这些原子操作汇编指令等等进行对应的移植，还要优化。这个时候也需要这方面的知识。比如我们团队在移植Impala过程中的相关开发工作：<a href="https://gerrit.cloudera.org/#/c/15300/">https://gerrit.cloudera.org/#/c/15300/</a><br>4 有时候有些软件的内存序使用过于严格，也需要进行优化，会对软件的性能有一定的提升。比如我们团队大牛在mysql上的一些优化工作，就是针对这方面的，比如有些原子变量的自增，并不需要依赖上下文，所以就可以不需要严格的内存屏障语义。可以参考：<br><a href="https://bugs.mysql.com/bug.php?id=99432">https://bugs.mysql.com/bug.php?id=99432</a><br><a href="https://bugs.mysql.com/bug.php?id=100119">https://bugs.mysql.com/bug.php?id=100119</a><br><a href="https://bugs.mysql.com/bug.php?id=100432">https://bugs.mysql.com/bug.php?id=100432</a><br><a href="https://bugs.mysql.com/bug.php?id=100060">https://bugs.mysql.com/bug.php?id=100060</a><br><a href="https://bugs.mysql.com/bug.php?id=100132">https://bugs.mysql.com/bug.php?id=100132</a></p>
+<p>参考资料：<br><a href="https://blog.csdn.net/jus3ve/article/details/81294505">https://blog.csdn.net/jus3ve/article/details/81294505</a><br><a href="http://blog.sina.com.cn/s/blog_70441c8e0102vrcs.html">http://blog.sina.com.cn/s/blog_70441c8e0102vrcs.html</a><br><a href="https://zhuanlan.zhihu.com/p/89299392">https://zhuanlan.zhihu.com/p/89299392</a><br><a href="https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html">https://gcc.gnu.org/onlinedocs/gcc/_005f_005fatomic-Builtins.html</a><br><a href="https://www.cnblogs.com/fanzhidongyzby/p/3654855.html">https://www.cnblogs.com/fanzhidongyzby/p/3654855.html</a><br><a href="https://labs.supinfochina.com/%E5%85%B7%E6%9C%89%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C%E7%9A%84%E6%97%A0%E9%94%81%E5%A4%9A%E7%BA%BF%E7%A8%8B/">https://labs.supinfochina.com/%E5%85%B7%E6%9C%89%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C%E7%9A%84%E6%97%A0%E9%94%81%E5%A4%9A%E7%BA%BF%E7%A8%8B/</a><br><a href="https://zh.wikipedia.org/wiki/%E4%B9%B1%E5%BA%8F%E6%89%A7%E8%A1%8C">https://zh.wikipedia.org/wiki/%E4%B9%B1%E5%BA%8F%E6%89%A7%E8%A1%8C</a><br><a href="http://www.wowotech.net/memory_management/456.html">http://www.wowotech.net/memory_management/456.html</a><br><a href="http://www.wowotech.net/kernel_synchronization/Why-Memory-Barriers.html">http://www.wowotech.net/kernel_synchronization/Why-Memory-Barriers.html</a><br><a href="https://zhuanlan.zhihu.com/p/94421667">https://zhuanlan.zhihu.com/p/94421667</a><br><a href="https://zh.wikipedia.org/wiki/%E5%86%85%E5%AD%98%E6%8E%92%E5%BA%8F">https://zh.wikipedia.org/wiki/%E5%86%85%E5%AD%98%E6%8E%92%E5%BA%8F</a><br><a href="https://zh.wikipedia.org/wiki/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C">https://zh.wikipedia.org/wiki/%E5%86%85%E5%AD%98%E5%B1%8F%E9%9A%9C</a><br><a href="http://www.wowotech.net/kernel_synchronization/memory-barrier.html">http://www.wowotech.net/kernel_synchronization/memory-barrier.html</a><br><a href="http://www.wowotech.net/armv8a_arch/Observability.html">http://www.wowotech.net/armv8a_arch/Observability.html</a><br><a href="https://stackoverflow.com/questions/21535058/arm64-ldxr-stxr-vs-ldaxr-stlxr">https://stackoverflow.com/questions/21535058/arm64-ldxr-stxr-vs-ldaxr-stlxr</a><br><a href="https://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/">https://bartoszmilewski.com/2008/11/05/who-ordered-memory-fences-on-an-x86/</a><br><a href="https://cloud.tencent.com/developer/article/1367365">https://cloud.tencent.com/developer/article/1367365</a></p>
+
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/10/22/arm64-ban-ben-de-ubuntu-shang-an-zhuang-perf/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">ARM64版本的Ubuntu上安装perf</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/08/31/postgresql-dui-wai-bu-ya-suo-fang-fa-de-su-qiu/">
+                <span class="level-item">PostgreSQL对外部压缩方法的诉求</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 46,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="关于原子操作和弱内存序" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

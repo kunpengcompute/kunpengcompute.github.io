@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>跑benchmark？当心你的芯 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Benchmarking-Mind-Your-Core&#x2F; 最近，我们在运行基准测试时发现 MySQL 吞吐量的抖动。 即使对于普通用户来说也是如此，但是还有很多其他事情需要注意(尤其是 IO 性能瓶颈) ，以至于我们今天计划讨论的一些方面可能会被暂时省略。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="跑benchmark？当心你的芯">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/04/28/pao-benchmark-dang-xin-ni-de-xin/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Benchmarking-Mind-Your-Core&#x2F; 最近，我们在运行基准测试时发现 MySQL 吞吐量的抖动。 即使对于普通用户来说也是如此，但是还有很多其他事情需要注意(尤其是 IO 性能瓶颈) ，以至于我们今天计划讨论的一些方面可能会被暂时省略。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-04-28T12:32:23.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="跑benchmark？当心你的芯" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="跑benchmark？当心你的芯" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-04-28T12:32:23.000Z">2020-04-28</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                跑benchmark？当心你的芯
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Krunal Bauskar<br>原文链接: <a href="https://mysqlonarm.github.io/Benchmarking-Mind-Your-Core/">https://mysqlonarm.github.io/Benchmarking-Mind-Your-Core/</a></p>
+<p>最近，我们在运行基准测试时发现 MySQL 吞吐量的抖动。 即使对于普通用户来说也是如此，但是还有很多其他事情需要注意(尤其是 IO 性能瓶颈) ，以至于我们今天计划讨论的一些方面可能会被暂时省略。 在本文中，我们将讨论可能影响 MySQL 性能的一个原因。</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<h2 id="在启用-NUMA-的-vm-machine-上的线程调度"><a href="#在启用-NUMA-的-vm-machine-上的线程调度" class="headerlink" title="在启用 NUMA 的 vm / machine 上的线程调度"></a><strong>在启用 NUMA 的 vm / machine 上的线程调度</strong></h2><p>Numa 通常是从内存分配的角度来看待的，但本文试图探讨在不同的 vCPUs上启动线程会如何大幅度地影响性能。 在我们的实验中，我们已经看到性能上升到66% 。</p>
+<p>Mysql 有一个名为 <code>innodb_numa_interleave</code>的选项，如果启用，它将尝试在 NUMA 节点之间统一分配缓冲池。 这很好，但是工作线程呢。 这些工作线程是否在 NUMA 节点上分配过于一致？ 跨 NUMA 访问成本较高，因此最好让工作线程更接近数据，但鉴于这些工作线程的通用性，它们不应该被均匀分布。</p>
+<p>假设我在一台24个 vCPU 机器上启动12个工作线程，这台机器上有2个 NUMA 节点，那么统一的分布预计会有6个工作线程绑定到 NUMA-node-0的 vCPU，剩下6个工作线程绑定到 NUMA-node-1的 vCPU。</p>
+<p>操作系统(Linux)调度程序不是这样工作的。 它将尝试从一个 NUMA节点耗尽 vCPU，然后才会继续到另一个NUMA节点获取。</p>
+<p>当工作线程(可伸缩性) &lt; 核心数，所有这些都会大大影响性能。 甚至还会看到同一测试用例的不同性能，这些都是因为CPU跨NUMA的高访问成本, OS层面调度的不均衡, 以及核心切换导致的。</p>
+<h2 id="实验开始"><a href="#实验开始" class="headerlink" title="实验开始:"></a>实验开始:</h2><p>现在，让我们尝试看看Mysql吞吐量是如何如何由于工作线程所在的位置而更改的。</p>
+<p>我使用同一台机器来运行client(sysbench)和server，因此client也会占用几个核心。 我们还考虑了客户端线程的位置，因为它是运行基准测试时的一个重要方面(除非你计划使用一些专用机器)。</p>
+<ul>
+<li>24 vCPU/48 GB VM，2 个NUMA nodes.<ul>
+<li>NUMA-1: 0-11 vCPU/24GB</li>
+<li>NUMA-2: 12-23 vCPU/24GB</li>
+</ul>
+</li>
+<li>x86 (Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz) VM中每个物理内核有2个线程，所以24个 vCPU就是12个物理内核。 因此，我们还将探索两个工作线程位于不同的 vCPU 但处在相同物理核心的情况。</li>
+<li>Test-Case: oltp-point-select(2 threads). 故意将其限制在两个线程内，以保持其他内核处于开放状态，从而允许操作系统执行内核切换(这会导致它独特的效果)。此外，所有测试数据都在内存中，使用 point-select 意味着没有执行 IO操作，因此 IO 瓶颈或后台线程大多处于空闲状态。 所有迭代的时间是60秒。</li>
+<li>为了让测试更加灵活，vCPUs/cores 使用 numactl (vs taskset)绑定到 sysbench 和 mysqld。</li>
+<li>对于服务器配置请看 <a href="https://github.com/mysqlonarm/benchmark-suites/blob/master/sysbench/conf/96tx1.5m_cpubound.cnf">here</a>.<br>Data-Size: 34G and BP: 36G. 在内存中生成测试数据并平均分布50% 的数据到 numa-0，剩下50% 的 numa-1。 Sysbench 使用range-type=uniform，这会让其触及大多数测试表的不同部分。</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>client-threads</th>
+<th>server-threads</th>
+<th>tps</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client-Threads bounded to vCPU: (0, 1, 12, 13)</td>
+<td>Server Thread bounded to vCPUs: (2-11, 14-23)</td>
+<td><strong>35188, 37426, 35140, 37640 37625, 35574, 35709, 37680</strong></td>
+</tr>
+</tbody></table>
+<p>很显然 tps 在波动。 我做了进一步的研究，操作系统会一直继续做核心切换，导致 TPS 的波动(7% 的范围对于像这样的小测试场景来说太高了)。 此外，操作系统也同样一直在切换客户端线程核心。</p>
+<p>这样的景象促使我对服务器核心绑定进行了更多的探索。</p>
+<h3 id="Client和Server线程所处的位置"><a href="#Client和Server线程所处的位置" class="headerlink" title="Client和Server线程所处的位置"></a><strong>Client和Server线程所处的位置</strong></h3><table>
+<thead>
+<tr>
+<th></th>
+<th>Server-Threads: (Numa Node: 0, Physical Core: 2-5, vCPU: 4-11)</th>
+<th>Server-Threads: (Numa Node: 0, Physical Core: 2, 3, vCPU: 4, 6)</th>
+<th>Server-Threads: (Numa Node: 0, Physical Core: 2, vCPU: 4, 5)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client Threads</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>(Numa Node: 0, Physical Core: 0, vCPU: 0,1)</td>
+<td>- Client+Server threads 处在同一NUMA节点 - Server threads (可能性大)做核心切换 (基于OS调度) - Client threads 在同一物理核心上 <strong>TPS: 39570, 38656, 39633</strong></td>
+<td>- Client+Server threads 处在同一NUMA节点 - Server threads (可能性小)执行核心切换. - Client threads 在同一物理核心上 <strong>TPS: 39395, 39481, 39814</strong></td>
+<td>- Client+Server threads 处在同一NUMA节点 - Server threads (可能性小)执行核心切换 (在同一物理内核上) - Client threads 在同一物理核心上. <strong>TPS: 39889, 40270, 40457</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 0, Physical Core: 0,1, vCPU: 0,2)</td>
+<td>- Client+Server threads 处在同一NUMA节点 - Server threads (可能性大)做核心切换 (基于OS调度) - Client threads 在不同物理核心上 <strong>TPS: 39890, 38698, 40005</strong></td>
+<td>- Client+Server threads 处在同一NUMA节点 - Server threads (可能性小)执行核心切换. - Client threads on 在不同物理核心上. <strong>TPS: 40068, 40309, 39961</strong></td>
+<td>- Client+Server threads 处在同一NUMA节点 - Server threads (可能性小)执行核心切换 (在同一物理内核上) - Client threads 在不同物理核心上. <strong>TPS: 40680, 40571, 40481</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 0, Physical Core: 0, vCPU: 0)</td>
+<td>- Client+Server threads 处在同一NUMA节点 - Server threads (可能性大)做核心切换 (基于OS调度) - Client threads 在同一物理核心和同一vCPU上 <strong>TPS: 37642, 39730, 35984</strong></td>
+<td>- Client+Server threads 处在同一NUMA节点 - Server threads (可能性小)执行核心切换. - Client threads 在同一物理核心和同一vCPU上 <strong>TPS: 40426, 40063, 40200</strong></td>
+<td>- Client+Server threads 处在同一NUMA节点 - Server threads (可能性小)执行核心切换 (在同一物理内核上) - Client threads 在同一物理核心和同一vCPU上 <strong>TPS: 40292, 40158, 40125</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 1, Physical Core: 6, vCPU: 12,13)</td>
+<td>- Client+Server threads 处在不同NUMA节点 - Server threads (可能性大)做核心切换 (基于OS调度) -Client threads 在同一物理核心上 <strong>TPS: 34224, 34463, 34295</strong></td>
+<td>- Client+Server threads 处在不同NUMA节点 - Server threads (可能性小)执行核心切换. - Client threads 在同一物理核心上 <strong>TPS: 34518, 34418, 34436</strong></td>
+<td>- Client+Server threads 处在不同NUMA节点 - Server threads (可能性小)执行核心切换 (在同一物理内核上) - Client threads 在同一物理核心上 <strong>TPS: 34282, 34512, 34583</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 1, Physical Core: 6,7, vCPU: 12,14)</td>
+<td>- Client+Server threads 处在不同NUMA节点 - Server threads (可能性大)做核心切换 (基于OS调度) -Client threads 处在不同的物理核心上 <strong>TPS: 34462, 34127, 34620</strong></td>
+<td>- Client+Server threads 处在不同NUMA节点 - Server threads (可能性小)执行核心切换. - Client threads 处在不同的物理核心上. <strong>TPS: 34438, 34379, 34419</strong></td>
+<td>- Client+Server threads 处在不同NUMA节点 - Server threads(可能性小)执行核心切换 (在同一物理内核上) - Client threads 处在不同的物理核心上. <strong>TPS: 34804,34453,34729</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 1, Physical Core: 6, vCPU: 12)</td>
+<td>- Client+Server threads 处在不同NUMA节点 - Server threads (可能性大)做核心切换 (基于OS调度) - Client threads处在相同的物理核心和vCPU上 <strong>TPS: 34989, 35162, 35245</strong></td>
+<td>- Client+Server threads 处在不同NUMA节点 - Server threads (可能性小)执行核心切换. - Client threads 处在相同的物理核心和vCPU上 <strong>TPS: 35503, 35455, 35632</strong></td>
+<td>- Client+Server threads 处在不同NUMA节点 - Server threads (可能性小)执行核心切换 (在同一物理内核上) - Client threads处在相同的物理核心和vCPU上 <strong>TPS: 35572, 35481, 35692</strong></td>
+</tr>
+</tbody></table>
+<h3 id="观察结果"><a href="#观察结果" class="headerlink" title="观察结果:"></a><strong>观察结果</strong>:</h3><ul>
+<li>限制服务器线程的核心有助于稳定性能(减少抖动)。 操作系统核心交换成本很高(如果具有不同的可伸缩性，这可能不太可行，但是是一个很好理解的点)。</li>
+<li>将客户端线程移动到不同的 NUMA 对性能有很大影响(40K-34K)。 我没有想到会这样，因为真正的工作是由服务器工作线程完成的，所以移动客户端线程不应该影响服务器性能到这个程度(17%)。</li>
+</ul>
+<p>因此，从实验中我们了解到，如果客户机和服务器线程位于相同的 NUMA 上，并且使用一定工具减少OS核心交换(直到真的需要扩展核心数或者整体性能) ，则有助于实现最佳性能。</p>
+<p>但是等等！ 我们的目标是在 NUMA 节点上平衡客户端和服务器线程的分布，以获得最佳性能。</p>
+<h3 id="跨-NUMA-平衡客户端和服务器的线程"><a href="#跨-NUMA-平衡客户端和服务器的线程" class="headerlink" title="跨 NUMA 平衡客户端和服务器的线程"></a><strong>跨 NUMA 平衡客户端和服务器的线程</strong></h3><p>让我们应用上面获得的知识和数据来平衡 NUMA配置</p>
+<table>
+<thead>
+<tr>
+<th>client-threads</th>
+<th>server-threads</th>
+<th>tps</th>
+<th>remark</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client-Threads bounded to vCPU: 0, 1, 12, 13</td>
+<td>Server Thread bounded to vCPUs: (2-11, 14-23)</td>
+<td>35188, 37426, 35140, 37640, 37625, 35574, 35709, 37680</td>
+<td>多核心交换</td>
+</tr>
+<tr>
+<td>Client thread bounded to specific vCPU across NUMA (0,12)</td>
+<td>Server Thread bounded to specific vCPU across NUMA (4,16)</td>
+<td>30001, 36160, 24403, 24354 37708, 24478, 36323, 24579</td>
+<td>限制核心交换</td>
+</tr>
+</tbody></table>
+<p>Oops，结果比预期的还要糟糕。波动增加了。让我们来看看到底出了什么问题</p>
+<ul>
+<li>24K: OS 选择了threads倾斜的分布，其中 NUMA-x 运行客户端线程，而 NUMA-y 运行两个服务器线程</li>
+<li>37K: OS 选择在每个 NUMA 运行1个客户端和1个服务器线程的情况下很好地平衡了线程分布</li>
+</ul>
+<p><em>(所有其他数字都是排列组合测试得到的)</em></p>
+<p>让我们尝试一个可能的提示。 平衡 NUMA。你可以在这里<a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/virtualization_tuning_and_optimization_guide/sect-virtualization_tuning_optimization_guide-numa-auto_numa_balancing">here</a>了解更多</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 0 &gt; &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;numa_balancing</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>client-threads</th>
+<th>server-threads</th>
+<th>tps</th>
+<th>remark</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client thread bounded to specific vCPUs across NUMA (0,12)</td>
+<td>Server Thread bounded to specific vCPUs across NUMA (4,16)</td>
+<td>33628, 34190, 35380, 37572</td>
+<td>限制核心交换 + 禁用NUMA平衡。抖动仍然存在，但肯定比上面提到的24K 情况要好</td>
+</tr>
+</tbody></table>
+<ul>
+<li>如果我们将客户端线程绑定到特定的 NUMA上的核心并平衡服务器线程会怎样？</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>client-threads</th>
+<th>server-threads</th>
+<th>tps</th>
+<th>remark</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client thread bounded to specific vCPU NUMA (0)</td>
+<td>Server Thread bounded to specific vCPUs across NUMA (4,16)</td>
+<td>36742, 36326, 36701, 36570</td>
+<td>限制核心交换 + 禁用NUMA平衡。 看起来很平均。</td>
+</tr>
+<tr>
+<td>Client thread bounded to specific vCPU NUMA (12)</td>
+<td>Server Thread bounded to specific vCPUs across NUMA (4,16)</td>
+<td>35440, 35667, 35748, 35578</td>
+<td>限制核心交换 + 禁用NUMA平衡。看起来很平均。</td>
+</tr>
+</tbody></table>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>通过上面的多个实验，我们看到了给定的测试用例如何因为运行客户机和服务器线程的位置和方式得到了从24K 到40K 不等的不同性能数据。</p>
+<p>如果你的基准测试真的只关心较低的可伸缩性，那么你应该注意核心分配。</p>
+<p>常用的降噪策略有运行测试 n 次的平均值、 n 次的中位数、 n 次的最优值等。但是如果方差是很大的话，没有一个是最有效的。 我倾向于使用平均 n 次最小时间运行测试的策略，因此概率上的数据趋于稳定。我不确定这是否是最好的方法，但似乎它有助于将噪音到一定的程度。 较小的样本(n 值较小)会增加噪声，所以我建议 n =9至少每次运行(60 + 10(tc-warmup))秒，所以630秒的测试用例运行时间足以减少抖动。</p>
+<p>如果你有更好的方案，请与社区分享。</p>
+<p>另外，随着 NUMA 节点的增加和 ARM 上核心的增加，情况变得更加复杂。如果有人研究过它，我会很乐意去理解它。</p>
+<p><em>如果你有疑问，请让我知道，我会尽力回答。</em></p>
+</div>
+<div id="English" class="tab-content">
+
+<h2 id="Scheduling-threads-on-NUMA-enabled-VM-Machine"><a href="#Scheduling-threads-on-NUMA-enabled-VM-Machine" class="headerlink" title="Scheduling threads on NUMA enabled VM/Machine"></a>Scheduling threads on NUMA enabled VM/Machine</h2><p>NUMA is often looked upon from a memory allocation perspective but the article tries to explore how booting thread on different vCPUs can affect performance in a big way. During our experiment we have seen performance swing upto 66%.</p>
+<p>MySQL has an option named <code>innodb_numa_interleave</code> that if enabled will try to uniformly allocate the buffer pool across the NUMA node. This is good but what about the worker threads. Are these worker threads too uniformly allocated across the NUMA node? Cross NUMA access is costlier and so having a worker thread closer to the data is always prefered but given the generic nature of these worker threads shouldn’t they be uniformly distributed.</p>
+<p>Say I am booting 12 worker threads on a 24 vCPU machine with 2 NUMA nodes then uniform distribution would expect 6 worker threads bound to vCPUs from NUMA-node-0 and remaining 6 to vCPUs from NUMA-node-1.</p>
+<p>The OS (Linux) scheduler doesn’t work it that way. It would try to exhaust vCPUs from one of the NUMA-nodes and then proceed to another.</p>
+<p>All this could affect performance big-way till your worker threads (scalability) &lt; number-of-cores. Even beyond this point one may see varying performances for the same test-case due to core-switches.</p>
+<h2 id="Understanding-the-setup"><a href="#Understanding-the-setup" class="headerlink" title="Understanding the setup:"></a>Understanding the setup:</h2><p>Let’s now try to see how the throughput can change based on where the worker threads are located.</p>
+<p>I am using the same machine to run client (sysbench) and server so few cores are reserved for clients too. We also consider the position of client threads as it is an important aspect while running benchmark (unless you plan to use some dedicated machine for it).</p>
+<ul>
+<li>24 vCPU/48 GB VM with 2 NUMA nodes.<ul>
+<li>NUMA-1: 0-11 vCPU/24GB</li>
+<li>NUMA-2: 12-23 vCPU/24GB</li>
+</ul>
+</li>
+<li>x86 (Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz) VM has 2 threads per physical core so 24 vCPU = 12 physical cores. So we would also explore scenarios when both worker threads are located on different vCPU but have the same physical core.</li>
+<li>Test-Case: oltp-point-select with 2 threads. Purposely limiting it to 2 threads to keep other cores open to allow the OS to do core-switches (this has its own sweet effect). Also, all data is in-memory and using point-select means no IO being done so IO bottlenecks or background threads are mostly idle. All iterations are timed for 60 seconds.</li>
+<li>vCPUs/cores are bound to sysbench and mysqld using numactl (vs taskset) given the flexibility it provides.</li>
+<li>For server configuration please check <a href="https://github.com/mysqlonarm/benchmark-suites/blob/master/sysbench/conf/96tx1.5m_cpubound.cnf">here</a>.<br>Data-Size: 34G and BP: 36G. Complete data in memory and equally distributed so 50% of data on numa-0 and remaining 50% of numa-1. Sysbench uses range-type=uniform that should touch most of the varied parts of the table.</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>client-threads</th>
+<th>server-threads</th>
+<th>tps</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client-Threads bounded to vCPU: (0, 1, 12, 13)</td>
+<td>Server Thread bounded to vCPUs: (2-11, 14-23)</td>
+<td><strong>35188, 37426, 35140, 37640 37625, 35574, 35709, 37680</strong></td>
+</tr>
+</tbody></table>
+<p>Naturally the tps is fluctuating. Some closer look revealed that OS continues to do core-switch that causes TPS to fluctuate (range of 7% is too high for small test-case like this). Also, OS continues to switch client threads cores too.</p>
+<p>That prompted me to explore more about server core binding. As part of completeness I also explored client thread positioning.</p>
+<h3 id="Position-of-Client-and-Server-Threads"><a href="#Position-of-Client-and-Server-Threads" class="headerlink" title="Position of Client and Server Threads"></a>Position of Client and Server Threads</h3><table>
+<thead>
+<tr>
+<th></th>
+<th>Server-Threads: (Numa Node: 0, Physical Core: 2-5, vCPU: 4-11)</th>
+<th>Server-Threads: (Numa Node: 0, Physical Core: 2, 3, vCPU: 4, 6)</th>
+<th>Server-Threads: (Numa Node: 0, Physical Core: 2, vCPU: 4, 5)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client Threads</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>(Numa Node: 0, Physical Core: 0, vCPU: 0,1)</td>
+<td>- Client+Server threads on same NUMA - Server threads may do core-switch (OS-scheduler dependent) - Client threads on the same physical core <strong>TPS: 39570, 38656, 39633</strong></td>
+<td>- Client+Server threads on same NUMA - Server threads are less likely to do core-switch. - Client threads on the same physical core. <strong>TPS: 39395, 39481, 39814</strong></td>
+<td>- Client+Server threads on same NUMA - Server threads less likely to do core-switch (on same physical core) - Client threads on the same physical core. <strong>TPS: 39889, 40270, 40457</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 0, Physical Core: 0,1, vCPU: 0,2)</td>
+<td>- Client+Server threads on same NUMA - Server threads may do core-switch (OS-scheduler dependent) - Client threads on different physical core <strong>TPS: 39890, 38698, 40005</strong></td>
+<td>- Client+Server threads on same NUMA - Server threads are less likely to do core-switch. - Client threads on different physical core. <strong>TPS: 40068, 40309, 39961</strong></td>
+<td>- Client+Server threads on same NUMA - Server threads less likely to do core-switch (on same physical core) - Client threads on different same physical core. <strong>TPS: 40680, 40571, 40481</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 0, Physical Core: 0, vCPU: 0)</td>
+<td>- Client+Server threads on same NUMA - Server threads may do core-switch (OS-scheduler dependent) - Client threads on same physical core and same vCPU <strong>TPS: 37642, 39730, 35984</strong></td>
+<td>- Client+Server threads on same NUMA - Server threads are less likely to do core-switch. - Client threads on same physical core and same vCPU <strong>TPS: 40426, 40063, 40200</strong></td>
+<td>- Client+Server threads on same NUMA - Server threads less likely to do core-switch (on same physical core) - Client threads on same physical core and same vCPU <strong>TPS: 40292, 40158, 40125</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 1, Physical Core: 6, vCPU: 12,13)</td>
+<td>- Client+Server threads on different NUMA - Server threads may do core-switch (OS-scheduler dependent) -Client threads on the same physical core <strong>TPS: 34224, 34463, 34295</strong></td>
+<td>- Client+Server threads on different NUMA - Server threads are less likely to do core-switch. - Client threads on the same physical core. <strong>TPS: 34518, 34418, 34436</strong></td>
+<td>- Client+Server threads on different NUMA - Server threads less likely to do core-switch (on same physical core) - Client threads on the same physical core. <strong>TPS: 34282, 34512, 34583</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 1, Physical Core: 6,7, vCPU: 12,14)</td>
+<td>- Client+Server threads on different NUMA - Server threads may do core-switch (OS-scheduler dependent) -Client threads on different physical core <strong>TPS: 34462, 34127, 34620</strong></td>
+<td>- Client+Server threads on different NUMA - Server threads are less likely to do core-switch. - Client threads on different physical core. <strong>TPS: 34438, 34379, 34419</strong></td>
+<td>- Client+Server threads on different NUMA - Server threads less likely to do core-switch (on same physical core) - Client threads on different same physical core. <strong>TPS: 34804,34453,34729</strong></td>
+</tr>
+<tr>
+<td>(Numa Node: 1, Physical Core: 6, vCPU: 12)</td>
+<td>- Client+Server threads on different NUMA - Server threads may do core-switch (OS-scheduler dependent) - Client threads on same physical core and same vCPU <strong>TPS: 34989, 35162, 35245</strong></td>
+<td>- Client+Server threads on different NUMA - Server threads are less likely to do core-switch. - Client threads on same physical core and same vCPU <strong>TPS: 35503, 35455, 35632</strong></td>
+<td>- Client+Server threads on same NUMA - Server threads less likely to do core-switch (on same physical core) - Client threads on different physical core and same vCPU <strong>TPS: 35572, 35481, 35692</strong></td>
+</tr>
+</tbody></table>
+<h3 id="Observations"><a href="#Observations" class="headerlink" title="Observations:"></a>Observations:</h3><ul>
+<li>Limiting cores for server threads helps stabilize the performance (reduce jitter). OS-core switches are costly (with varying scalability this may not be feasible but a good parameter to understand).</li>
+<li>Moving client thread to different NUMA affects performance in a big way (40K -&gt; 34K). I was not expecting this since the real work is done by server worker threads so moving client threads should not affect server performance to this level (17%).</li>
+</ul>
+<p>So from the experiment we learned that client and server threads if co-located on the same NUMA and technique to reduce core-switch (till it is really needed with increased scalability) helps achieve optimal performance.</p>
+<p>But wait! Our goal is to have balance distribution of client and server threads across the NUMA node to get optimal performance.</p>
+<h3 id="Balance-Client-and-Server-Threads-across-NUMA"><a href="#Balance-Client-and-Server-Threads-across-NUMA" class="headerlink" title="Balance Client and Server Threads across NUMA"></a>Balance Client and Server Threads across NUMA</h3><p>Let’s apply the knowledge gained above to balance numa configuration</p>
+<table>
+<thead>
+<tr>
+<th>client-threads</th>
+<th>server-threads</th>
+<th>tps</th>
+<th>remark</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client-Threads bounded to vCPU: 0, 1, 12, 13</td>
+<td>Server Thread bounded to vCPUs: (2-11, 14-23)</td>
+<td>35188, 37426, 35140, 37640, 37625, 35574, 35709, 37680</td>
+<td>Lot of core switches</td>
+</tr>
+<tr>
+<td>Client thread bounded to specific vCPU across NUMA (0,12)</td>
+<td>Server Thread bounded to specific vCPU across NUMA (4,16)</td>
+<td>30001, 36160, 24403, 24354 37708, 24478, 36323, 24579</td>
+<td>Limit core switches</td>
+</tr>
+</tbody></table>
+<p>Oops it turned out to be worse than expected. Fluctuation increased. Let’s understand what went wrong</p>
+<ul>
+<li>24K: OS opted for skewed distribution with NUMA-x running both client threads and NUMA-y running both server threads.</li>
+<li>37K: OS opted for well balance distribution with each NUMA running 1 client and 1 server thread.</li>
+</ul>
+<p><em>(All other numbers are mix of combinations)</em></p>
+<p>Let’s try a possible hint. NUMA balancing. You can read more about it <a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/virtualization_tuning_and_optimization_guide/sect-virtualization_tuning_optimization_guide-numa-auto_numa_balancing">here</a></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">echo 0 &gt; &#x2F;proc&#x2F;sys&#x2F;kernel&#x2F;numa_balancing</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>client-threads</th>
+<th>server-threads</th>
+<th>tps</th>
+<th>remark</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client thread bounded to specific vCPUs across NUMA (0,12)</td>
+<td>Server Thread bounded to specific vCPUs across NUMA (4,16)</td>
+<td>33628, 34190, 35380, 37572</td>
+<td>Limit core switches + NUMA balancing disabled. Jitter is still there but surely better than 24K case above.</td>
+</tr>
+</tbody></table>
+<ul>
+<li>What if we bind client thread to specific numa cores and balance server threads</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>client-threads</th>
+<th>server-threads</th>
+<th>tps</th>
+<th>remark</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Client thread bounded to specific vCPU NUMA (0)</td>
+<td>Server Thread bounded to specific vCPUs across NUMA (4,16)</td>
+<td>36742, 36326, 36701, 36570</td>
+<td>Limiting core switches + NUMA balancing disabled. Looks well balanced now.</td>
+</tr>
+<tr>
+<td>Client thread bounded to specific vCPU NUMA (12)</td>
+<td>Server Thread bounded to specific vCPUs across NUMA (4,16)</td>
+<td>35440, 35667, 35748, 35578</td>
+<td>Limit core switches + NUMA balancing disabled. Looks well balanced now.</td>
+</tr>
+</tbody></table>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>Through multiple experiments above we saw how the given test-case can help produce different results ranging from 24K -&gt; 40K based on where and how you run client and server threads.</p>
+<p>If your benchmark really cares about the lower scalability then you should watch out for the core allocation.</p>
+<p>Usual strategies to reduce noise are average of N runs, median of N runs, best of N runs, etc… But if the variance is that high none of them will work best. I tend to use strategy of averaging N smaller time runs so with probabilty things could stablize. Not sure if this is best approach but seems like it help reduce the noise to quite some level. Lesser sample (smaller value of N) would increase noise so I would recommend N = 9 at-least with each run of (60+10 (tc-warmup)) secs so 630 seconds run of test-case is good enough to reduce the jitter.</p>
+<p>If you have better alternative, please help share it with community.</p>
+<p>BTW, story is more complex with increasing NUMA nodes and more cores on ARM. Topic of future. If anyone has studied it, would love to understand it.</p>
+<p><em>If you have more questions/queries do let me know. Will try to answer them.</em></p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/05/13/apache-tomcat-x86-vs-arm64-xing-neng-bi-pin/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">Apache Tomcat X86 vs ARM64 性能比拼</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/04/24/arm-zhen-de-lai-liao/">
+                <span class="level-item">ARM, 真的来了！</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 26,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="跑benchmark？当心你的芯" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>利用SIMD Vectorization优化PostgreSQL - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2020&#x2F;06&#x2F;leveraging-simd-vectorization.html 团队大牛Amit利用SIMD向量化对ARM和X86硬件平台在PostgreSQL上的优化，欢迎品鉴，相当硬核，坐稳了吗？">
+<meta property="og:type" content="article">
+<meta property="og:title" content="利用SIMD Vectorization优化PostgreSQL">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/06/24/li-yong-simd-vectorization-you-hua-postgresql/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2020&#x2F;06&#x2F;leveraging-simd-vectorization.html 团队大牛Amit利用SIMD向量化对ARM和X86硬件平台在PostgreSQL上的优化，欢迎品鉴，相当硬核，坐稳了吗？">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-06-24T09:03:35.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="利用SIMD Vectorization优化PostgreSQL" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="利用SIMD Vectorization优化PostgreSQL" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-06-24T09:03:35.000Z">2020-06-24</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                利用SIMD Vectorization优化PostgreSQL
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Amit Dattatray Khandekar<br>原文链接: <a href="https://amitdkhan-pg.blogspot.com/2020/06/leveraging-simd-vectorization.html">https://amitdkhan-pg.blogspot.com/2020/06/leveraging-simd-vectorization.html</a></p>
+<p>团队大牛Amit利用SIMD向量化对ARM和X86硬件平台在PostgreSQL上的优化，欢迎品鉴，相当硬核，坐稳了吗？</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<h3 id="Leveraging-SIMD-Vectorization"><a href="#Leveraging-SIMD-Vectorization" class="headerlink" title="Leveraging SIMD Vectorization"></a>Leveraging SIMD Vectorization</h3><p>随着列式存储数据库的出现，人们迫切需要使用 SIMD 向量处理数据表。 这种情况显然很符合表格数据的排列方式。 让我们首先简单介绍一下什么是 SIMD。 它代表单指令多数据流(Single Instruction Multiple Data)。 在当前，CPU 指令支持这种机制，在这种机制中，同一条指令可以在多个数据元素上同时执行。 例如，你想把所有的列值元素加倍。 或者删除图像像素RGB 值的红色部分。 对于大数据场景来说，这些操作是 CPU 的瓶颈。 因此，SIMD 根据每个数据元素的大小，对2、4、8、16或32个(或更多)数据元素同时进行操作，从而大大缩短了 CPU 时间。 假设我们想对“ int32 arr []”的每个元素执行“ arr [ i ] * = 2”。 通常，我们会遍历每个元素来执行这个操作。 在生成的汇编代码中，MUL 指令将在每个元素上执行。 使用 SIMD，我们将划分4个(或更多)相邻的数组元素加载到128位(或更大) CPU“向量”寄存器中，然后让这个寄存器调用 MUL 指令的“向量化”版本，并对随后的每个4数组元素重复这一步骤。</p>
+<p>我们怎么做才能生成这样的向量化汇编指令？ 一种方法是编写这样的汇编代码。 但是在大多数情况下，我们不会这么做，多亏了以下两个方法的出现:</p>
+<p><strong>1. 内部函数实现向量化</strong></p>
+<p>对于程序员来说，调用内部函数就像调用其他函数一样。 在底层，编译器会用适当的程序集指令替换它。 因此，不必使用 c / c + + 代码中的汇编指令来处理寄存器，而是调用相应的内部函数。 每个 CPU 体系结构都有自己的一组内部函数API 和相应的头文件。 作为一个例子，让我们使用 ARM 架构的 SIMD内部函数对 PostgreSQL 代码片段进行向量化，看看通过向量化代码会产生多大的不同。 在此之前，您可能希望快速浏览<a href="https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/neon-programmers-guide-for-armv8-a/introducing-neon-for-armv8-a/single-page#fundamentals">NEON架构预览</a>来了解寄存器(registers)、通道(lanes)和向量(vectors)的命名规范。 NEON是 ARM SIMD 架构的品牌名称(The implementation of the Advanced SIMD extension used in <em>ARM</em> processors is called <em>NEON</em>,)。 NEON 单元是 ARMv8芯片的必备部分。</p>
+<p>下面是 PostgreSQL 代码片段，<a href="https://doxygen.postgresql.org/backend_2utils_2adt_2numeric_8c.html#a802955bc87af4f3479b776760c12422b">mul_var() 函数</a> 用于将两个PostgreSQL NUMERIC 数据类型的值相乘. 就像下面的例子那样:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">for (i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3), i &#x3D; i1 + i2 + 2;</span><br><span class="line">   i2 &gt;&#x3D; 0; i2--)</span><br><span class="line">  dig[i--] +&#x3D; var1digit * var2digits[i2];</span><br></pre></td></tr></table></figure>
+
+<p>其中变量声明为:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">int32 *dig;</span><br><span class="line">int16 var1digit, *var2digits;</span><br></pre></td></tr></table></figure>
+
+<p>这个例子，你将可以看到循环迭代 i2 + 1次。 在每次迭代中，i 和 i2都会递减。 这意味着，两个数组中的每个数组都有一个固定的连续区段，我们希望在这个区段中对每个数组元素重复执行相同的算术运算。 这里所做的算法是: 将两个 int16变量相乘，然后将乘积加起来得到一个 int32变量。 有一条汇编指令正是这样做的: VMLA。 相应的 内部函数是: vmlal _ s16()</p>
+<p>让我们首先将上面的反向 for-loop 简化为一个等效的正向循环 :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3);</span><br><span class="line">count &#x3D; i2 + 1;</span><br><span class="line">digptr &#x3D; &amp;dig[i1 + 2];</span><br><span class="line">for (i &#x3D; 0; i &lt; count; i++)</span><br><span class="line">  digptr[i] +&#x3D; var1digit * var2digits[i];</span><br></pre></td></tr></table></figure>
+
+<p>当我们想要对上面的 multiply + accumulate 语句进行向量化时，我们应用下面这个内部函数： </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">int16x8_t  vmlaq_s16(int16x8_t a, int16x8_t b, int16x8_t c);</span><br></pre></td></tr></table></figure>
+<p>这句代码执行 a + (b * c)并返回结果。 a b c 是矢量。 类型 int16x8_t 表示该向量位于一个128位的 NEON 寄存器中，该寄存器有8个通道，每个通道有16位有符号整数。 所以 vmlaq_s16并行地对3个向量的所有8个通道执行相同的multiply + accumulate操作，并在一个int16x8_t 向量中再次返回8个结果值。 每个multiply + accumulate操作都包含在所有3个向量中的一个特定通道中。<br>如上面 c 代码片段所示，为了避免溢出，将所得的乘法累计值计入一个32位整数。 因此，我们不能使用vmlaq_s16() ，而必须使用一个对16位值进行操作并返回32位值的内部函数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">int32x4_t vmlal_s16(int32x4_t a, int16x4_t b, int16x4_t c);</span><br></pre></td></tr></table></figure>
+<p>由于128位矢量只能容纳4个32位数据元素，因此4个元素可以并行化，而不是8个。</p>
+<p>可以看出，所有这些操作都使用128位寄存器，它们不需要完全占用，就像使用 int16x4向量那样。 我们需要首先将 C 数组元素值加载到这些寄存器中，最后将结果值从寄存器取回至结果数组元素中。 我们也有实现这种想法的内部函数。 尽管有混合使用标量和向量的内部函数，然而上面内部函数只使用到了向量。 因此，同样的 var1digit 值可以装载到16x4矢量的所有4个通道中。</p>
+<p>结合这些内部函数，最终的代码会是:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;arm_neon.h&gt;</span><br><span class="line">......</span><br><span class="line">......</span><br><span class="line">int i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3);</span><br><span class="line">int remainder;</span><br><span class="line">int count &#x3D; i2 + 1;</span><br><span class="line">int32 *digptr &#x3D; &amp;dig[i1 + 2];</span><br><span class="line"></span><br><span class="line">&#x2F;* Load the same var1digit value into all lanes of 16x4 vector. *&#x2F;</span><br><span class="line">int16x4_t  var1digit_16x4 &#x3D; vdup_n_s16(var1digit);   &#x2F;&#x2F; VDUP.16 d0,r0</span><br><span class="line"></span><br><span class="line">&#x2F;* Parallelize each group of 4 digits *&#x2F;</span><br><span class="line">remainder &#x3D; count%4;</span><br><span class="line">count -&#x3D; remainder;</span><br><span class="line">for (i &#x3D; 0; i &lt; count; i +&#x3D; 4)</span><br><span class="line">&#123;</span><br><span class="line">  &#x2F;*</span><br><span class="line">   \* 1. Load required data into vectors</span><br><span class="line">   \* 2. Do multiply-accumulate-long operation using 16x4 vectors,</span><br><span class="line">   \*  whose output is a 32x4 vector which we need, because digptr[]</span><br><span class="line">   \*  is 32bit.</span><br><span class="line">   \* 3. Store back the result vector into digptr[]</span><br><span class="line">   *&#x2F;</span><br><span class="line"></span><br><span class="line">  &#x2F;* Load 4 var2digits into 16x4 vector and digptr into 32x4 *&#x2F;</span><br><span class="line">  int16x4_t  var2digits_16x4 &#x3D; vld1_s16(&amp;var2digits[i]);</span><br><span class="line">  int32x4_t  dig_32x4 &#x3D; vld1q_s32(&amp;digptr[i]);</span><br><span class="line"></span><br><span class="line">  &#x2F;* Vector multiply-accumulate-long: vmlal_&lt;type&gt;. Vr[i] :&#x3D; Va[i] + Vb[i] * Vc[i] *&#x2F;</span><br><span class="line">  dig_32x4 &#x3D; vmlal_s16(dig_32x4, var1digit_16x4, var2digits_16x4);</span><br><span class="line"></span><br><span class="line">  &#x2F;* Store back the result into &amp;digptr[i] *&#x2F;</span><br><span class="line">  vst1q_s32(&amp;digptr[i], dig_32x4);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;* Do the last remaining digits *&#x2F;</span><br><span class="line">for (; remainder !&#x3D; 0; remainder--, i++)</span><br><span class="line">  digptr[i] +&#x3D; var1digit * var2digits[i];</span><br></pre></td></tr></table></figure>
+
+
+<p>我创建了一个包含高精度的数据的模型，<a href="https://drive.google.com/file/d/1H7U5QMksnFuz39djRAbAcunOO8dGWwh2/view?usp=sharing">如图所示</a>, 并以多组t1.val 和 t2.val来执行如下查询。在没有向量化时，执行时间为0.874毫秒:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">$ psql -c &quot;explain analyze SELECT t1.id, t2.id, t1.val * t2.val FROM num_data t1, num_data t2&quot;</span><br><span class="line">                           QUERY PLAN                           </span><br><span class="line">\-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Nested Loop (cost&#x3D;0.00..1039.85 rows&#x3D;67600 width&#x3D;40) (actual time&#x3D;0.016..0.840 rows&#x3D;100 loops&#x3D;1)</span><br><span class="line">  -&gt; Seq Scan on num_data t1 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.003..0.004 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line">  -&gt; Materialize (cost&#x3D;0.00..13.90 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;10)</span><br><span class="line">     -&gt; Seq Scan on num_data t2 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line"> Planning Time: 0.156 ms</span><br><span class="line"> Execution Time: **0.874** ms</span><br><span class="line">(6 rows)</span><br><span class="line"></span><br><span class="line">With the above vectorized code, the same query execution time is now .360 ms, i.e. more than 2x speedup :</span><br><span class="line"></span><br><span class="line">$ psql -c &quot;explain analyze SELECT t1.id, t2.id, t1.val * t2.val FROM num_data t1, num_data t2&quot;</span><br><span class="line">                           QUERY PLAN                           </span><br><span class="line">\-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Nested Loop (cost&#x3D;0.00..1039.85 rows&#x3D;67600 width&#x3D;40) (actual time&#x3D;0.016..0.322 rows&#x3D;100 loops&#x3D;1)</span><br><span class="line">  -&gt; Seq Scan on num_data t1 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.007..0.008 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line">  -&gt; Materialize (cost&#x3D;0.00..13.90 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;10)</span><br><span class="line">     -&gt; Seq Scan on num_data t2 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line"> Planning Time: 0.169 ms</span><br><span class="line"> Execution Time: **0.360** ms</span><br><span class="line">(6 rows)</span><br></pre></td></tr></table></figure>
+
+<p>使用上面的向量化代码，相同的查询执行时间现在是0.360 ms，即超过2倍的加速: :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">$ psql -c &quot;explain analyze SELECT t1.id, t2.id, t1.val * t2.val FROM num_data t1, num_data t2&quot;</span><br><span class="line">                           QUERY PLAN                           </span><br><span class="line">\-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Nested Loop (cost&#x3D;0.00..1039.85 rows&#x3D;67600 width&#x3D;40) (actual time&#x3D;0.016..0.322 rows&#x3D;100 loops&#x3D;1)</span><br><span class="line">  -&gt; Seq Scan on num_data t1 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.007..0.008 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line">  -&gt; Materialize (cost&#x3D;0.00..13.90 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;10)</span><br><span class="line">     -&gt; Seq Scan on num_data t2 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line"> Planning Time: 0.169 ms</span><br><span class="line"> Execution Time: **0.360** ms</span><br><span class="line">(6 rows)</span><br></pre></td></tr></table></figure>
+
+<p>由于数字的个别位数必须与另一个数字的位数相乘，对于精度较高的数字来说，效果更好。 我创建的模式精度在200-600之间。 但是当我在 ARM64 VM 上的测试时，从20精度开始，它的好处就显现出来了。</p>
+<p><strong>2. 自动向量化</strong></p>
+<p>并不总是需要编写使用 内部函数的代码。通常，如果我们组织并简化代码，今天的编译器，使用适当的编译器选项<a href="https://gcc.gnu.org/projects/tree-ssa/vectorization.html#using">尝试识别代码是否可以被向量化</a>, 并生成适当的汇编指令，以便利用 CPU 体系结构的 SIMD。实际上，在上面的代码中，我将反向 for-loop 简化为使用单个变量递增的正向 for-loop，gcc 编译器能够自动对简化的 for-loop 进行向量化。 以下是一些细节:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">diff --git a&#x2F;src&#x2F;backend&#x2F;utils&#x2F;adt&#x2F;numeric.c b&#x2F;src&#x2F;backend&#x2F;utils&#x2F;adt&#x2F;numeric.c</span><br><span class="line">index f3a725271e..4243242ad9 100644</span><br><span class="line">--- a&#x2F;src&#x2F;backend&#x2F;utils&#x2F;adt&#x2F;numeric.c</span><br><span class="line">+++ b&#x2F;src&#x2F;backend&#x2F;utils&#x2F;adt&#x2F;numeric.c</span><br><span class="line">@@ -7226,6 +7226,7 @@ mul_var(const NumericVar *var1, const NumericVar *var2, NumericVar *result,</span><br><span class="line">   int        res_weight;</span><br><span class="line">   int        maxdigits;</span><br><span class="line">   int      *dig;</span><br><span class="line">\+   int      *digptr;</span><br><span class="line">   int        carry;</span><br><span class="line">   int        maxdig;</span><br><span class="line">   int        newdig;</span><br><span class="line">@@ -7362,10 +7363,14 @@ mul_var(const NumericVar *var1, const NumericVar *var2, NumericVar *result,</span><br><span class="line">       *</span><br><span class="line">       \* As above, digits of var2 can be ignored if they don&#39;t contribute,</span><br><span class="line">       \* so we only include digits for which i1+i2+2 &lt;&#x3D; res_ndigits - 1.</span><br><span class="line">\+      *</span><br><span class="line">\+      * For large precisions, this can become a bottleneck; so keep this for</span><br><span class="line">\+      * loop simple so that it can be auto-vectorized.</span><br><span class="line">       *&#x2F;</span><br><span class="line">\-      for (i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3), i &#x3D; i1 + i2 + 2;</span><br><span class="line">\-         i2 &gt;&#x3D; 0; i2--)</span><br><span class="line">\-         dig[i--] +&#x3D; var1digit * var2digits[i2];</span><br><span class="line">\+      i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3);</span><br><span class="line">\+      digptr &#x3D; &amp;dig[i1 + 2];</span><br><span class="line">\+      for (i &#x3D; 0; i &lt;&#x3D; i2; i++)</span><br><span class="line">\+         digptr[i] +&#x3D; var1digit * var2digits[i];</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过这个修改，在 mul_var()汇编代码中，我可以看到操作 NEON 向量的乘积指令(这些是 arm64指令) :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">smlal  v1.4s, v2.4h, v3.4h</span><br><span class="line">smlal2 v0.4s, v2.8h, v3.8h</span><br></pre></td></tr></table></figure>
+
+<p>gcc 编译器选项启用自动向量化是“-ftree-loop-vectorize”. 当使用 gcc -O3时，它始终是开启的。</p>
+<p>虽然有一些例子表明 gcc 能够自动向量化甚至是反向循环，但是在上面的例子中，由于两个递减变量，它不能对原始代码这样做。 这就是为什么我必须将其简化为一个单变量递增的正向循环，这是最简单的方式来规避。</p>
+<p>要检查 gcc 是否能够向量化一段代码，请使用 gcc  -fopt-info-all 选项。输出信息如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">numeric.c:7217:3: optimized: loop vectorized using 16 byte vectors</span><br><span class="line">Or in case it can&#39;t vectorize, you would see something like this :</span><br><span class="line">numeric.c:7380:3: missed: couldn&#39;t vectorize loop</span><br><span class="line">numeric.c:7381:15: missed: not vectorized: relevant stmt not supported: _39 &#x3D; *_38;</span><br></pre></td></tr></table></figure>
+
+<p>用这种自动向量化的方法，我观察到的加速比大约是2.7倍。 这种加速比内部函数方式更快快，可能是因为编译器可能比我使用了更好的汇编向量化指令组合。</p>
+<p><strong>总结</strong></p>
+<p>向量化操作可以在重复操作中获得显著的性能提升。 虽然它很适合柱状数据结构，但是当前 PostgreSQL 代码中的一些代码可能会受益于利用 SIMD 进行这种调整。 尽可能使用编译器的自动向量化。 因为这样的做会使代码更干净，更容易移植。 与方法1相比，我们必须使用特定于 CPU 体系结构的内部函数。 但是选择这个例子是为了解释如何使用内部函数来向量化。 在编译器不能对代码进行向量化的情况下，我们应该使用编译器内部函数。 例如:<a href="https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/neon-programmers-guide-for-armv8-a/optimizing-c-code-with-neon-intrinsics/single-page#rgb">这个</a>。</p>
+</div>
+<div id="English" class="tab-content">
+
+<p>With the advent of column store databases, there was an urge to make use of SIMD vector processing. It naturally fits into the way table data is arranged. Let’s first briefly check what is SIMD. It stands for Single Instruction Multiple Data. Today, CPU instructions support this kind of mechanism where the same instruction can be executed simultaneously on multiple data elements. E.g. Say, you want to double all the column values. Or remove the red component of the RGB values of pixels of an image. For large data, these operations are CPU bottlenecks. So SIMD cuts the CPU time significantly by operating simultaneously on 2, 4, 8, 16 or 32 (or more) data elements depending on the size of each data element. So suppose we want to do “arr[i] *= 2” for each element of “int32 arr[]”. Normally we would iterate through each of the elements for doing this operation. In the generated assembly code, MUL instruction will be run on each of the elements. With SIMD, we would arrange for loading 4 (or more) adjacent array elements into a 128-bit (or larger) CPU “vector” register, and then arrange for a “vectorized” version of the MUL instruction to be called using this register, and repeat this for each subsequent 4 element array section.</p>
+<p>How do we arrange for generating such vectorized assembly instructions ? Well, one way is to write such an assembly code. But in most of the cases, we won’t need this method, thanks to the below two methods :</p>
+<p><strong>1. Vectorization Intrinsics</strong></p>
+<p>For a programmer, an intrinsic is just like any other function call. Underneath, the compiler replaces it with an appropriate assembly instruction. So instead of having to deal with registers using assembly instruction inside C/C++ code, call the corresponding intrinsic function. Each CPU architecture has it’s own set of intrinsics API, and corresponding header file. As an example, let’s vectorize a snippet of PostgreSQL code using ARM architecture’s SIMD intrinsics, to see how big a difference it makes by vectorizing things. Before that, you might want to quickly go through the <a href="https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/neon-programmers-guide-for-armv8-a/introducing-neon-for-armv8-a/single-page#fundamentals">NEON architecture</a> to understand the naming conventions for registers, lanes and vectors. NEON is ARM’s brand name for SIMD architecture. NEON unit is a mandatory part of ARMv8 chip.</p>
+<p>Here is a PostgreSQL code snippet from the <a href="https://doxygen.postgresql.org/backend_2utils_2adt_2numeric_8c.html#a802955bc87af4f3479b776760c12422b">mul_var() function</a> that is used to multiply two PostgreSQL NUMERIC data types. As of this writing, it looks like this :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">for (i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3), i &#x3D; i1 + i2 + 2;</span><br><span class="line">   i2 &gt;&#x3D; 0; i2--)</span><br><span class="line">  dig[i--] +&#x3D; var1digit * var2digits[i2];</span><br></pre></td></tr></table></figure>
+
+<p>where, the variables are declared as :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">int32 *dig;</span><br><span class="line">int16 var1digit, *var2digits;</span><br></pre></td></tr></table></figure>
+
+<p>Here, you can see that the loop iterates i2+1 times. On each iteration, both i and i2 are decremented. That means, there is a fixed contiguous section of each of the two arrays where we want to repeatedly do the same arithmetic operation for every array element in this section. The arithmetic being done here is : multiply two int16 variables, and add up that product into an int32 variable. An assembly instruction is available which exactly does that : VMLA. The corresponding intrinsic is : vmlal_s16()</p>
+<p>Let’s first simplify the above backward for-loop into an equivalent forward loop :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3);</span><br><span class="line">count &#x3D; i2 + 1;</span><br><span class="line">digptr &#x3D; &amp;dig[i1 + 2];</span><br><span class="line">for (i &#x3D; 0; i &lt; count; i++)</span><br><span class="line">  digptr[i] +&#x3D; var1digit * var2digits[i];</span><br></pre></td></tr></table></figure>
+
+<p>So we want to vectorize the above multiply+accumulate statement. We have this intrinsic :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">int16x8_t  vmlaq_s16(int16x8_t a, int16x8_t b, int16x8_t c);</span><br></pre></td></tr></table></figure>
+<p>This does a+(b*c) and returns the result. a, b and c are vectors. The type int16x8_t signifies that the vector is in a 128-bit NEON register having 8 lanes, each lane having 16-bit signed integers. So vmlaq_s16() does the multiply+accumulate operation on all 8 lanes of the 3 vectors in parallel, and returns the 8 result values again in a int16x8_t vector. Each multiple+accumulate is contained in one particular lane of all the 3 vectors.<br>To avoid overflow, as can be seen in the above C snippet, the multiplication is accumulated into a 32-bit integer. So instead of vmlaq_s16(), we have to use an intrinsic that operates on 16-bit values and returns 32bit values :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">int32x4_t vmlal_s16(int32x4_t a, int16x4_t b, int16x4_t c);</span><br></pre></td></tr></table></figure>
+<p>Since only 4 32-bit data elements can be accommodated in a 128-bit vector, 4 elements could be parallelized rather than 8.</p>
+<p>As can be seen, all these operations use the 128-bit registers, even though they need not be fully occupied, as in the case with int16x4 vectors. We need to first load the C array element values into these registers, and in the end, store the resultant values back from the registers into the result array elements. We have intrinsics for that also. Although there are intrinsics that operate on a mix of scalar and vectors, the intrinsic used above uses only vectors. So the same var1digit value can be loaded into all 4 lanes of a 16x4 vector.</p>
+<p>With these instrinsics, the final code looks like this :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">\#include &lt;arm_neon.h&gt;</span><br><span class="line">......</span><br><span class="line">......</span><br><span class="line">int i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3);</span><br><span class="line">int remainder;</span><br><span class="line">int count &#x3D; i2 + 1;</span><br><span class="line">int32 *digptr &#x3D; &amp;dig[i1 + 2];</span><br><span class="line"></span><br><span class="line">&#x2F;* Load the same var1digit value into all lanes of 16x4 vector. *&#x2F;</span><br><span class="line">int16x4_t  var1digit_16x4 &#x3D; vdup_n_s16(var1digit);   &#x2F;&#x2F; VDUP.16 d0,r0</span><br><span class="line"></span><br><span class="line">&#x2F;* Parallelize each group of 4 digits *&#x2F;</span><br><span class="line">remainder &#x3D; count%4;</span><br><span class="line">count -&#x3D; remainder;</span><br><span class="line">for (i &#x3D; 0; i &lt; count; i +&#x3D; 4)</span><br><span class="line">&#123;</span><br><span class="line">  &#x2F;*</span><br><span class="line">   \* 1. Load required data into vectors</span><br><span class="line">   \* 2. Do multiply-accumulate-long operation using 16x4 vectors,</span><br><span class="line">   \*  whose output is a 32x4 vector which we need, because digptr[]</span><br><span class="line">   \*  is 32bit.</span><br><span class="line">   \* 3. Store back the result vector into digptr[]</span><br><span class="line">   *&#x2F;</span><br><span class="line"></span><br><span class="line">  &#x2F;* Load 4 var2digits into 16x4 vector and digptr into 32x4 *&#x2F;</span><br><span class="line">  int16x4_t  var2digits_16x4 &#x3D; vld1_s16(&amp;var2digits[i]);</span><br><span class="line">  int32x4_t  dig_32x4 &#x3D; vld1q_s32(&amp;digptr[i]);</span><br><span class="line"></span><br><span class="line">  &#x2F;* Vector multiply-accumulate-long: vmlal_&lt;type&gt;. Vr[i] :&#x3D; Va[i] + Vb[i] * Vc[i] *&#x2F;</span><br><span class="line">  dig_32x4 &#x3D; vmlal_s16(dig_32x4, var1digit_16x4, var2digits_16x4);</span><br><span class="line"></span><br><span class="line">  &#x2F;* Store back the result into &amp;digptr[i] *&#x2F;</span><br><span class="line">  vst1q_s32(&amp;digptr[i], dig_32x4);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">&#x2F;* Do the last remaining digits *&#x2F;</span><br><span class="line">for (; remainder !&#x3D; 0; remainder--, i++)</span><br><span class="line">  digptr[i] +&#x3D; var1digit * var2digits[i];</span><br></pre></td></tr></table></figure>
+
+<p>I created a schema that contains numerics with large precisions, <a href="https://drive.google.com/file/d/1H7U5QMksnFuz39djRAbAcunOO8dGWwh2/view?usp=sharing">as shown here</a>, and ran the following query that multiplies t1.val and t2.val. With the non-vectorized code, the execution time showed .874 milliseconds :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">$ psql -c &quot;explain analyze SELECT t1.id, t2.id, t1.val * t2.val FROM num_data t1, num_data t2&quot;</span><br><span class="line">                           QUERY PLAN                           </span><br><span class="line">\-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Nested Loop (cost&#x3D;0.00..1039.85 rows&#x3D;67600 width&#x3D;40) (actual time&#x3D;0.016..0.840 rows&#x3D;100 loops&#x3D;1)</span><br><span class="line">  -&gt; Seq Scan on num_data t1 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.003..0.004 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line">  -&gt; Materialize (cost&#x3D;0.00..13.90 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;10)</span><br><span class="line">     -&gt; Seq Scan on num_data t2 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line"> Planning Time: 0.156 ms</span><br><span class="line"> Execution Time: **0.874** ms</span><br><span class="line">(6 rows)</span><br><span class="line"></span><br><span class="line">With the above vectorized code, the same query execution time is now .360 ms, i.e. more than 2x speedup :</span><br><span class="line"></span><br><span class="line">$ psql -c &quot;explain analyze SELECT t1.id, t2.id, t1.val * t2.val FROM num_data t1, num_data t2&quot;</span><br><span class="line">                           QUERY PLAN                           </span><br><span class="line">\-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Nested Loop (cost&#x3D;0.00..1039.85 rows&#x3D;67600 width&#x3D;40) (actual time&#x3D;0.016..0.322 rows&#x3D;100 loops&#x3D;1)</span><br><span class="line">  -&gt; Seq Scan on num_data t1 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.007..0.008 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line">  -&gt; Materialize (cost&#x3D;0.00..13.90 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;10)</span><br><span class="line">     -&gt; Seq Scan on num_data t2 (cost&#x3D;0.00..12.60 rows&#x3D;260 width&#x3D;275) (actual time&#x3D;0.001..0.002 rows&#x3D;10 loops&#x3D;1)</span><br><span class="line"> Planning Time: 0.169 ms</span><br><span class="line"> Execution Time: **0.360** ms</span><br><span class="line">(6 rows)</span><br></pre></td></tr></table></figure>
+
+<p>Since individual digits of the number have to be multiplied by the digits of the other number, the benefit is more for numerics with large precision. The schema I created has values with precisions in the range of 200-600. But the benefit starts showing up from around 20 precision onwards, with my ARM64 VM.</p>
+<p><strong>2. Auto-vectorization</strong></p>
+<p>It’s not always necessary to write code that uses intrinsics. Often if we arrange/simplify the code, today’s compilers, with appropriate compiler options, <a href="https://gcc.gnu.org/projects/tree-ssa/vectorization.html#using">try to identify if the code can be vectorized</a>, and generate appropriate assembly instructions that leverage the CPU architecture’s SIMD. In fact, above where I simplified the backward for-loop to a forward for-loop that uses a single variable increment, the gcc compiler is able to auto-vectorize the simplified for-loop. Here are the changes again:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">diff --git a&#x2F;src&#x2F;backend&#x2F;utils&#x2F;adt&#x2F;numeric.c b&#x2F;src&#x2F;backend&#x2F;utils&#x2F;adt&#x2F;numeric.c</span><br><span class="line">index f3a725271e..4243242ad9 100644</span><br><span class="line">--- a&#x2F;src&#x2F;backend&#x2F;utils&#x2F;adt&#x2F;numeric.c</span><br><span class="line">+++ b&#x2F;src&#x2F;backend&#x2F;utils&#x2F;adt&#x2F;numeric.c</span><br><span class="line">@@ -7226,6 +7226,7 @@ mul_var(const NumericVar *var1, const NumericVar *var2, NumericVar *result,</span><br><span class="line">   int        res_weight;</span><br><span class="line">   int        maxdigits;</span><br><span class="line">   int      *dig;</span><br><span class="line">\+   int      *digptr;</span><br><span class="line">   int        carry;</span><br><span class="line">   int        maxdig;</span><br><span class="line">   int        newdig;</span><br><span class="line">@@ -7362,10 +7363,14 @@ mul_var(const NumericVar *var1, const NumericVar *var2, NumericVar *result,</span><br><span class="line">       *</span><br><span class="line">       \* As above, digits of var2 can be ignored if they don&#39;t contribute,</span><br><span class="line">       \* so we only include digits for which i1+i2+2 &lt;&#x3D; res_ndigits - 1.</span><br><span class="line">\+      *</span><br><span class="line">\+      * For large precisions, this can become a bottleneck; so keep this for</span><br><span class="line">\+      * loop simple so that it can be auto-vectorized.</span><br><span class="line">       *&#x2F;</span><br><span class="line">\-      for (i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3), i &#x3D; i1 + i2 + 2;</span><br><span class="line">\-         i2 &gt;&#x3D; 0; i2--)</span><br><span class="line">\-         dig[i--] +&#x3D; var1digit * var2digits[i2];</span><br><span class="line">\+      i2 &#x3D; Min(var2ndigits - 1, res_ndigits - i1 - 3);</span><br><span class="line">\+      digptr &#x3D; &amp;dig[i1 + 2];</span><br><span class="line">\+      for (i &#x3D; 0; i &lt;&#x3D; i2; i++)</span><br><span class="line">\+         digptr[i] +&#x3D; var1digit * var2digits[i];</span><br><span class="line">   &#125;</span><br></pre></td></tr></table></figure>
+<p>With this change, in mul_var() assembly code, I could see the multiply-accumulate instructions that operate on NEON vectors (these are arm64 instructions) :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">smlal  v1.4s, v2.4h, v3.4h</span><br><span class="line">smlal2 v0.4s, v2.8h, v3.8h</span><br></pre></td></tr></table></figure>
+
+<p>gcc compiler option to enable auto-vectorization is “-ftree-loop-vectorize”. With gcc -O3, it is always enabled.</p>
+<p>Although there are examples where gcc is able to auto-vectorize even backward loops, in the above case, it could not do so for the original code, seemingly because of two decrementing variables. That’s why I had to simplify it to a forward loop with a single variable increment, which is as simple as it gets.</p>
+<p>To check whether gcc has been able to vectorize a particular code, use the gcc -fopt-info-all option. This outputs info such as this :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">numeric.c:7217:3: optimized: loop vectorized using 16 byte vectors</span><br><span class="line">Or in case it can&#39;t vectorize, you would see something like this :</span><br><span class="line">numeric.c:7380:3: missed: couldn&#39;t vectorize loop</span><br><span class="line">numeric.c:7381:15: missed: not vectorized: relevant stmt not supported: _39 &#x3D; *_38;</span><br></pre></td></tr></table></figure>
+
+<p>With this auto-vectorization method, the speedup I observed was around 2.7x. This speedup is higher than the intrinsics method, probably because the compiler might have used a better combination of assembly vectorized instructions than I did.</p>
+<p><strong>Conclusion</strong></p>
+<p>Vectorizing operations gives significant returns in repetitive operations. Although it suits well for columnar data, there could be some regions in current PostgreSQL code that might benefit from such tweaks to leverage SIMD. As far as possible, we should arrange for the compiler’s auto-vectorization. Such change is cleaner and clearly portable. Compare this with method 1 where we had to use intrinsics specific to the CPU architecture. But that example was chosen for the sake of explaining how to make use of intrinsics. In cases where it is not possible for the compiler to vectorize the code, we should use compiler intrinsics. E.g. <a href="https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/neon-programmers-guide-for-armv8-a/optimizing-c-code-with-neon-intrinsics/single-page#rgb">check this out</a>.</p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/07/03/zhi-ding-numa-jie-dian-yun-xing-mysql/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">指定NUMA节点运行MySql</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/05/28/numa-zhi-neng-quan-ju-ji-shu-qi-lai-zi-mysql-de-ling-gan/">
+                <span class="level-item">NUMA 智能全局计数器 -- 来自MySQL的灵感</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 34,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="利用SIMD Vectorization优化PostgreSQL" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

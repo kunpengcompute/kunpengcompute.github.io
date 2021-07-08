@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>ARM vs X86 Mysql性能大比拼 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者：bzhaoopenstack 原文链接：https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;MySQL-on-x86-vs-ARM&#x2F; 作者: Krunal Bauskar 在开始探索这一领域之前，我相信大家对这个话题都会非常感兴趣，包括本人在内。另外，在深入讨论具体的数据前，让我们先来了解一下两种架构之间的基本差异。除了CISC和RISC之外，让我们从Mysql的角度来看待这些重要的差">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ARM vs X86 Mysql性能大比拼">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/04/22/arm-vs-x86-mysql-xing-neng-da-bi-pin/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者：bzhaoopenstack 原文链接：https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;MySQL-on-x86-vs-ARM&#x2F; 作者: Krunal Bauskar 在开始探索这一领域之前，我相信大家对这个话题都会非常感兴趣，包括本人在内。另外，在深入讨论具体的数据前，让我们先来了解一下两种架构之间的基本差异。除了CISC和RISC之外，让我们从Mysql的角度来看待这些重要的差">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-04-22T04:25:50.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="ARM vs X86 Mysql性能大比拼" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="ARM vs X86 Mysql性能大比拼" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-04-22T04:25:50.000Z">2020-04-22</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                ARM vs X86 Mysql性能大比拼
+            
+        </h1>
+        <div class="content">
+            <p>译者：bzhaoopenstack</p>
+<p>原文链接：<a href="https://mysqlonarm.github.io/MySQL-on-x86-vs-ARM/">https://mysqlonarm.github.io/MySQL-on-x86-vs-ARM/</a></p>
+<p>作者: Krunal Bauskar</p>
+<p>在开始探索这一领域之前，我相信大家对这个话题都会非常感兴趣，包括本人在内。另外，在深入讨论具体的数据前，让我们先来了解一下两种架构之间的基本差异。除了CISC和RISC之外，让我们从Mysql的角度来看待这些重要的差异。</p>
+<ul>
+<li>强 vs  弱内存模型 (弱内存模型在无锁写场景下需要适当的内存屏障).</li>
+<li>底层硬件特定专用指令。例如：两者现在都支持crc32c硬件指令，但是底层调用它们的方式不同。更多指令差异请参看x86-SSE/ARM-ACLE。</li>
+<li>Cache Line 差异。 大多数ARM处理器倾向于使用更大的cacheline size (所有缓存以128 bytes为单位或者 64/128字节混合的方式)。</li>
+<li>其他系统调用级别的差异，如：ARM的PAUSE指令缺失和具有非常低延迟的替代指令无法引导硬件达到所需的延迟，sched_getcpu在ARM上引入了使用无锁构造的挑战，内存操作似乎带来更高的延迟等。</li>
+</ul>
+<p>Mysql社区已经为这个领域的问题贡献了多个补丁（另一个博客的主题）。自从MySQL刚刚宣称开始支持ARM架构以来，几乎没有什么优化，大部分工作仍然没有完成。</p>
+<a id="more"></a>
+
+<h2 id="性能"><a href="#性能" class="headerlink" title="性能"></a>性能</h2><p>现在让我们来看看最重要的方面：性能</p>
+<p>我们在x86和ARM上测试了MySQL（当前版本8.0.19）的性能。试验步骤和机器详情如下。</p>
+<h3 id="测试步骤"><a href="#测试步骤" class="headerlink" title="测试步骤"></a>测试步骤</h3><ul>
+<li>24核/48GB Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz，用于在x86上运行MySQL数据库软件。</li>
+<li>24核/48GB ARM @ 2.60GHz，用于在ARM上运行MySQL</li>
+<li>sysbench运行在一台专用的机器，且位于相同的数据中心。</li>
+<li>sysbench步骤:<ul>
+<li>加载测试表. (相同的数据库被多次运行重用，所以需要预热).</li>
+<li>Checksum预热。对所有表执行checksum。对于checksum,流程中需要获取bufferpool中的行记录。</li>
+<li>Query 预热。 如果您使用的是自适应哈希索引，可以跳过此节，但它确实有些效果。</li>
+<li>执行测试套件 (oltp-read-write/oltp-update-index/oltp-update-non-index/oltp-read-only/oltp-point-select)</li>
+<li>每个测试套件以多种不同的扩展性来执行。如对于24 vCPU，尝试多threads 1/2/4/8/16/32/128/256.</li>
+<li>在切换测试套件中间，引入一些睡眠操作确保之前的测试套件完全运行完毕。虽然这不能保证所有的数据库刷新都完成了，但是X秒的睡眠可以保证对后续测试套件的影响最小。</li>
+<li>MySQL-Server Configuration:<ul>
+<li>足够大的BP(bufferpool) ，以保证可以存储完整的数据</li>
+<li>了解更多配置详情，参看 <a href="https://github.com/mysqlonarm/benchmark-suites/blob/master/sysbench/conf/96tx1.5m_cpubound.cnf">以下配置</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>运行脚本和调用sysbench的自动化测试脚本细节在 <a href="https://github.com/mysqlonarm/benchmark-suites">这里</a></p>
+<h3 id="测试运行具体细节"><a href="#测试运行具体细节" class="headerlink" title="测试运行具体细节:"></a>测试运行具体细节:</h3><ul>
+<li>Table: 96-tables * 150万数据 (data-size= 34GB)</li>
+<li>Buffer Pool: 36GB</li>
+<li>Redo-Log: 4GB*2</li>
+<li>TC-run-time: 300 secs</li>
+<li>TC-warmup: 60 (sysbench –warmup-time)</li>
+<li>workload-query-based warmup: 600</li>
+<li>change-over-sleep: 180</li>
+<li>checksum-based-warmup: enabled</li>
+<li>data-storage: 300GB (支持16500 IOPS(对Burst IOPS无效果).)</li>
+</ul>
+<p><em>注: Frequency Scaling (FS)频率缩放. 所述ARM 主频规格2.6 GHz vs x86主频规格3.0 GHz。直接比较它们的数据是不公平的。为了补偿频率差，下面的图还为ARM添加了频率调整 tps/qps（ARM-fscaled简单地按(3/2.6）的算法基于原始数据算出ARM tps/qps数据)。在现实生活中，考虑到CPU频率的增加会影响争用曲线图和等待周期，这个影响因素可能会稍微高一些。</em></p>
+<hr>
+<h3 id="1-Point-Select"><a href="#1-Point-Select" class="headerlink" title="1. Point Select:"></a>1. Point Select:</h3><p><a href="https://camo.githubusercontent.com/929493df33b60738e09eee164e57181f3945e935/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d70732e706e67"><img src="https://camo.githubusercontent.com/929493df33b60738e09eee164e57181f3945e935/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d70732e706e67" alt="img"></a></p>
+<table>
+<thead>
+<tr>
+<th>threads</th>
+<th>ARM (qps)</th>
+<th>x86 (qps)</th>
+<th>ARM (qps - fscaled (FS))</th>
+<th>% ARM-vs-x86</th>
+<th>% ARM (FS)-vs-x86</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>6696</td>
+<td>6439</td>
+<td>7726</td>
+<td>4</td>
+<td>20</td>
+</tr>
+<tr>
+<td>2</td>
+<td>12482</td>
+<td>11774</td>
+<td>14402</td>
+<td>6</td>
+<td>22</td>
+</tr>
+<tr>
+<td>4</td>
+<td>23881</td>
+<td>21308</td>
+<td>27555</td>
+<td>12</td>
+<td>29</td>
+</tr>
+<tr>
+<td>8</td>
+<td>45993</td>
+<td>42110</td>
+<td>53069</td>
+<td>9</td>
+<td>26</td>
+</tr>
+<tr>
+<td>16</td>
+<td>88517</td>
+<td>81239</td>
+<td>102135</td>
+<td>9</td>
+<td>26</td>
+</tr>
+<tr>
+<td>32</td>
+<td>142974</td>
+<td>136724</td>
+<td>164970</td>
+<td>5</td>
+<td>21</td>
+</tr>
+<tr>
+<td>64</td>
+<td>198839</td>
+<td>212484</td>
+<td>229430</td>
+<td>-6</td>
+<td>8</td>
+</tr>
+<tr>
+<td>128</td>
+<td>217778</td>
+<td>241555</td>
+<td>251282</td>
+<td>-10</td>
+<td>4</td>
+</tr>
+<tr>
+<td>256</td>
+<td>209797</td>
+<td>224009</td>
+<td>242073</td>
+<td>-6</td>
+<td>8</td>
+</tr>
+</tbody></table>
+<h4 id="分析"><a href="#分析" class="headerlink" title="分析:"></a>分析:</h4><ul>
+<li>ARM在较低扩展性上性能比X86要好，但是在扩展到与cpu数目相近的threads时，性能就开始下降了</li>
+<li>在频率缩放下，尽管存在扩展性问题，ARM仍然击败X86</li>
+</ul>
+<hr>
+<h3 id="2-Read-Only"><a href="#2-Read-Only" class="headerlink" title="2. Read Only:"></a>2. Read Only:</h3><p><a href="https://camo.githubusercontent.com/e5b5e8d60dd3a1e636246b3d11f9e19602c755ce/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d726f2e706e67"><img src="https://camo.githubusercontent.com/e5b5e8d60dd3a1e636246b3d11f9e19602c755ce/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d726f2e706e67" alt="img"></a></p>
+<table>
+<thead>
+<tr>
+<th>threads</th>
+<th>ARM (qps)</th>
+<th>x86 (qps)</th>
+<th>ARM (qps - fscaled (FS))</th>
+<th>% ARM-vs-x86</th>
+<th>% ARM (FS)-vs-x86</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>5222</td>
+<td>5259</td>
+<td>6025</td>
+<td>-1</td>
+<td>15</td>
+</tr>
+<tr>
+<td>2</td>
+<td>10333</td>
+<td>10200</td>
+<td>11923</td>
+<td>1</td>
+<td>17</td>
+</tr>
+<tr>
+<td>4</td>
+<td>19176</td>
+<td>19349</td>
+<td>22126</td>
+<td>-1</td>
+<td>14</td>
+</tr>
+<tr>
+<td>8</td>
+<td>36881</td>
+<td>37035</td>
+<td>42555</td>
+<td>0</td>
+<td>15</td>
+</tr>
+<tr>
+<td>16</td>
+<td>70337</td>
+<td>67065</td>
+<td>81158</td>
+<td>5</td>
+<td>21</td>
+</tr>
+<tr>
+<td>32</td>
+<td>109207</td>
+<td>113210</td>
+<td>126008</td>
+<td>-4</td>
+<td>11</td>
+</tr>
+<tr>
+<td>64</td>
+<td>139294</td>
+<td>164148</td>
+<td>160724</td>
+<td>-15</td>
+<td>-2</td>
+</tr>
+<tr>
+<td>128</td>
+<td>151382</td>
+<td>175872</td>
+<td>174672</td>
+<td>-14</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>256</td>
+<td>149136</td>
+<td>164382</td>
+<td>172080</td>
+<td>-9</td>
+<td>5</td>
+</tr>
+</tbody></table>
+<h4 id="分析-1"><a href="#分析-1" class="headerlink" title="分析:"></a>分析:</h4><ul>
+<li>在低扩展性上，ARM与X86基本持平，在较高扩展性败于X86</li>
+<li>应用频率缩放，ARM在大多数场景下继续击败X86</li>
+</ul>
+<hr>
+<h3 id="3-Read-Write"><a href="#3-Read-Write" class="headerlink" title="3. Read Write:"></a>3. Read Write:</h3><p><a href="https://camo.githubusercontent.com/252ecf14b5b65667b2cfece150fdf9b7e42d36ca/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d72772e706e67"><img src="https://camo.githubusercontent.com/252ecf14b5b65667b2cfece150fdf9b7e42d36ca/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d72772e706e67" alt="img"></a></p>
+<table>
+<thead>
+<tr>
+<th>threads</th>
+<th>ARM (tps)</th>
+<th>x86 (tps)</th>
+<th>ARM (tps - fscaled (FS))</th>
+<th>% ARM-vs-x86</th>
+<th>% ARM (FS)-vs-x86</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>137</td>
+<td>149</td>
+<td>158</td>
+<td>-8</td>
+<td>6</td>
+</tr>
+<tr>
+<td>2</td>
+<td>251</td>
+<td>273</td>
+<td>290</td>
+<td>-8</td>
+<td>6</td>
+</tr>
+<tr>
+<td>4</td>
+<td>462</td>
+<td>502</td>
+<td>533</td>
+<td>-8</td>
+<td>6</td>
+</tr>
+<tr>
+<td>8</td>
+<td>852</td>
+<td>920</td>
+<td>983</td>
+<td>-7</td>
+<td>7</td>
+</tr>
+<tr>
+<td>16</td>
+<td>1539</td>
+<td>1678</td>
+<td>1776</td>
+<td>-8</td>
+<td>6</td>
+</tr>
+<tr>
+<td>32</td>
+<td>2556</td>
+<td>2906</td>
+<td>2949</td>
+<td>-12</td>
+<td>1</td>
+</tr>
+<tr>
+<td>64</td>
+<td>3770</td>
+<td>5158</td>
+<td>4350</td>
+<td>-27</td>
+<td>-16</td>
+</tr>
+<tr>
+<td>128</td>
+<td>5015</td>
+<td>8131</td>
+<td>5787</td>
+<td>-38</td>
+<td>-29</td>
+</tr>
+<tr>
+<td>256</td>
+<td>5676</td>
+<td>8562</td>
+<td>6549</td>
+<td>-34</td>
+<td>-24</td>
+</tr>
+</tbody></table>
+<h4 id="分析-2"><a href="#分析-2" class="headerlink" title="分析:"></a>分析:</h4><ul>
+<li>在read-write测试套件中情况有些不同。ARM开始落后了。在低扩展性情况下，频率缩放会减缓这种落后，在高扩展性则持续增大了差距。</li>
+</ul>
+<hr>
+<h3 id="4-Update-Index"><a href="#4-Update-Index" class="headerlink" title="4. Update Index:"></a>4. Update Index:</h3><p><a href="https://camo.githubusercontent.com/114ccd28ff574e5becf7723a62f24a0e2e599ef4/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d75692e706e67"><img src="https://camo.githubusercontent.com/114ccd28ff574e5becf7723a62f24a0e2e599ef4/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d75692e706e67" alt="img"></a></p>
+<table>
+<thead>
+<tr>
+<th>threads</th>
+<th>ARM (tps)</th>
+<th>x86 (tps)</th>
+<th>ARM (tps - fscaled (FS))</th>
+<th>% ARM-vs-x86</th>
+<th>% ARM (FS)-vs-x86</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>328</td>
+<td>373</td>
+<td>378</td>
+<td>-12</td>
+<td>1</td>
+</tr>
+<tr>
+<td>2</td>
+<td>623</td>
+<td>768</td>
+<td>719</td>
+<td>-19</td>
+<td>-6</td>
+</tr>
+<tr>
+<td>4</td>
+<td>1060</td>
+<td>1148</td>
+<td>1223</td>
+<td>-8</td>
+<td>7</td>
+</tr>
+<tr>
+<td>8</td>
+<td>1905</td>
+<td>2028</td>
+<td>2198</td>
+<td>-6</td>
+<td>8</td>
+</tr>
+<tr>
+<td>16</td>
+<td>3284</td>
+<td>3590</td>
+<td>3789</td>
+<td>-9</td>
+<td>6</td>
+</tr>
+<tr>
+<td>32</td>
+<td>5543</td>
+<td>6275</td>
+<td>6396</td>
+<td>-12</td>
+<td>2</td>
+</tr>
+<tr>
+<td>64</td>
+<td>9138</td>
+<td>10381</td>
+<td>10544</td>
+<td>-12</td>
+<td>2</td>
+</tr>
+<tr>
+<td>128</td>
+<td>13879</td>
+<td>16868</td>
+<td>16014</td>
+<td>-18</td>
+<td>-5</td>
+</tr>
+<tr>
+<td>256</td>
+<td>19954</td>
+<td>25459</td>
+<td>23024</td>
+<td>-22</td>
+<td>-10</td>
+</tr>
+</tbody></table>
+<h4 id="分析-3"><a href="#分析-3" class="headerlink" title="分析:"></a>分析:</h4><ul>
+<li>频率缩放下，ARM继续与X86处于同等/更好的状态 (除了高竞争用例)</li>
+</ul>
+<hr>
+<h3 id="5-Update-Non-Index"><a href="#5-Update-Non-Index" class="headerlink" title="5. Update Non-Index:"></a>5. Update Non-Index:</h3><p><a href="https://camo.githubusercontent.com/6d578230e925ce5afdae131d46ce484cfb647e1b/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d756e692e706e67"><img src="https://camo.githubusercontent.com/6d578230e925ce5afdae131d46ce484cfb647e1b/68747470733a2f2f6d7973716c6f6e61726d2e6769746875622e696f2f696d616765732f626c6f67332f41524d2d76732d7838362d756e692e706e67" alt="img"></a></p>
+<table>
+<thead>
+<tr>
+<th>threads</th>
+<th>ARM (tps)</th>
+<th>x86 (tps)</th>
+<th>ARM (tps - fscaled (FS))</th>
+<th>% ARM-vs-x86</th>
+<th>% ARM (FS)-vs-x86</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>328</td>
+<td>373</td>
+<td>378</td>
+<td>-12</td>
+<td>1</td>
+</tr>
+<tr>
+<td>2</td>
+<td>588</td>
+<td>686</td>
+<td>678</td>
+<td>-14</td>
+<td>-1</td>
+</tr>
+<tr>
+<td>4</td>
+<td>1075</td>
+<td>1118</td>
+<td>1240</td>
+<td>-4</td>
+<td>11</td>
+</tr>
+<tr>
+<td>8</td>
+<td>1941</td>
+<td>2043</td>
+<td>2240</td>
+<td>-5</td>
+<td>10</td>
+</tr>
+<tr>
+<td>16</td>
+<td>3367</td>
+<td>3662</td>
+<td>3885</td>
+<td>-8</td>
+<td>6</td>
+</tr>
+<tr>
+<td>32</td>
+<td>5681</td>
+<td>6438</td>
+<td>6555</td>
+<td>-12</td>
+<td>2</td>
+</tr>
+<tr>
+<td>64</td>
+<td>9328</td>
+<td>10631</td>
+<td>10763</td>
+<td>-12</td>
+<td>1</td>
+</tr>
+<tr>
+<td>128</td>
+<td>14158</td>
+<td>17245</td>
+<td>16336</td>
+<td>-18</td>
+<td>-5</td>
+</tr>
+<tr>
+<td>256</td>
+<td>20377</td>
+<td>26367</td>
+<td>23512</td>
+<td>-23</td>
+<td>-11</td>
+</tr>
+</tbody></table>
+<h4 id="分析-4"><a href="#分析-4" class="headerlink" title="分析:"></a>分析:</h4><ul>
+<li>频率缩放下，ARM继续与X86处于同等/更好的状态 (除了高竞争用例)</li>
+</ul>
+<hr>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>基于以上的数据，我们能够得到如下结论:</p>
+<ul>
+<li>在只读场景中测试Mysql, ARM和X86性能几乎一致。</li>
+<li>在涉及写场景中测试Mysql，ARM开始有些落后，但是如果我们考虑频率缩放，情况可能会好一点。</li>
+<li>在生活里，我们通常不会考虑频率缩放，而会考虑他们的性价比。这是一个话题，但通常是事实：ARM实例比X86实例便宜34%（我们在测试中用相同的flavor 24U48G）。</li>
+<li>有一点我们需要持续观察，就是， ARM工作负载在达到CPU限制之前具有很好的可伸缩性。随着可伸缩性的增强，争用增加，ARM开始滞后。这是因为互斥/竞争热点都是针对x86调优的（例如：自旋锁 spin-lock）。现在MySQL正式支持ARM，并且ARM的社区和来自各地开发者的兴趣也不断增长，所以Mysql社区也会针对ARM进行调优，让我们拭目以待把。</li>
+</ul>
+<p>总之，Mysql on ARM是一个值得从成本和性能角度来尝试的选择。</p>
+<p><em>如果你还有问题/疑问，请告诉我。我会试着去回答。</em></p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/04/22/arm-shang-pao-mysql-neng-xing-ma/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">ARM上跑Mysql, 能行吗？</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/04/17/yuan-yu-kun-peng-hui-gui-she-qu-gnu-glibc-de-arm-you-hua-xiao-ji/">
+                <span class="level-item">源于鲲鹏，回归社区：GNU Glibc的ARM优化小记</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 17,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="ARM vs X86 Mysql性能大比拼" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

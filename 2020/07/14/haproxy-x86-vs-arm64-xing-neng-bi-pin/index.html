@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>HAproxy X86 vs ARM64性能比拼 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: wangxiyuan作者: Martin Grigorov原文链接: https:&#x2F;&#x2F;medium.com&#x2F;@martin.grigorov&#x2F;compare-haproxy-performance-on-x86-64-and-arm64-cpu-architectures-bfd55d1d5566 本文是由Apache Tomcat PMC Martin带来的Haproxy最新版本的性能测">
+<meta property="og:type" content="article">
+<meta property="og:title" content="HAproxy X86 vs ARM64性能比拼">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/07/14/haproxy-x86-vs-arm64-xing-neng-bi-pin/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: wangxiyuan作者: Martin Grigorov原文链接: https:&#x2F;&#x2F;medium.com&#x2F;@martin.grigorov&#x2F;compare-haproxy-performance-on-x86-64-and-arm64-cpu-architectures-bfd55d1d5566 本文是由Apache Tomcat PMC Martin带来的Haproxy最新版本的性能测">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-07-14T03:20:58.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="Web">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="HAproxy X86 vs ARM64性能比拼" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="HAproxy X86 vs ARM64性能比拼" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-07-14T03:20:58.000Z">2020-07-14</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/Web/">Web</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                HAproxy X86 vs ARM64性能比拼
+            
+        </h1>
+        <div class="content">
+            <p>译者: <a href="https://github.com/wangxiyuan">wangxiyuan</a><br>作者: <a href="https://github.com/martin-g">Martin Grigorov</a><br>原文链接: <a href="https://medium.com/@martin.grigorov/compare-haproxy-performance-on-x86-64-and-arm64-cpu-architectures-bfd55d1d5566">https://medium.com/@martin.grigorov/compare-haproxy-performance-on-x86-64-and-arm64-cpu-architectures-bfd55d1d5566</a></p>
+<p>本文是由Apache Tomcat PMC Martin带来的Haproxy最新版本的性能测试报告。</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<p>HAProxy v2.2在几天前刚刚<a href="https://www.haproxy.com/fr/blog/announcing-haproxy-2-2/">发布</a>，所以我决定在 x86_64和 aarch64 虚拟机上对它运行<a href="https://medium.com/@martin.grigorov/compare-apache-tomcat-performance-on-x86-64-and-arm64-cpu-architectures-aacfbb0b5bb6">负载测试</a>:</p>
+<ul>
+<li>x86_64</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">Architecture:                    x86_64</span><br><span class="line">CPU op-mode(s):                  32-bit, 64-bit</span><br><span class="line">Byte Order:                      Little Endian</span><br><span class="line">Address sizes:                   42 bits physical, 48 bits virtual</span><br><span class="line">CPU(s):                          8</span><br><span class="line">On-line CPU(s) list:             0-7</span><br><span class="line">Thread(s) per core:              2</span><br><span class="line">Core(s) per socket:              4</span><br><span class="line">Socket(s):                       1</span><br><span class="line">NUMA node(s):                    1</span><br><span class="line">Vendor ID:                       GenuineIntel</span><br><span class="line">CPU family:                      6</span><br><span class="line">Model:                           85</span><br><span class="line">Model name:                      Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz</span><br><span class="line">Stepping:                        7</span><br><span class="line">CPU MHz:                         3000.000</span><br><span class="line">BogoMIPS:                        6000.00</span><br><span class="line">Hypervisor vendor:               KVM</span><br><span class="line">Virtualization type:             full</span><br><span class="line">L1d cache:                       128 KiB</span><br><span class="line">L1i cache:                       128 KiB</span><br><span class="line">L2 cache:                        4 MiB</span><br><span class="line">L3 cache:                        30.3 MiB</span><br><span class="line">NUMA node0 CPU(s):               0-7</span><br><span class="line">Flags:                           fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nons</span><br><span class="line">                                 top_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowpref</span><br><span class="line">                                 etch invpcid_single ssbd ibrs ibpb stibp ibrs_enhanced fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm mpx avx512f avx512dq rdseed adx smap clflushopt clwb avx51</span><br><span class="line">                                 2cd avx512bw avx512vl xsaveopt xsavec xgetbv1 arat avx512_vnni md_clear flush_l1d arch_capabilities</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>aarch64</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">Architecture:                    aarch64</span><br><span class="line">CPU op-mode(s):                  64-bit</span><br><span class="line">Byte Order:                      Little Endian</span><br><span class="line">CPU(s):                          8</span><br><span class="line">On-line CPU(s) list:             0-7</span><br><span class="line">Thread(s) per core:              1</span><br><span class="line">Core(s) per socket:              8</span><br><span class="line">Socket(s):                       1</span><br><span class="line">NUMA node(s):                    1</span><br><span class="line">Vendor ID:                       0x48</span><br><span class="line">Model:                           0</span><br><span class="line">Stepping:                        0x1</span><br><span class="line">CPU max MHz:                     2400.0000</span><br><span class="line">CPU min MHz:                     2400.0000</span><br><span class="line">BogoMIPS:                        200.00</span><br><span class="line">L1d cache:                       512 KiB</span><br><span class="line">L1i cache:                       512 KiB</span><br><span class="line">L2 cache:                        4 MiB</span><br><span class="line">L3 cache:                        32 MiB</span><br><span class="line">NUMA node0 CPU(s):               0-7</span><br><span class="line">Flags:                           fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma dcpop asimddp asimdfhm</span><br></pre></td></tr></table></figure>
+
+<p>注意: 我尽可能的让虚拟机的硬件配置更接近，即使用相同的 RAM 类型和大小、相同的磁盘、网卡和带宽。此外，cpu 尽可能相似，但难免有一些差异：</p>
+<ul>
+<li>CPU 频率: 3000 MHz (x86 _ 64) vs 2400 MHz (aarch64)</li>
+<li>BogoMIPS: 6000(x86 _ 64) vs 200(aarch64)</li>
+<li>一级缓存: 128 KiB (x86 _ 64) vs 512 KiB (aarch64)</li>
+</ul>
+<p>两个虚拟机都运行在最新版的Ubuntu 20.04上。</p>
+<p>我的HAProxy 是从<a href="https://github.com/haproxy/haproxy">master</a>分支的源代码构建的，代码与HAProxy v2.2的几乎没有区别。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line">HA-Proxy version 2.3-dev0 2020&#x2F;07&#x2F;07 - https:&#x2F;&#x2F;haproxy.org&#x2F;</span><br><span class="line">Status: development branch - not safe for use in production.</span><br><span class="line">Known bugs: https:&#x2F;&#x2F;github.com&#x2F;haproxy&#x2F;haproxy&#x2F;issues?q&#x3D;is:issue+is:open</span><br><span class="line">Running on: Linux 5.4.0-40-generic #44-Ubuntu SMP Mon Jun 22 23:59:48 UTC 2020 aarch64</span><br><span class="line">Build options :</span><br><span class="line">  TARGET  &#x3D; linux-glibc</span><br><span class="line">  CPU     &#x3D; generic</span><br><span class="line">  CC      &#x3D; clang-9</span><br><span class="line">  CFLAGS  &#x3D; -O2 -Wall -Wextra -Wdeclaration-after-statement -fwrapv -Wno-address-of-packed-member -Wno-unused-label -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-string-plus-int -Wtype-limits -Wshift-negative-value -Wnull-dereference -Werror</span><br><span class="line">  OPTIONS &#x3D; USE_PCRE&#x3D;1 USE_PCRE_JIT&#x3D;1 USE_OPENSSL&#x3D;1 USE_LUA&#x3D;1 USE_ZLIB&#x3D;1 USE_DEVICEATLAS&#x3D;1 USE_51DEGREES&#x3D;1 USE_WURFL&#x3D;1 USE_SYSTEMD&#x3D;1</span><br><span class="line"></span><br><span class="line">Feature list : +EPOLL -KQUEUE +NETFILTER +PCRE +PCRE_JIT -PCRE2 -PCRE2_JIT +POLL -PRIVATE_CACHE +THREAD -PTHREAD_PSHARED +BACKTRACE -STATIC_PCRE -STATIC_PCRE2 +TPROXY +LINUX_TPROXY +LINUX_SPLICE +LIBCRYPT +CRYPT_H +GETADDRINFO +OPENSSL +LUA +FUTEX +ACCEPT4 +ZLIB -SLZ +CPU_AFFINITY +TFO +NS +DL +RT +DEVICEATLAS +51DEGREES +WURFL +SYSTEMD -OBSOLETE_LINKER +PRCTL +THREAD_DUMP -EVPORTS</span><br><span class="line"></span><br><span class="line">Default settings :</span><br><span class="line">  bufsize &#x3D; 16384, maxrewrite &#x3D; 1024, maxpollevents &#x3D; 200</span><br><span class="line"></span><br><span class="line">Built with multi-threading support (MAX_THREADS&#x3D;64, default&#x3D;8).</span><br><span class="line">Built with OpenSSL version : OpenSSL 1.1.1f  31 Mar 2020</span><br><span class="line">Running on OpenSSL version : OpenSSL 1.1.1f  31 Mar 2020</span><br><span class="line">OpenSSL library supports TLS extensions : yes</span><br><span class="line">OpenSSL library supports SNI : yes</span><br><span class="line">OpenSSL library supports : TLSv1.0 TLSv1.1 TLSv1.2 TLSv1.3</span><br><span class="line">Built with Lua version : Lua 5.3.3</span><br><span class="line">Built with DeviceAtlas support (dummy library only).</span><br><span class="line">Built with 51Degrees Pattern support (dummy library).</span><br><span class="line">Built with WURFL support (dummy library version 1.11.2.100)</span><br><span class="line">Built with network namespace support.</span><br><span class="line">Built with zlib version : 1.2.11</span><br><span class="line">Running on zlib version : 1.2.11</span><br><span class="line">Compression algorithms supported : identity(&quot;identity&quot;), deflate(&quot;deflate&quot;), raw-deflate(&quot;deflate&quot;), gzip(&quot;gzip&quot;)</span><br><span class="line">Built with transparent proxy support using: IP_TRANSPARENT IPV6_TRANSPARENT IP_FREEBIND</span><br><span class="line">Built with PCRE version : 8.39 2016-06-14</span><br><span class="line">Running on PCRE version : 8.39 2016-06-14</span><br><span class="line">PCRE library supports JIT : yes</span><br><span class="line">Encrypted password support via crypt(3): yes</span><br><span class="line">Built with clang compiler version 9.0.1 </span><br><span class="line"></span><br><span class="line">Available polling systems :</span><br><span class="line">      epoll : pref&#x3D;300,  test result OK</span><br><span class="line">       poll : pref&#x3D;200,  test result OK</span><br><span class="line">     select : pref&#x3D;150,  test result OK</span><br><span class="line">Total: 3 (3 usable), will use epoll.</span><br><span class="line"></span><br><span class="line">Available multiplexer protocols :</span><br><span class="line">(protocols marked as &lt;default&gt; cannot be specified using &#39;proto&#39; keyword)</span><br><span class="line">            fcgi : mode&#x3D;HTTP       side&#x3D;BE        mux&#x3D;FCGI</span><br><span class="line">       &lt;default&gt; : mode&#x3D;HTTP       side&#x3D;FE|BE     mux&#x3D;H1</span><br><span class="line">              h2 : mode&#x3D;HTTP       side&#x3D;FE|BE     mux&#x3D;H2</span><br><span class="line">       &lt;default&gt; : mode&#x3D;TCP        side&#x3D;FE|BE     mux&#x3D;PASS</span><br><span class="line"></span><br><span class="line">Available services : none</span><br><span class="line"></span><br><span class="line">Available filters :</span><br><span class="line">	[SPOE] spoe</span><br><span class="line">	[COMP] compression</span><br><span class="line">	[TRACE] trace</span><br><span class="line">	[CACHE] cache</span><br><span class="line">	[FCGI] fcgi-app</span><br></pre></td></tr></table></figure>
+<p>我已经试图通过遵循我在<a href="https://cbonte.github.io/haproxy-dconv/">官方文档</a>和网络上找到的所有最佳实践来尽可能地优化它。</p>
+<p>HAProxy的配置如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">global</span><br><span class="line">  log stdout format raw local0 err</span><br><span class="line">#  nbproc                            8</span><br><span class="line">  nbthread                          32</span><br><span class="line">  cpu-map                           1&#x2F;all 0-7</span><br><span class="line">  tune.ssl.default-dh-param         2048</span><br><span class="line">  tune.ssl.capture-cipherlist-size  1</span><br><span class="line">  ssl-server-verify                 none</span><br><span class="line">  maxconn                           32748</span><br><span class="line">  daemon</span><br><span class="line"></span><br><span class="line">defaults</span><br><span class="line">  timeout client                    60s</span><br><span class="line">  timeout client-fin                 1s</span><br><span class="line">  timeout server                    30s</span><br><span class="line">  timeout server-fin                 1s</span><br><span class="line">  timeout connect                   10s</span><br><span class="line">  timeout http-request              10s</span><br><span class="line">  timeout http-keep-alive           10s</span><br><span class="line">  timeout queue                     10m</span><br><span class="line">  timeout check                     10s</span><br><span class="line">  mode                              http</span><br><span class="line">  log                               global</span><br><span class="line">  option                            dontlog-normal</span><br><span class="line">  option                            httplog</span><br><span class="line">  option                            dontlognull</span><br><span class="line">  option                            http-use-htx</span><br><span class="line">  option                            http-server-close</span><br><span class="line">  option                            http-buffer-request</span><br><span class="line">  option                            redispatch</span><br><span class="line">  retries                           3000</span><br><span class="line"></span><br><span class="line">frontend test_fe</span><br><span class="line">  bind :::8080</span><br><span class="line">  #bind :::8080 ssl crt &#x2F;home&#x2F;ubuntu&#x2F;tests&#x2F;tls&#x2F;server.pem</span><br><span class="line">  default_backend test_be</span><br><span class="line"></span><br><span class="line">backend test_be</span><br><span class="line">  #balance roundrobin</span><br><span class="line">  balance leastconn</span><br><span class="line">  #balance random(2)</span><br><span class="line">  server go1 127.0.0.1:8081 no-check </span><br><span class="line">  server go2 127.0.0.1:8082 no-check</span><br><span class="line">  server go3 127.0.0.1:8083 no-check </span><br><span class="line">  server go4 127.0.0.1:8084 no-check</span><br></pre></td></tr></table></figure>
+
+<p>通过这种方式，HAProxy 被用作四个 HTTP 服务的前端负载均衡器。</p>
+<p>想使用 SSL方式的话，只需要注释掉第34行并取消注释第35行。</p>
+<p>我使用了<a href="https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#nbthread">多线程</a>设置以获得最佳结果。正如文档所说，这是推荐的设置，而且它也使吞吐量提高了近两倍！此外经过我把吞吐量从8个线程增加到16个线程，再从16个线程增加到32个线程的设置后，发现使用32个线程的效果最好，当使用64个线程时吞吐量开始下降。</p>
+<p>我还使用<code>CPU-map 1/all 0-7</code>将线程<a href="https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#cpu-map">固定</a>在同一个 CPU中。</p>
+<p>另一个重要的设置是用于平衡后端的算法。就像Willy Tarreau的<a href="https://www.haproxy.com/blog/power-of-two-load-balancing/">测试</a>一样。</p>
+<p>正如在 HAProxy Enterprice <a href="https://www.haproxy.com/documentation/hapee/1-7r2/configuration/system-tuning/#disable-irqbalance">文档</a>中所推荐的，我已经禁用了<code>irqbalance</code>。</p>
+<p>最后，我应用了以下内核设置:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sudo sysctl -w net.ipv4.ip_local_port_range&#x3D;&quot;1024 65024&quot;</span><br><span class="line">sudo sysctl -w net.ipv4.tcp_max_syn_backlog&#x3D;100000</span><br><span class="line">sudo sysctl -w net.core.netdev_max_backlog&#x3D;100000</span><br><span class="line">sudo sysctl -w net.ipv4.tcp_tw_reuse&#x3D;1</span><br><span class="line">sudo sysctl -w fs.file-max&#x3D;500000</span><br></pre></td></tr></table></figure>
+
+
+<p><code>fs.file-max</code> 也与<code>/etc/security/limits. conf</code>中的一些更改有关:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">root soft nofile 500000</span><br><span class="line">root hard nofile 500000</span><br><span class="line">* soft nofile 500000</span><br><span class="line">* hard nofile 500000</span><br></pre></td></tr></table></figure>
+
+<p>对于后端，我使用了用 Golang 编写的非常简单的 HTTP 服务器。他们只是将“ Hello World”写回客户机，而不从磁盘或网络读/写:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">package main</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; run with: env PORT&#x3D;8081 go run http-server.go</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">    &quot;fmt&quot;</span><br><span class="line">    &quot;log&quot;</span><br><span class="line">    &quot;net&#x2F;http&quot;</span><br><span class="line">    &quot;os&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line"></span><br><span class="line">    port :&#x3D; os.Getenv(&quot;PORT&quot;)</span><br><span class="line">    if port &#x3D;&#x3D; &quot;&quot; &#123;</span><br><span class="line">      log.Fatal(&quot;Please specify the HTTP port as environment variable, e.g. env PORT&#x3D;8081 go run http-server.go&quot;)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    http.HandleFunc(&quot;&#x2F;&quot;, func(w http.ResponseWriter, r *http.Request)&#123;</span><br><span class="line">        fmt.Fprintf(w, &quot;Hello World&quot;)</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    log.Fatal(http.ListenAndServe(&quot;:&quot; + port, nil))</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对用负载测试客户端，我使用了与<a href="https://medium.com/@martin.grigorov/compare-apache-tomcat-performance-on-x86-64-and-arm64-cpu-architectures-aacfbb0b5bb6">测试Apache Tomcat</a>相同设置的<a href="https://github.com/wg/wrk">WRK</a>。</p>
+<p>结果如下:</p>
+<ul>
+<li>aarch64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line"> 8 threads and 96 connections</span><br><span class="line"> Thread Stats Avg    Stdev   Max +&#x2F;-  Stdev</span><br><span class="line"> Latency     6.67ms  8.82ms 196.74ms  89.85%</span><br><span class="line"> Req&#x2F;Sec     2.60k   337.06   5.79k   75.79%</span><br><span class="line"> 621350 requests in 30.09s, 75.85MB read</span><br><span class="line">Requests&#x2F;sec: 20651.69</span><br><span class="line">Transfer&#x2F;sec: 2.52MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line"> 8 threads and 96 connections</span><br><span class="line"> Thread Stats  Avg    Stdev    Max +&#x2F;-  Stdev</span><br><span class="line"> Latency      3.32ms  4.46ms  75.42ms   94.58%</span><br><span class="line"> Req&#x2F;Sec      4.71k   538.41   8.84k    82.41%</span><br><span class="line"> 1127664 requests in 30.10s, 137.65MB read</span><br><span class="line">Requests&#x2F;sec: 37464.85</span><br><span class="line">Transfer&#x2F;sec: 4.57MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>aarch64, HTTPS</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line"> 8 threads and 96 connections</span><br><span class="line"> Thread Stats    Avg   Stdev    Max +&#x2F;-  Stdev</span><br><span class="line"> Latency       7.92ms  12.50ms  248.52ms 91.18%</span><br><span class="line"> Req&#x2F;Sec       2.42k   338.67   4.34k    80.88%</span><br><span class="line"> 578210 requests in 30.08s, 70.58MB read</span><br><span class="line">Requests&#x2F;sec: 19220.81</span><br><span class="line">Transfer&#x2F;sec: 2.35MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTPS</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line"> 8 threads and 96 connections</span><br><span class="line"> Thread Stats   Avg   Stdev   Max +&#x2F;-  Stdev</span><br><span class="line"> Latency       3.56ms 4.83ms  111.51ms 94.25%</span><br><span class="line"> Req&#x2F;Sec       4.46k  609.37   7.23k   85.60%</span><br><span class="line"> 1066831 requests in 30.07s, 130.23MB read</span><br><span class="line">Requests&#x2F;sec: 35474.26</span><br><span class="line">Transfer&#x2F;sec: 4.33MB</span><br></pre></td></tr></table></figure>
+
+<p>我们可以发现：</p>
+<ul>
+<li>在 x86_64 VM 上，HAProxy 的速度几乎是 aarch64 VM 的两倍。</li>
+<li>并且 TLS offloading减少了5-8% 的吞吐量</li>
+</ul>
+<hr>
+<p><strong>更新1</strong>(2020年7月10日) : 为了确定基于 Golang 的 HTTP 服务器是否是上述测试中的瓶颈，我决定直接针对一个后端(即跳过 HAProxy)运行相同的 WRK 负载测试。</p>
+<ul>
+<li>aarch64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency   615.31us  586.70us  22.44ms   90.61%</span><br><span class="line">    Req&#x2F;Sec    20.05k     1.57k   42.29k    73.62%</span><br><span class="line">  4794299 requests in 30.09s, 585.24MB read</span><br><span class="line">Requests&#x2F;sec: 159319.75</span><br><span class="line">Transfer&#x2F;sec:     19.45MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency   774.24us  484.99us  36.43ms   97.04%</span><br><span class="line">    Req&#x2F;Sec    15.28k   413.04    16.89k    73.57%</span><br><span class="line">  3658911 requests in 30.10s, 446.64MB read</span><br><span class="line">Requests&#x2F;sec: 121561.40</span><br><span class="line">Transfer&#x2F;sec:     14.84MB</span><br></pre></td></tr></table></figure>
+
+<p>在这里我们看到运行在 aarch64上的 HTTP 服务比运行在 x86– 64上的要快30% ！</p>
+<p>更重要的观察结果是，当根本不使用负载均衡器时，arm64的吞吐量要好几倍！我认为问题在于我的设置ーー HAProxy 和4个后端服务器都运行在同一个虚拟机上，所以它们在争夺资源！下面我计划把Golang服务固定到他们自己的 CPU 核心上，让 HAProxy 只使用其他4个 CPU 核心！敬请期待最新消息！</p>
+<hr>
+<p><strong>更新2</strong>(2020年7月10日) :</p>
+<p>为了将进程固定到特定的 cpu，我将使用<code>numactl</code>。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">$ numactl — hardware</span><br><span class="line">available: 1 nodes (0)</span><br><span class="line">node 0 cpus: 0 1 2 3 4 5 6 7</span><br><span class="line">node 0 size: 16012 MB</span><br><span class="line">node 0 free: 170 MB</span><br><span class="line">node distances:</span><br><span class="line">node 0</span><br><span class="line">0: 10</span><br></pre></td></tr></table></figure>
+
+<p>我已经将 Golang HTTP 服务固定在以下几个方面:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">numactl — cpunodebind&#x3D;0 — membind&#x3D;0 — physcpubind&#x3D;4 env PORT&#x3D;8081 go run etc&#x2F;haproxy&#x2F;load&#x2F;http-server.</span><br><span class="line">go</span><br></pre></td></tr></table></figure>
+
+<p>例如，这个后端实例被固定到 CPU 节点0和物理 CPU 4。其他三个后端服务分别固定在物理 cpu 5、6和7上。</p>
+<p>我还对 HAProxy 的配置做了一些改动:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">nbthread 4</span><br><span class="line">cpu-map 1&#x2F;all 0–3</span><br><span class="line"></span><br><span class="line">Nbthread 4cpu-map 1&#x2F;all 0-3</span><br></pre></td></tr></table></figure>
+
+<p>也就是说，HAProxy 将产生4个线程，它们将被固定到物理 cpu 0-3上。</p>
+<p>通过这些改变，aarch64的结果保持不变:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line">  4 threads and 16 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     1.44ms    2.11ms  36.48ms   88.36%</span><br><span class="line">    Req&#x2F;Sec     4.98k   651.34     6.62k    74.40%</span><br><span class="line">  596102 requests in 30.10s, 72.77MB read</span><br><span class="line">Requests&#x2F;sec:  19804.19</span><br><span class="line">Transfer&#x2F;sec:      2.42MB</span><br></pre></td></tr></table></figure>
+
+<p>但是 x86_64下降了:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line">  4 threads and 16 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency   767.40us  153.24us  19.07ms   97.72%</span><br><span class="line">    Req&#x2F;Sec     5.21k   173.41     5.51k    63.46%</span><br><span class="line">  623911 requests in 30.10s, 76.16MB read</span><br><span class="line">Requests&#x2F;sec:  20727.89</span><br><span class="line">Transfer&#x2F;sec:      2.53MB</span><br></pre></td></tr></table></figure>
+
+<p>对于 HTTP (没有 TLS)也是如此:</p>
+<ul>
+<li>aarch64</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.232:8080                                                                                                                                                                   </span><br><span class="line">  4 threads and 16 connections                                                                                                                                                                                 </span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev                                                                                                                                                            </span><br><span class="line">    Latency     1.40ms    2.16ms  36.55ms   88.08%                                                                                                                                                             </span><br><span class="line">    Req&#x2F;Sec     5.55k   462.65     6.97k    69.85%                                                                                                                                                             </span><br><span class="line">  665269 requests in 30.10s, 81.21MB read                                                                                                                                                                      </span><br><span class="line">Requests&#x2F;sec:  22102.12                                                                                                                                                                                        </span><br><span class="line">Transfer&#x2F;sec:      2.70MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.206:8080                                                                                                                                                                   </span><br><span class="line">  4 threads and 16 connections                                                                                                                                                                                 </span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev                                                                                                                                                            </span><br><span class="line">    Latency   726.01us  125.04us   6.42ms   93.95%                                                                                                                                                             </span><br><span class="line">    Req&#x2F;Sec     5.51k   165.80     5.80k    57.24%                                                                                                                                                             </span><br><span class="line">  658777 requests in 30.10s, 80.42MB read                                                                                                                                                                      </span><br><span class="line">Requests&#x2F;sec:  21886.50                                                                                                                                                                                        </span><br><span class="line">Transfer&#x2F;sec:      2.67MB</span><br></pre></td></tr></table></figure>
+
+<p>因此，现在 HAProxy 在 aarch64上的速度比 x86_64稍快一些，但仍然远远低于每秒120000多个请求的“空负载均衡器”方法。</p>
+<hr>
+<p><strong>更新3</strong>(2020年7月10日) : 在看到 Golang HTTP 服务的性能非常好(120-160K reqs/sec)并简化设置之后，我决定从 Update 2中删除 CPU固定，并使用来自其他 VM 的后端，例如，当在aarch64虚拟机上运行HAProxy时，它将在x86_64上运行的后端之间进行负载均衡；当使用WRK在x86_64上运行HAProxy时，它将使用aarch64虚拟机上运行的 Golang HTTP服务。以下是新的结果：</p>
+<ul>
+<li>aarch64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     6.33ms    4.93ms  76.85ms   89.14%</span><br><span class="line">    Req&#x2F;Sec     2.10k   316.84     3.52k    74.50%</span><br><span class="line">  501840 requests in 30.07s, 61.26MB read</span><br><span class="line">Requests&#x2F;sec:  16688.53</span><br><span class="line">Transfer&#x2F;sec:      2.04MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     5.32ms    6.71ms  71.29ms   90.25%</span><br><span class="line">    Req&#x2F;Sec     3.26k   639.12     4.14k    65.52%</span><br><span class="line">  779297 requests in 30.08s, 95.13MB read</span><br><span class="line">Requests&#x2F;sec:  25908.50</span><br><span class="line">Transfer&#x2F;sec:      3.16MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>aarch64, HTTPS</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     6.17ms    5.41ms 292.21ms   91.08%</span><br><span class="line">    Req&#x2F;Sec     2.13k   238.74     3.85k    86.32%</span><br><span class="line">  506111 requests in 30.09s, 61.78MB read</span><br><span class="line">Requests&#x2F;sec:  16821.60</span><br><span class="line">Transfer&#x2F;sec:      2.05MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTPS</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     3.40ms    2.54ms  58.66ms   97.27%</span><br><span class="line">    Req&#x2F;Sec     3.82k   385.85     4.55k    92.10%</span><br><span class="line">  914329 requests in 30.10s, 111.61MB read</span><br><span class="line">Requests&#x2F;sec:  30376.95</span><br><span class="line">Transfer&#x2F;sec:      3.71MB</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p>祝你黑客生活愉快，注意安全！</p>
+</div>
+<div id="English" class="tab-content">
+
+<p>HAProxy 2.2 has been <a href="https://www.haproxy.com/fr/blog/announcing-haproxy-2-2/">released</a> few days ago so I’ve decided to run <a href="https://medium.com/@martin.grigorov/compare-apache-tomcat-performance-on-x86-64-and-arm64-cpu-architectures-aacfbb0b5bb6">my load tests</a> against it on my x86_64 and aarch64 VMs:</p>
+<ul>
+<li>x86_64</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">Architecture:                    x86_64</span><br><span class="line">CPU op-mode(s):                  32-bit, 64-bit</span><br><span class="line">Byte Order:                      Little Endian</span><br><span class="line">Address sizes:                   42 bits physical, 48 bits virtual</span><br><span class="line">CPU(s):                          8</span><br><span class="line">On-line CPU(s) list:             0-7</span><br><span class="line">Thread(s) per core:              2</span><br><span class="line">Core(s) per socket:              4</span><br><span class="line">Socket(s):                       1</span><br><span class="line">NUMA node(s):                    1</span><br><span class="line">Vendor ID:                       GenuineIntel</span><br><span class="line">CPU family:                      6</span><br><span class="line">Model:                           85</span><br><span class="line">Model name:                      Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz</span><br><span class="line">Stepping:                        7</span><br><span class="line">CPU MHz:                         3000.000</span><br><span class="line">BogoMIPS:                        6000.00</span><br><span class="line">Hypervisor vendor:               KVM</span><br><span class="line">Virtualization type:             full</span><br><span class="line">L1d cache:                       128 KiB</span><br><span class="line">L1i cache:                       128 KiB</span><br><span class="line">L2 cache:                        4 MiB</span><br><span class="line">L3 cache:                        30.3 MiB</span><br><span class="line">NUMA node0 CPU(s):               0-7</span><br><span class="line">Flags:                           fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nons</span><br><span class="line">                                 top_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowpref</span><br><span class="line">                                 etch invpcid_single ssbd ibrs ibpb stibp ibrs_enhanced fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm mpx avx512f avx512dq rdseed adx smap clflushopt clwb avx51</span><br><span class="line">                                 2cd avx512bw avx512vl xsaveopt xsavec xgetbv1 arat avx512_vnni md_clear flush_l1d arch_capabilities</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>aarch64</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">Architecture:                    aarch64</span><br><span class="line">CPU op-mode(s):                  64-bit</span><br><span class="line">Byte Order:                      Little Endian</span><br><span class="line">CPU(s):                          8</span><br><span class="line">On-line CPU(s) list:             0-7</span><br><span class="line">Thread(s) per core:              1</span><br><span class="line">Core(s) per socket:              8</span><br><span class="line">Socket(s):                       1</span><br><span class="line">NUMA node(s):                    1</span><br><span class="line">Vendor ID:                       0x48</span><br><span class="line">Model:                           0</span><br><span class="line">Stepping:                        0x1</span><br><span class="line">CPU max MHz:                     2400.0000</span><br><span class="line">CPU min MHz:                     2400.0000</span><br><span class="line">BogoMIPS:                        200.00</span><br><span class="line">L1d cache:                       512 KiB</span><br><span class="line">L1i cache:                       512 KiB</span><br><span class="line">L2 cache:                        4 MiB</span><br><span class="line">L3 cache:                        32 MiB</span><br><span class="line">NUMA node0 CPU(s):               0-7</span><br><span class="line">Flags:                           fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma dcpop asimddp asimdfhm</span><br></pre></td></tr></table></figure>
+
+<p>Note: the VMs are as close as possible in their hardware capabilities — same type and amount of RAM, same disks, network cards and bandwidth. Also the CPUs are as similar as possible but there are some differences</p>
+<ul>
+<li>the CPU frequency: 3000 MHz (x86_64) vs 2400 MHz (aarch64)</li>
+<li>BogoMIPS: 6000 (x86_64) vs 200 (aarch64)</li>
+<li>Level 1 caches: 128 KiB (x86_64) vs 512 KiB (aarch64)</li>
+</ul>
+<p>Both VMs run Ubuntu 20.04 with latest software updates.</p>
+<p>HAProxy is built from source for the <a href="https://github.com/haproxy/haproxy">master</a> branch, so it might have few changes since the cut of haproxy-2.2 tag!</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><span class="line">HA-Proxy version 2.3-dev0 2020&#x2F;07&#x2F;07 - https:&#x2F;&#x2F;haproxy.org&#x2F;</span><br><span class="line">Status: development branch - not safe for use in production.</span><br><span class="line">Known bugs: https:&#x2F;&#x2F;github.com&#x2F;haproxy&#x2F;haproxy&#x2F;issues?q&#x3D;is:issue+is:open</span><br><span class="line">Running on: Linux 5.4.0-40-generic #44-Ubuntu SMP Mon Jun 22 23:59:48 UTC 2020 aarch64</span><br><span class="line">Build options :</span><br><span class="line">  TARGET  &#x3D; linux-glibc</span><br><span class="line">  CPU     &#x3D; generic</span><br><span class="line">  CC      &#x3D; clang-9</span><br><span class="line">  CFLAGS  &#x3D; -O2 -Wall -Wextra -Wdeclaration-after-statement -fwrapv -Wno-address-of-packed-member -Wno-unused-label -Wno-sign-compare -Wno-unused-parameter -Wno-missing-field-initializers -Wno-string-plus-int -Wtype-limits -Wshift-negative-value -Wnull-dereference -Werror</span><br><span class="line">  OPTIONS &#x3D; USE_PCRE&#x3D;1 USE_PCRE_JIT&#x3D;1 USE_OPENSSL&#x3D;1 USE_LUA&#x3D;1 USE_ZLIB&#x3D;1 USE_DEVICEATLAS&#x3D;1 USE_51DEGREES&#x3D;1 USE_WURFL&#x3D;1 USE_SYSTEMD&#x3D;1</span><br><span class="line"></span><br><span class="line">Feature list : +EPOLL -KQUEUE +NETFILTER +PCRE +PCRE_JIT -PCRE2 -PCRE2_JIT +POLL -PRIVATE_CACHE +THREAD -PTHREAD_PSHARED +BACKTRACE -STATIC_PCRE -STATIC_PCRE2 +TPROXY +LINUX_TPROXY +LINUX_SPLICE +LIBCRYPT +CRYPT_H +GETADDRINFO +OPENSSL +LUA +FUTEX +ACCEPT4 +ZLIB -SLZ +CPU_AFFINITY +TFO +NS +DL +RT +DEVICEATLAS +51DEGREES +WURFL +SYSTEMD -OBSOLETE_LINKER +PRCTL +THREAD_DUMP -EVPORTS</span><br><span class="line"></span><br><span class="line">Default settings :</span><br><span class="line">  bufsize &#x3D; 16384, maxrewrite &#x3D; 1024, maxpollevents &#x3D; 200</span><br><span class="line"></span><br><span class="line">Built with multi-threading support (MAX_THREADS&#x3D;64, default&#x3D;8).</span><br><span class="line">Built with OpenSSL version : OpenSSL 1.1.1f  31 Mar 2020</span><br><span class="line">Running on OpenSSL version : OpenSSL 1.1.1f  31 Mar 2020</span><br><span class="line">OpenSSL library supports TLS extensions : yes</span><br><span class="line">OpenSSL library supports SNI : yes</span><br><span class="line">OpenSSL library supports : TLSv1.0 TLSv1.1 TLSv1.2 TLSv1.3</span><br><span class="line">Built with Lua version : Lua 5.3.3</span><br><span class="line">Built with DeviceAtlas support (dummy library only).</span><br><span class="line">Built with 51Degrees Pattern support (dummy library).</span><br><span class="line">Built with WURFL support (dummy library version 1.11.2.100)</span><br><span class="line">Built with network namespace support.</span><br><span class="line">Built with zlib version : 1.2.11</span><br><span class="line">Running on zlib version : 1.2.11</span><br><span class="line">Compression algorithms supported : identity(&quot;identity&quot;), deflate(&quot;deflate&quot;), raw-deflate(&quot;deflate&quot;), gzip(&quot;gzip&quot;)</span><br><span class="line">Built with transparent proxy support using: IP_TRANSPARENT IPV6_TRANSPARENT IP_FREEBIND</span><br><span class="line">Built with PCRE version : 8.39 2016-06-14</span><br><span class="line">Running on PCRE version : 8.39 2016-06-14</span><br><span class="line">PCRE library supports JIT : yes</span><br><span class="line">Encrypted password support via crypt(3): yes</span><br><span class="line">Built with clang compiler version 9.0.1 </span><br><span class="line"></span><br><span class="line">Available polling systems :</span><br><span class="line">      epoll : pref&#x3D;300,  test result OK</span><br><span class="line">       poll : pref&#x3D;200,  test result OK</span><br><span class="line">     select : pref&#x3D;150,  test result OK</span><br><span class="line">Total: 3 (3 usable), will use epoll.</span><br><span class="line"></span><br><span class="line">Available multiplexer protocols :</span><br><span class="line">(protocols marked as &lt;default&gt; cannot be specified using &#39;proto&#39; keyword)</span><br><span class="line">            fcgi : mode&#x3D;HTTP       side&#x3D;BE        mux&#x3D;FCGI</span><br><span class="line">       &lt;default&gt; : mode&#x3D;HTTP       side&#x3D;FE|BE     mux&#x3D;H1</span><br><span class="line">              h2 : mode&#x3D;HTTP       side&#x3D;FE|BE     mux&#x3D;H2</span><br><span class="line">       &lt;default&gt; : mode&#x3D;TCP        side&#x3D;FE|BE     mux&#x3D;PASS</span><br><span class="line"></span><br><span class="line">Available services : none</span><br><span class="line"></span><br><span class="line">Available filters :</span><br><span class="line">	[SPOE] spoe</span><br><span class="line">	[COMP] compression</span><br><span class="line">	[TRACE] trace</span><br><span class="line">	[CACHE] cache</span><br><span class="line">	[FCGI] fcgi-app</span><br></pre></td></tr></table></figure>
+
+<p>I’ve tried to fine tune it as much as I could by following all best practices I was able to find in the <a href="https://cbonte.github.io/haproxy-dconv/">official documentation</a> and in the web.</p>
+<p>The HAProxy config is:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">global</span><br><span class="line">  log stdout format raw local0 err</span><br><span class="line">#  nbproc                            8</span><br><span class="line">  nbthread                          32</span><br><span class="line">  cpu-map                           1&#x2F;all 0-7</span><br><span class="line">  tune.ssl.default-dh-param         2048</span><br><span class="line">  tune.ssl.capture-cipherlist-size  1</span><br><span class="line">  ssl-server-verify                 none</span><br><span class="line">  maxconn                           32748</span><br><span class="line">  daemon</span><br><span class="line"></span><br><span class="line">defaults</span><br><span class="line">  timeout client                    60s</span><br><span class="line">  timeout client-fin                 1s</span><br><span class="line">  timeout server                    30s</span><br><span class="line">  timeout server-fin                 1s</span><br><span class="line">  timeout connect                   10s</span><br><span class="line">  timeout http-request              10s</span><br><span class="line">  timeout http-keep-alive           10s</span><br><span class="line">  timeout queue                     10m</span><br><span class="line">  timeout check                     10s</span><br><span class="line">  mode                              http</span><br><span class="line">  log                               global</span><br><span class="line">  option                            dontlog-normal</span><br><span class="line">  option                            httplog</span><br><span class="line">  option                            dontlognull</span><br><span class="line">  option                            http-use-htx</span><br><span class="line">  option                            http-server-close</span><br><span class="line">  option                            http-buffer-request</span><br><span class="line">  option                            redispatch</span><br><span class="line">  retries                           3000</span><br><span class="line"></span><br><span class="line">frontend test_fe</span><br><span class="line">  bind :::8080</span><br><span class="line">  #bind :::8080 ssl crt &#x2F;home&#x2F;ubuntu&#x2F;tests&#x2F;tls&#x2F;server.pem</span><br><span class="line">  default_backend test_be</span><br><span class="line"></span><br><span class="line">backend test_be</span><br><span class="line">  #balance roundrobin</span><br><span class="line">  balance leastconn</span><br><span class="line">  #balance random(2)</span><br><span class="line">  server go1 127.0.0.1:8081 no-check </span><br><span class="line">  server go2 127.0.0.1:8082 no-check</span><br><span class="line">  server go3 127.0.0.1:8083 no-check </span><br><span class="line">  server go4 127.0.0.1:8084 no-check</span><br></pre></td></tr></table></figure>
+
+<p>This way HAProxy is used as a load balancer in front of four HTTP servers.</p>
+<p>To also use it as a SSL terminator one just needs to comment out line 34 and uncomment line 35.</p>
+<p>The best results I’ve achieved by using the <a href="https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#nbthread">multithreaded</a> setup. As the documentation says this is the recommended setup anyway but it also gave me almost twice better throughput! In addition the best results were with 32 threads. The throughput was increasing from 8 to 16 and from 16 to 32, but dropped when used 64 threads.</p>
+<p>I’ve also <a href="https://cbonte.github.io/haproxy-dconv/2.2/configuration.html#cpu-map">pinned</a> the threads to stay at the same CPU for its lifetime with <code>cpu-map 1/all 0–7</code>.</p>
+<p>The other important setting is the algorithm to use to balance between the backends. Just like in Willy Tarreau’s <a href="https://www.haproxy.com/blog/power-of-two-load-balancing/">tests</a> for me <code>leastconn</code> gave the best performance.</p>
+<p>As recommended at HAProxy Enterprice <a href="https://www.haproxy.com/documentation/hapee/1-7r2/configuration/system-tuning/#disable-irqbalance">documentation</a> I’ve disabled <code>irqbalance</code>.</p>
+<p>Finally I’ve applied the following kernel settings:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">sudo sysctl -w net.ipv4.ip_local_port_range&#x3D;&quot;1024 65024&quot;</span><br><span class="line">sudo sysctl -w net.ipv4.tcp_max_syn_backlog&#x3D;100000</span><br><span class="line">sudo sysctl -w net.core.netdev_max_backlog&#x3D;100000</span><br><span class="line">sudo sysctl -w net.ipv4.tcp_tw_reuse&#x3D;1</span><br><span class="line">sudo sysctl -w fs.file-max&#x3D;500000</span><br></pre></td></tr></table></figure>
+
+<p><code>fs.file-max</code> is related also with a change in <code>/etc/security/limits.conf</code>:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">root soft nofile 500000</span><br><span class="line">root hard nofile 500000</span><br><span class="line">* soft nofile 500000</span><br><span class="line">* hard nofile 500000</span><br></pre></td></tr></table></figure>
+
+<p>For backend I used very simple HTTP servers written in Golang. They just write “Hello World” back to the client without reading/writing from/to disk or to the network:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">package main</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F; run with: env PORT&#x3D;8081 go run http-server.go</span><br><span class="line"></span><br><span class="line">import (</span><br><span class="line">    &quot;fmt&quot;</span><br><span class="line">    &quot;log&quot;</span><br><span class="line">    &quot;net&#x2F;http&quot;</span><br><span class="line">    &quot;os&quot;</span><br><span class="line">)</span><br><span class="line"></span><br><span class="line">func main() &#123;</span><br><span class="line"></span><br><span class="line">    port :&#x3D; os.Getenv(&quot;PORT&quot;)</span><br><span class="line">    if port &#x3D;&#x3D; &quot;&quot; &#123;</span><br><span class="line">      log.Fatal(&quot;Please specify the HTTP port as environment variable, e.g. env PORT&#x3D;8081 go run http-server.go&quot;)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    http.HandleFunc(&quot;&#x2F;&quot;, func(w http.ResponseWriter, r *http.Request)&#123;</span><br><span class="line">        fmt.Fprintf(w, &quot;Hello World&quot;)</span><br><span class="line">    &#125;)</span><br><span class="line"></span><br><span class="line">    log.Fatal(http.ListenAndServe(&quot;:&quot; + port, nil))</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>As load testing client I have used <a href="https://github.com/wg/wrk">WRK</a> with the same setup as for <a href="https://medium.com/@martin.grigorov/compare-apache-tomcat-performance-on-x86-64-and-arm64-cpu-architectures-aacfbb0b5bb6">testing Apache Tomcat</a>.</p>
+<p>And now the results:</p>
+<ul>
+<li>aarch64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line"> 8 threads and 96 connections</span><br><span class="line"> Thread Stats Avg    Stdev   Max +&#x2F;-  Stdev</span><br><span class="line"> Latency     6.67ms  8.82ms 196.74ms  89.85%</span><br><span class="line"> Req&#x2F;Sec     2.60k   337.06   5.79k   75.79%</span><br><span class="line"> 621350 requests in 30.09s, 75.85MB read</span><br><span class="line">Requests&#x2F;sec: 20651.69</span><br><span class="line">Transfer&#x2F;sec: 2.52MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line"> 8 threads and 96 connections</span><br><span class="line"> Thread Stats  Avg    Stdev    Max +&#x2F;-  Stdev</span><br><span class="line"> Latency      3.32ms  4.46ms  75.42ms   94.58%</span><br><span class="line"> Req&#x2F;Sec      4.71k   538.41   8.84k    82.41%</span><br><span class="line"> 1127664 requests in 30.10s, 137.65MB read</span><br><span class="line">Requests&#x2F;sec: 37464.85</span><br><span class="line">Transfer&#x2F;sec: 4.57MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>aarch64, HTTPS</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line"> 8 threads and 96 connections</span><br><span class="line"> Thread Stats    Avg   Stdev    Max +&#x2F;-  Stdev</span><br><span class="line"> Latency       7.92ms  12.50ms  248.52ms 91.18%</span><br><span class="line"> Req&#x2F;Sec       2.42k   338.67   4.34k    80.88%</span><br><span class="line"> 578210 requests in 30.08s, 70.58MB read</span><br><span class="line">Requests&#x2F;sec: 19220.81</span><br><span class="line">Transfer&#x2F;sec: 2.35MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTPS</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line"> 8 threads and 96 connections</span><br><span class="line"> Thread Stats   Avg   Stdev   Max +&#x2F;-  Stdev</span><br><span class="line"> Latency       3.56ms 4.83ms  111.51ms 94.25%</span><br><span class="line"> Req&#x2F;Sec       4.46k  609.37   7.23k   85.60%</span><br><span class="line"> 1066831 requests in 30.07s, 130.23MB read</span><br><span class="line">Requests&#x2F;sec: 35474.26</span><br><span class="line">Transfer&#x2F;sec: 4.33MB</span><br></pre></td></tr></table></figure>
+
+<p>What we see here is:</p>
+<ul>
+<li>that HAProxy is almost twice faster on the x86_64 VM than the aarch64 VM!</li>
+<li>and also that TLS offloading decreases the throughput with around 5–8%</li>
+</ul>
+<hr>
+<p><strong>Update 1</strong> (Jul 10 2020): To see whether the Golang based HTTP servers are not the bottleneck in the above testing I’ve decided to run the same WRK load tests directly against <strong>one</strong> of the backends, i.e. skip HAProxy.</p>
+<ul>
+<li>aarch64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency   615.31us  586.70us  22.44ms   90.61%</span><br><span class="line">    Req&#x2F;Sec    20.05k     1.57k   42.29k    73.62%</span><br><span class="line">  4794299 requests in 30.09s, 585.24MB read</span><br><span class="line">Requests&#x2F;sec: 159319.75</span><br><span class="line">Transfer&#x2F;sec:     19.45MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency   774.24us  484.99us  36.43ms   97.04%</span><br><span class="line">    Req&#x2F;Sec    15.28k   413.04    16.89k    73.57%</span><br><span class="line">  3658911 requests in 30.10s, 446.64MB read</span><br><span class="line">Requests&#x2F;sec: 121561.40</span><br><span class="line">Transfer&#x2F;sec:     14.84MB</span><br></pre></td></tr></table></figure>
+
+<p>Here we see that the HTTP server running on aarch64 is around 30% faster than on x86_64!</p>
+<p>And the more important observation is that the throughput is several times better when not using load balancer at all! I think the problem here is in my setup — both HAProxy and the 4 backend servers run on the same VM, so they fight for resources! I will pin the Golang servers to their own CPU cores and let HAProxy use only the other 4 CPU cores! Stay tuned for an update!</p>
+<hr>
+<p><strong>Update 2</strong> (Jul 10 2020):</p>
+<p>To pin the processes to specific CPUs I will use <code>numactl</code>.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">$ numactl — hardware</span><br><span class="line">available: 1 nodes (0)</span><br><span class="line">node 0 cpus: 0 1 2 3 4 5 6 7</span><br><span class="line">node 0 size: 16012 MB</span><br><span class="line">node 0 free: 170 MB</span><br><span class="line">node distances:</span><br><span class="line">node 0</span><br><span class="line">0: 10</span><br></pre></td></tr></table></figure>
+
+<p>I’ve pinned the Golang HTTP servers with:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">numactl — cpunodebind&#x3D;0 — membind&#x3D;0 — physcpubind&#x3D;4 env PORT&#x3D;8081 go run etc&#x2F;haproxy&#x2F;load&#x2F;http-server.</span><br><span class="line">go</span><br></pre></td></tr></table></figure>
+
+<p>i.e. this backend instance is pinned to CPU node 0 and to physical CPU 4. The other three backend servers are pinned respectively to physical CPUs 5, 6 and 7.</p>
+<p>Also I’ve changed slightly the HAProxy configuration:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">nbthread 4</span><br><span class="line">cpu-map 1&#x2F;all 0–3</span><br><span class="line"></span><br><span class="line">Nbthread 4cpu-map 1&#x2F;all 0-3</span><br></pre></td></tr></table></figure>
+
+<p>i.e. HAProxy will spawn 4 threads and they will be pinned to physical CPUs 0–3.</p>
+<p>With these changes the results stayed the same for aarch64:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line">  4 threads and 16 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     1.44ms    2.11ms  36.48ms   88.36%</span><br><span class="line">    Req&#x2F;Sec     4.98k   651.34     6.62k    74.40%</span><br><span class="line">  596102 requests in 30.10s, 72.77MB read</span><br><span class="line">Requests&#x2F;sec:  19804.19</span><br><span class="line">Transfer&#x2F;sec:      2.42MB</span><br></pre></td></tr></table></figure>
+
+<p>but dropped for x86_64:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line">  4 threads and 16 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency   767.40us  153.24us  19.07ms   97.72%</span><br><span class="line">    Req&#x2F;Sec     5.21k   173.41     5.51k    63.46%</span><br><span class="line">  623911 requests in 30.10s, 76.16MB read</span><br><span class="line">Requests&#x2F;sec:  20727.89</span><br><span class="line">Transfer&#x2F;sec:      2.53MB</span><br></pre></td></tr></table></figure>
+
+<p>and same for HTTP (no TLS):</p>
+<ul>
+<li>aarch64</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.232:8080                                                                                                                                                                   </span><br><span class="line">  4 threads and 16 connections                                                                                                                                                                                 </span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev                                                                                                                                                            </span><br><span class="line">    Latency     1.40ms    2.16ms  36.55ms   88.08%                                                                                                                                                             </span><br><span class="line">    Req&#x2F;Sec     5.55k   462.65     6.97k    69.85%                                                                                                                                                             </span><br><span class="line">  665269 requests in 30.10s, 81.21MB read                                                                                                                                                                      </span><br><span class="line">Requests&#x2F;sec:  22102.12                                                                                                                                                                                        </span><br><span class="line">Transfer&#x2F;sec:      2.70MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.206:8080                                                                                                                                                                   </span><br><span class="line">  4 threads and 16 connections                                                                                                                                                                                 </span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev                                                                                                                                                            </span><br><span class="line">    Latency   726.01us  125.04us   6.42ms   93.95%                                                                                                                                                             </span><br><span class="line">    Req&#x2F;Sec     5.51k   165.80     5.80k    57.24%                                                                                                                                                             </span><br><span class="line">  658777 requests in 30.10s, 80.42MB read                                                                                                                                                                      </span><br><span class="line">Requests&#x2F;sec:  21886.50                                                                                                                                                                                        </span><br><span class="line">Transfer&#x2F;sec:      2.67MB</span><br></pre></td></tr></table></figure>
+
+<p>So now HAProxy is a bit faster on aarch64 than on x86_64 but still far slower than the “no load balancer” approach with 120 000+ requests per second.</p>
+<hr>
+<p><strong>Update 3</strong> (Jul 10 2020): After seeing that the performance of the Golang HTTP server is so good (120–160K reqs/sec) and to simplify the setup I’ve decided to remove the CPU pinning from Update 2 and to use the backends from the other VM, i.e. when hitting HAProxy on the aarch64 VM it will load balance between the backends running on the x86_64 and when WRK hits HAProxy running on the x86_64 VM it will use the Golang HTTP servers running on the aarch64 VM. And here are the new results:</p>
+<ul>
+<li>aarch64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     6.33ms    4.93ms  76.85ms   89.14%</span><br><span class="line">    Req&#x2F;Sec     2.10k   316.84     3.52k    74.50%</span><br><span class="line">  501840 requests in 30.07s, 61.26MB read</span><br><span class="line">Requests&#x2F;sec:  16688.53</span><br><span class="line">Transfer&#x2F;sec:      2.04MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTP</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ http:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     5.32ms    6.71ms  71.29ms   90.25%</span><br><span class="line">    Req&#x2F;Sec     3.26k   639.12     4.14k    65.52%</span><br><span class="line">  779297 requests in 30.08s, 95.13MB read</span><br><span class="line">Requests&#x2F;sec:  25908.50</span><br><span class="line">Transfer&#x2F;sec:      3.16MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>aarch64, HTTPS</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.232:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     6.17ms    5.41ms 292.21ms   91.08%</span><br><span class="line">    Req&#x2F;Sec     2.13k   238.74     3.85k    86.32%</span><br><span class="line">  506111 requests in 30.09s, 61.78MB read</span><br><span class="line">Requests&#x2F;sec:  16821.60</span><br><span class="line">Transfer&#x2F;sec:      2.05MB</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>x86_64, HTTPS</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">Running 30s test @ https:&#x2F;&#x2F;192.168.0.206:8080</span><br><span class="line">  8 threads and 96 connections</span><br><span class="line">  Thread Stats   Avg      Stdev     Max   +&#x2F;- Stdev</span><br><span class="line">    Latency     3.40ms    2.54ms  58.66ms   97.27%</span><br><span class="line">    Req&#x2F;Sec     3.82k   385.85     4.55k    92.10%</span><br><span class="line">  914329 requests in 30.10s, 111.61MB read</span><br><span class="line">Requests&#x2F;sec:  30376.95</span><br><span class="line">Transfer&#x2F;sec:      3.71MB</span><br></pre></td></tr></table></figure>
+
+<hr>
+<p>Happy hacking and stay safe!</p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/Web/" rel="tag">Web</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/08/04/backtraces-in-postgresql/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">Backtraces in PostgreSQL</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/07/09/yong-mysql-eventmutex-lai-li-jie-nei-cun-ping-zhang-na-xie-shi-er/">
+                <span class="level-item">用MySQL EventMutex来理解内存屏障那些事儿</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 38,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="HAproxy X86 vs ARM64性能比拼" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

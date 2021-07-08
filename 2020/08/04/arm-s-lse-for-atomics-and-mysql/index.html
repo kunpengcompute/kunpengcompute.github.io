@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>ARM&#39;s LSE (for atomics) and MySQL - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;ARM-LSE-and-MySQL&#x2F; 来看Mysql大牛Krunal带你分析LSE在Mysql上的情况。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ARM&#39;s LSE (for atomics) and MySQL">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/08/04/arm-s-lse-for-atomics-and-mysql/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;ARM-LSE-and-MySQL&#x2F; 来看Mysql大牛Krunal带你分析LSE在Mysql上的情况。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-08-04T06:10:00.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="ARM&#39;s LSE (for atomics) and MySQL" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="ARM&#39;s LSE (for atomics) and MySQL" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-08-04T06:10:00.000Z">2020-08-04</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                ARM&#39;s LSE (for atomics) and MySQL
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Krunal Bauskar<br>原文链接: <a href="https://mysqlonarm.github.io/ARM-LSE-and-MySQL/">https://mysqlonarm.github.io/ARM-LSE-and-MySQL/</a></p>
+<p>来看Mysql大牛Krunal带你分析LSE在Mysql上的情况。</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<h1 id="ARM’s-LSE-for-atomics-and-MySQL"><a href="#ARM’s-LSE-for-atomics-and-MySQL" class="headerlink" title="ARM’s LSE (for atomics) and MySQL"></a>ARM’s LSE (for atomics) and MySQL</h1><p>ARM 在其 ARMv8.1规范中引入了 LSE (Large System Extensions)。这意味着如果你的处理器是兼容 ARMv8.1的，它将支持 LSE。LSE 的目的是优化原子指令，通过使用单个 CAS (比较并交换)或 SWP (用于交换)等替换旧式的独占负载存储… … 众所周知，上述扩展本质上会提高使用原子的应用程序的性能。</p>
+<h2 id="理解LSE"><a href="#理解LSE" class="headerlink" title="理解LSE"></a>理解LSE</h2><p>为了更好地理解 LSE，让我们看一个工作示例，看看代码是如何生成的，以及可能的优化。</p>
+<h3 id="LSE-turned-off"><a href="#LSE-turned-off" class="headerlink" title="LSE turned off"></a>LSE turned off</h3><p><img src="https://mysqlonarm.github.io/images/blog10/img1.png" alt="img"><br><img src="https://mysqlonarm.github.io/images/blog10/img2.png" alt="img"></p>
+<p>正如您所看到的，有一个用于执行 CAS 的循环。加载值，检查期望值，如果不同，然后存储值。主循环是一个5步进程与2个独占指令与各自的内存顺序。SWAP 也有一个检查存储是否成功的循环。</p>
+<hr>
+<p>ARM 有多种不同的加载/存储指令，因此在继续之前，让我们花一分钟理解这些变体。</p>
+<p><img src="https://mysqlonarm.github.io/images/blog10/img3.png" alt="img"></p>
+<p><strong>stlxrb:</strong> 与发布语义/排序互斥的存储。提供对上述cacheline的独占访问权。“b”表示字节。（其他 half-word (2), word(4), double-word (8))。</p>
+<p><strong>stlrb:</strong> 与发布语义/排序互斥的存储。帮助建议只进行语义排序，而不进行独占访问。</p>
+<p><strong>strb:</strong> 非原子变量的普通存储(没有排序语义)</p>
+<p>自然有人会问，为什么 <code>seq-cst</code> 和 <code>release memory order</code> 都会产生相同的asm指令。这是因为 ARM-v8中的<strong>store-release in ARM-v8 is multi-copy atomic</strong>，也就是说，如果一个agent看到了存储-释放，那么所有agent 都看到了存储-释放。没有要求普通存储为多拷贝原子存储。[类似于 x86_64中的 mov+fence 或 xchg ]。</p>
+<hr>
+<h3 id="LSE-开启"><a href="#LSE-开启" class="headerlink" title="LSE 开启"></a>LSE 开启</h3><p>所以现在让我们看看如果我们现在打开 lse 会发生什么。LSE 支持是在 ARM-v8.1规范中添加的，因此如果默认编译已经完成，gcc 将尝试使二进制文件与更广泛的 aarch64处理器兼容，并且可能无法启用特定的功能。为了支持 lse 用户需要指定额外的编译标志:</p>
+<p>有多种方式打开lse:</p>
+<ul>
+<li>使用 gcc-6+ 编译，指定 lse 标志为-march = armv8-a+lse</li>
+<li>通过指定 ARMv8.1(或更高版本)使用 gcc-6+ 编译(这将自动启用所有 ARMv8.1功能)。-march = ARMv8.1-a</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog10/img4.png" alt="img"></p>
+<p>不再有 while 循环。单条指令(CASALB)执行比较和交换(负责加载和存储) ，与 SWAPLB 执行交换的方法相同。看起来是进行了优化。更多关于性能的信息请见下文。</p>
+<p>但是有一个问题，如果二进制文件是用 +lse 支持编译的，但是目标计算机不支持 lse，因为它只与 arm-v8兼容。通过引入 <code>-moutline-atomics</code> ，gcc-9.4+ 解决了这个问题(使用<code>-mno-outline-atomics</code>禁用 gcc-10.1启用的默认值)。GCC 自动匹配带有动态检查变量(lse 和 non-lse)的代码。运行时作出决定，并执行相应的变量。</p>
+<p>让我们看看如果使用 gcc-10(使用 <code>-moutline-atomic</code>使其在所有 aarch64机器上兼容)编译会发生什么)</p>
+<table>
+<thead>
+<tr>
+<th align="left">code</th>
+<th align="left">asm (perf output)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">bool expected = true; flag.compare_exchange_strong(expected, false);</td>
+<td align="left">&lt;<strong>aarch64_cas1_acq_rel&gt;: __aarch64_cas1_acq_rel(): │ adrp x16, 11000 &lt;</strong>data_start&gt; │ ldrb w16, [x16, #25] │ ↓ cbz w16, 14 │ casalb w0, w1, [x2] │ ← ret │14: uxtb w16, w0 │ 18: ldaxrb w0, [x2] │ cmp w0, w16 │ ↓ b.ne 2c │ stlxrb w17, w1, [x2] │ ↑ cbnz w17, 18 │2c: ← ret</td>
+</tr>
+</tbody></table>
+<p>请注意用于选择适当逻辑的分支指令(用绿色突出显示)。</p>
+<h2 id="LSE-的表现"><a href="#LSE-的表现" class="headerlink" title="LSE 的表现"></a>LSE 的表现</h2><p>虽然这些听起来很有趣，但是真的有帮助吗？如果新的指令需要更多的周期怎么办。只有一种方法可以找到答案: 基准测试。</p>
+<p>基准测试: 每个线程(总共 n 个线程)都尝试获得锁，这会导致严重的争用。一旦线程拥有了互斥锁，它就会执行基于 crc32的软件，在释放它之前让 cpu 一直处于繁忙状态。每个线程都执行这个流程 m 次。</p>
+<p><img src="https://mysqlonarm.github.io/images/blog10/lse-microbenchmark.png" alt="img"></p>
+<p>Machine: Bare-Metal with 128 cores ARM Kunpeng 920 2.6 Ghz.</p>
+<ul>
+<li>用例表示一个严重的争用，每个线程主要花费时间获得锁。这样的工作负载非常快(crc32在16KB 块上)</li>
+<li>这清楚地证明，LSE严重争用的条件下起到帮助作用。</li>
+</ul>
+<p>但是微基准测试由于应用本身的特性，包括其他重叠部分，如 IO、其他处理元素等，有时不能显示原始应用所需的增益。.现在让我们评估一下lse使能在 MySQL 性能。</p>
+<h3 id="MySQL-benchmarking-with-LSE"><a href="#MySQL-benchmarking-with-LSE" class="headerlink" title="MySQL benchmarking with LSE"></a>MySQL benchmarking with LSE</h3><p>环境描述:</p>
+<ul>
+<li>Server: MySQL-8.0.21, OS: CentOS-7</li>
+<li>Sysbench based point-select, read-only, read-write, update-index and update-non-index workload.</li>
+<li>Executed for higher scalability (&gt;= 64) to explore contention.</li>
+<li>Configuration: 32 cores (single NUMA) ARM Kunpeng 920 2.6 Ghz (28 cores for server, 4 for sysbench)</li>
+<li>Tried 2 use-cases uniform, zipfian (more contention)</li>
+<li>baseline=lse-disabled, lse=lse-enabled (-march=armv8-a+lse).</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog10/sysbench-uniform-lseenabled.png" alt="img"><br><img src="https://mysqlonarm.github.io/images/blog10/sysbench-zipfian-lseenabled.png" alt="img"></p>
+<h3 id="观察结果"><a href="#观察结果" class="headerlink" title="观察结果:"></a>观察结果:</h3><ul>
+<li>在Uniform cases ，使用LSE下，我们几乎看不到任何区别</li>
+<li>在Zipfian cases, LSE对于更新用例，会略微退化，但是始终如一(2-4%).</li>
+</ul>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>LSE 作为特性看起来很有前途，但在 MySQL 用例中确实没有多少提升。可能一旦 MySQL 被调整到使用更多的原子，LSE 可能会显示 +ve 的差异。在那之前，如果不启用 LSE，我们在Mysql不会失去任何性能。</p>
+<p><em>如果有疑问，请联系我，或在下方留言</em></p>
+</div>
+<div id="English" class="tab-content">
+
+<p>ARM introduced LSE (Large System Extensions) as part of its ARMv8.1 specs. This means if your processor is ARMv8.1 compatible it would support LSE. LSE are meant to optimize atomic instructions by replacing the old styled exclusive load-store using a single CAS (compare-and-swap) or SWP (for exchange), etc…. Said extensions are known to inherently increase performance of applications using atomics.</p>
+<h2 id="Understanding-LSE"><a href="#Understanding-LSE" class="headerlink" title="Understanding LSE"></a>Understanding LSE</h2><p>To better understand LSE let’s take a working example to see how the code is generated and possible optimization.</p>
+<h3 id="LSE-turned-off-1"><a href="#LSE-turned-off-1" class="headerlink" title="LSE turned off"></a>LSE turned off</h3><p><img src="https://mysqlonarm.github.io/images/blog10/img1.png" alt="img"><br><img src="https://mysqlonarm.github.io/images/blog10/img2.png" alt="img"></p>
+<p>As you can see there is a loop for doing CAS. Load the value, check with expected value and if different then store the value. Main loop is a 5 step process with 2 exclusive instructions with respective memory ordering. SWAP too has a loop for checking if the store is successful.</p>
+<hr>
+<p>ARM has multiple variant of load/store instructions so before we proceed let’s take a minute to understand these variants.</p>
+<p><img src="https://mysqlonarm.github.io/images/blog10/img3.png" alt="img"></p>
+<p><strong>stlxrb:</strong> store exclusive with release semantics/ordering. Provide exclusive access to the said cache line. “b” represents byte. (other variant half-word (2), word(4), double-word (8)).</p>
+<p><strong>stlrb:</strong> store with release semantics/ordering helping suggest ordering semantics only but not exclusive access.</p>
+<p><strong>strb:</strong> normal store to a non-atomic variable (no ordering semantics)</p>
+<p>Naturally one may ask how come both <code>seq-cst</code> and <code>release memory order</code> generate the same asm instruction. This is because <strong>store-release in ARM-v8 is multi-copy atomic</strong>, that is, if one agent has seen a store-release, then all agents have seen the store-release. There are no requirements for ordinary stores to be multi-copy atomic. [Something similar to mov+fence or xchg in x86_64 domain].</p>
+<hr>
+<h3 id="LSE-turned-on"><a href="#LSE-turned-on" class="headerlink" title="LSE turned on"></a>LSE turned on</h3><p>So let’s now see what would happen if we now turn-lse on. LSE support was added with ARM-v8.1 specs and so if the default compilation is done, gcc will try to make binary compatible with a wider aarch64 processors and may not enable the specific functionality. In order to enable lse user need to specify extra compilation flags:</p>
+<p>There are multiple ways to turn-on lse:</p>
+<ul>
+<li>Compile with gcc-6+ by specifying lse flag as -march=armv8-a+lse</li>
+<li>Compile with gcc-6+ by specifying ARMv8.1 (or higher) (that will auto-enable all ARMv8.1 functionalities). -march=armv8.1-a</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog10/img4.png" alt="img"></p>
+<p>No more while loop. Single instruction (CASALB) to do the compare and swap (that takes care of load and store) and same way SWAPLB to do the exchange. Sounds optimized. More about performance below.</p>
+<p>But there is one problem, what if binaries are compiled with +lse support but the target machine doesn’t support lse as it is only arm-v8 compatible. This problem is solved with gcc-9.4+ by introducing <code>-moutline-atomics</code> (default enabled with gcc-10.1 can be disabled with <code>-mno-outline-atomics</code>). GCC auto emits a code with dynamic check with both variants (lse and non-lse). Runtime a decision is taken and accordingly said variant is executed.</p>
+<p>Let’s see what is emitted if compiled with gcc-10 (with <code>-moutline-atomic</code> making it compatible on all aarch64 machines)</p>
+<table>
+<thead>
+<tr>
+<th align="left">code</th>
+<th align="left">asm (perf output)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">bool expected = true; flag.compare_exchange_strong(expected, false);</td>
+<td align="left">&lt;<strong>aarch64_cas1_acq_rel&gt;: __aarch64_cas1_acq_rel(): │ adrp x16, 11000 &lt;</strong>data_start&gt; │ ldrb w16, [x16, #25] │ ↓ cbz w16, 14 │ casalb w0, w1, [x2] │ ← ret │14: uxtb w16, w0 │ 18: ldaxrb w0, [x2] │ cmp w0, w16 │ ↓ b.ne 2c │ stlxrb w17, w1, [x2] │ ↑ cbnz w17, 18 │2c: ← ret</td>
+</tr>
+</tbody></table>
+<p>Notice the branching instruction (highlighted in green) to select appropriate logic.</p>
+<h2 id="LSE-in-action"><a href="#LSE-in-action" class="headerlink" title="LSE in action"></a>LSE in action</h2><p>While all this sounds interesting but does it really help? What if the new instruction takes more cycles. Only one way to find out: Benchmark.</p>
+<p>Benchmark: Simple spin-mutex with each thread (total N threads) trying to get the lock there-by causing heavy contention. Once the thread has the mutex it performs software based crc32 keeping the cpu bit busy before releasing it. Each thread does this M times.</p>
+<p><img src="https://mysqlonarm.github.io/images/blog10/lse-microbenchmark.png" alt="img"></p>
+<p>Machine: Bare-Metal with 128 cores ARM Kunpeng 920 2.6 Ghz.</p>
+<ul>
+<li>Use-case represent a serious contention with each thread mostly spending time for obtaining lock. Workload as such is pretty quick (crc32 on 16KB block).</li>
+<li>This clearly proves that LSE helps in heavily contented cases.</li>
+</ul>
+<p>But micro-benchmark sometime fails to show the needed gain with original application due to nature of application including other overlap components like IO, other processing element, etc… So let’s now evaluate MySQL performance with lse-enabled.</p>
+<h3 id="MySQL-benchmarking-with-LSE-1"><a href="#MySQL-benchmarking-with-LSE-1" class="headerlink" title="MySQL benchmarking with LSE"></a>MySQL benchmarking with LSE</h3><p>Workload:</p>
+<ul>
+<li>Server: MySQL-8.0.21, OS: CentOS-7</li>
+<li>Sysbench based point-select, read-only, read-write, update-index and update-non-index workload.</li>
+<li>Executed for higher scalability (&gt;= 64) to explore contention.</li>
+<li>Configuration: 32 cores (single NUMA) ARM Kunpeng 920 2.6 Ghz (28 cores for server, 4 for sysbench)</li>
+<li>Tried 2 use-cases uniform, zipfian (more contention)</li>
+<li>baseline=lse-disabled, lse=lse-enabled (-march=armv8-a+lse).</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog10/sysbench-uniform-lseenabled.png" alt="img"><br><img src="https://mysqlonarm.github.io/images/blog10/sysbench-zipfian-lseenabled.png" alt="img"></p>
+<h3 id="Observations"><a href="#Observations" class="headerlink" title="Observations:"></a>Observations:</h3><ul>
+<li>With Uniform we hardly see any difference with use of LSE</li>
+<li>With Zipfian LSE tend to regress marginally but consistently (by 2-4%) for update use-cases.</li>
+</ul>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>LSE as feature looks promising but fails to perform in MySQL use-case. May be once MySQL is tuned to use more atomics, LSE could show a +ve difference. Till then nothing we would not loose if LSE is not enabled.</p>
+<p><em>If you have more questions/queries do let me know. Will try to answer them.</em></p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/08/04/arm-shi-neng-landscape/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">ARM使能Landscape</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/08/04/backtraces-in-postgresql/">
+                <span class="level-item">Backtraces in PostgreSQL</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 40,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="ARM&#39;s LSE (for atomics) and MySQL" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

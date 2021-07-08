@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>Test MariaDB&#39;s S3 storage engine on arm64 platform - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="Author: zhaorenhai  MariaDB has many other storage engines besides the default InnoDB storage engine, which are useful in some ways. Starting with this article, we’ll look at the functionality and per">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Test MariaDB&#39;s S3 storage engine on arm64 platform">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/12/04/test-mariadb-s-s3-storage-engine-on-arm64-platform/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="Author: zhaorenhai  MariaDB has many other storage engines besides the default InnoDB storage engine, which are useful in some ways. Starting with this article, we’ll look at the functionality and per">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-12-04T06:37:04.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="Test MariaDB&#39;s S3 storage engine on arm64 platform" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="Test MariaDB&#39;s S3 storage engine on arm64 platform" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-12-04T06:37:04.000Z">2020-12-04</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                Test MariaDB&#39;s S3 storage engine on arm64 platform
+            
+        </h1>
+        <div class="content">
+            <p>Author: zhaorenhai </p>
+<p>MariaDB has many other storage engines besides the default InnoDB storage engine, which are useful in some ways. Starting with this article, we’ll look at the functionality and performance of these non-default storage engines on the arm64 platform.</p>
+<p>The first storage engine we studied was S3. The S3 storage engine is a new feature introduced since version 10.5. The S3 storage engine actually stores data in cloud storage that supports the S3 protocol. Tables stored on them are read-only . You can transfer data to S3 by changing the storage engine for tables, add and delete columns to tables of the S3 storage engine, or index them, but you cannot add, update or delete records directly. Readers should be wondering what the S3 storage engine does. In fact, it is useful for scenarios where some data is no longer updated, but the amount of data is large, and the data is important and cannot be deleted. At this time, you can change the storage engine of these tables to S3, because the S3 storage engine is cheaper and more reliable than local storage and is a good choice.</p>
+<p>Here we will simply look at the functionality and performance of the S3 storage engine on the arm64 platform from several aspects.</p>
+<a id="more"></a>
+<p>First let’s run through the S3 Storage Engine test cases to see if they pass on the arm64 platform (MariaDB currently does not have the S3 Storage Engine-related test cases as the default required test cases, as mentioned in this document:Https://mariadb.com/kb/en/s3-storage-engine/), and then look at the functionality and performance of the S3 storage engine on arm64.</p>
+<p>The test platform uses the Kunpeng Virtual Machine of Huawei Cloud and the OS is Ubuntu 18.04. Our S3 Storage Service uses Huawei Cloud’s OBS service. Created access key and secret key, bucket in advance. (Note that the storage area selected in OBS is best in the same area as the one used by the Kunpeng  virtual machine for testing in order to reduce network latency. OBS-related guidance refers to the official guidance of Huawei Cloud, which is not detailed here.)</p>
+<p>We created a new user on the OS <code>adduser mariadb</code>, and all subsequent work will be done under this user.</p>
+<p>Download the source code for the latest version of MariaDB from GitHub and compile it</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">su - mariadb</span><br><span class="line">sudo apt-get install build-essential libncurses5-dev gnutls-dev libcurl4-gnutls-dev </span><br><span class="line">sudo apt-get install zlib1g-dev ccache libnuma-dev libxml2-dev cmake bison</span><br><span class="line">git clone https://github.com/mariadb/server</span><br><span class="line">cd server</span><br><span class="line">git submodule update --init</span><br><span class="line">cd ..</span><br><span class="line">mkdir build-mariadb-server</span><br><span class="line">cd build-mariadb-server</span><br><span class="line">cmake ../server -DCMAKE_BUILD_TYPE=RelWithDebInfo</span><br><span class="line">cmake --build .</span><br></pre></td></tr></table></figure>
+
+
+
+<p><strong>Test Cases</strong></p>
+<p>Edit the configuration file required for the test case:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vi ~/server/mysql-test/suite/s3/my.cnf</span><br></pre></td></tr></table></figure>
+
+<p>The configuration format is as follows:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">!include include&#x2F;default_mysqld.cnf</span><br><span class="line">!include include&#x2F;default_client.cnf</span><br><span class="line"></span><br><span class="line">[mysqld.1]</span><br><span class="line">#Currently, the maturity of S3 storage engine in version 10.6 is gamma, which is not stable. </span><br><span class="line">#It has not been loaded by default and needs to be configured manually</span><br><span class="line">plugin-maturity &#x3D; gamma</span><br><span class="line">plugin-load-add&#x3D;@ENV.HA_S3_SO</span><br><span class="line">s3&#x3D;ON</span><br><span class="line">s3-host-name&#x3D;obs.cn-north-4.myhuaweicloud.com</span><br><span class="line">#The name of the bucket previously created on the OBS</span><br><span class="line">s3-bucket&#x3D;mariadb</span><br><span class="line">s3-access-key&#x3D;please replace with your access key</span><br><span class="line">s3-secret-key&#x3D;please replace with your secret key</span><br><span class="line">#OBS area</span><br><span class="line">s3-region&#x3D;cn-north-4</span><br></pre></td></tr></table></figure>
+
+<p>Edit the following configuration file</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vi ~/server/mysql-test/suite/s3/slave.cnf</span><br></pre></td></tr></table></figure>
+
+<p>The configuration format is as follows:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">[mysqld.2]</span><br><span class="line">plugin-maturity &#x3D; gamma</span><br><span class="line">plugin-load-add&#x3D;@ENV.HA_S3_SO</span><br><span class="line">s3&#x3D;ON</span><br><span class="line">s3-slave-ignore-updates&#x3D;1</span><br><span class="line">s3-host-name&#x3D;obs.cn-north-4.myhuaweicloud.com</span><br><span class="line">s3-bucket&#x3D;mariadb</span><br><span class="line">s3-access-key&#x3D;please replace with your access key</span><br><span class="line">s3-secret-key&#x3D;please replace with your secret key</span><br><span class="line">s3-region&#x3D;cn-north-4</span><br></pre></td></tr></table></figure>
+
+<p>Start running test cases</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd ~/build-mariadb-server/mysql-test</span><br><span class="line">./mysql-test-run --suite=s3</span><br></pre></td></tr></table></figure>
+
+<p>The output is as follows:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">Logging: &#x2F;home&#x2F;mariadb&#x2F;server&#x2F;mysql-test&#x2F;mysql-test-run.pl  --suite&#x3D;s3</span><br><span class="line">vardir: &#x2F;home&#x2F;mariadb&#x2F;build-mariadb-server&#x2F;mysql-test&#x2F;var</span><br><span class="line">Checking leftover processes...</span><br><span class="line">Removing old var directory...</span><br><span class="line">Creating var directory &#39;&#x2F;home&#x2F;mariadb&#x2F;build-mariadb-server&#x2F;mysql-test&#x2F;var&#39;...</span><br><span class="line">Checking supported features...</span><br><span class="line">MariaDB Version 10.6.0-MariaDB</span><br><span class="line"></span><br><span class="line"> - SSL connections supported</span><br><span class="line">   Using suites: s3</span><br><span class="line">   Collecting tests...</span><br><span class="line">   Installing system database...</span><br><span class="line"></span><br><span class="line">&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;&#x3D;</span><br><span class="line"></span><br><span class="line">TEST                                      RESULT   TIME (ms) or COMMENT</span><br><span class="line">--------------------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">worker[1] Using MTR_BUILD_THREAD 300, with reserved ports 16000..16019</span><br><span class="line">s3.partition_create_fail                 [ skipped ]  Requires debug build</span><br><span class="line">s3.encryption                            [ pass ]    777</span><br><span class="line">s3.partition_move &#39;innodb&#39;               [ pass ]   4059</span><br><span class="line">s3.alter &#39;innodb&#39;                        [ pass ]   5361</span><br><span class="line">s3.innodb &#39;innodb&#39;                       [ pass ]   1444</span><br><span class="line">s3.alter2                                [ pass ]   1702</span><br><span class="line">s3.partition                             [ pass ]  24858</span><br><span class="line">s3.no_s3                                 [ pass ]      7</span><br><span class="line">s3.arguments                             [ pass ]   1231</span><br><span class="line">s3.basic                                 [ pass ]    830</span><br><span class="line">s3.discovery                             [ pass ]   3288</span><br><span class="line">s3.amazon                                [ skipped ]  Not connected to AWS</span><br><span class="line">s3.backup                                [ pass ]    581</span><br><span class="line">s3.mysqldump                             [ pass ]   3156</span><br><span class="line">s3.select                                [ pass ]    600</span><br><span class="line">s3.unsupported                           [ pass ]    329</span><br><span class="line">s3.replication_delayed &#39;innodb,mix&#39;      [ pass ]   3444</span><br><span class="line">s3.replication_mixed &#39;mix&#39;               [ pass ]   8435</span><br><span class="line">s3.replication_partition &#39;innodb,mix&#39;    [ pass ]  20100</span><br><span class="line"></span><br><span class="line">s3.replication_stmt &#39;stmt&#39;               [ pass ]   8967</span><br><span class="line">--------------------------------------------------------------------------</span><br><span class="line"></span><br><span class="line">The servers were restarted 10 times</span><br><span class="line">Spent 89.169 of 107 seconds executing testcases</span><br><span class="line"></span><br><span class="line">Completed: All 18 tests were successful.</span><br><span class="line"></span><br><span class="line">2 tests were skipped, 1 by the test itself.</span><br></pre></td></tr></table></figure>
+
+<p>We can see that except one test case needs to be tested by debug version, and another needs to be connected to AWS (we use Huawei Cloud OBS) for testing, and these two are skipped, all the other test cases are successful. It shows that the basic function of S3 storage engine is no problem on arm64 platform.</p>
+<p><strong>Performance</strong></p>
+<p>Let’s take a look at  performance of S3 storage engine.</p>
+<p>First, configure the MySQL client path. We use the latest MySQL client just compiled and add the following code to <code>~/.bashrc</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">export PATH&#x3D;~&#x2F;build-mariadb-server&#x2F;client:$PATH</span><br></pre></td></tr></table></figure>
+
+<p>Then</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">source ~&#x2F;.bashrc</span><br></pre></td></tr></table></figure>
+
+<p>Edit configuration file:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vi ~/mariadb.cnf</span><br></pre></td></tr></table></figure>
+
+<p>Enter the content in the following format:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">[mariadbd]</span><br><span class="line">datadir &#x3D; &#x2F;home&#x2F;mariadb&#x2F;data&#x2F;dir</span><br><span class="line">lc_messages_dir &#x3D; &#x2F;home&#x2F;mariadb&#x2F;server&#x2F;sql&#x2F;share</span><br><span class="line"></span><br><span class="line">innodb_buffer_pool_size &#x3D; 8G</span><br><span class="line">innodb_log_file_size &#x3D; 1G</span><br><span class="line">innodb_flush_method &#x3D; O_DIRECT</span><br><span class="line"></span><br><span class="line">plugin-maturity &#x3D; gamma</span><br><span class="line">plugin_dir &#x3D; &#x2F;home&#x2F;mariadb&#x2F;build-mariadb-server&#x2F;storage&#x2F;maria</span><br><span class="line">plugin-load-add&#x3D;ha_s3</span><br><span class="line">s3&#x3D;ON</span><br><span class="line">s3-host-name&#x3D;obs.cn-north-4.myhuaweicloud.com</span><br><span class="line">s3-bucket&#x3D;mariadb</span><br><span class="line">s3-access-key&#x3D;please replace with your access key </span><br><span class="line">s3-secret-key&#x3D;please replace with your secret key</span><br><span class="line">s3-region&#x3D;cn-north-4</span><br></pre></td></tr></table></figure>
+
+<p>Then start the database:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p &#x2F;home&#x2F;mariadb&#x2F;data&#x2F;dir</span><br><span class="line">cd ~&#x2F;build-mariadb-server</span><br><span class="line">.&#x2F;scripts&#x2F;mysql_install_db --srcdir&#x3D;..&#x2F;server --defaults-file&#x3D;~&#x2F;mariadb.cnf</span><br><span class="line">sql&#x2F;mysqld --defaults-file&#x3D;~&#x2F;mariadb.cnf</span><br></pre></td></tr></table></figure>
+
+<p>After the database is successfully started, we need to create some test data.</p>
+<p>Start a new shell window, login to MariaDB user and login to database.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql --socket=/tmp/mysql.sock</span><br></pre></td></tr></table></figure>
+
+<p>Create a test table by executing the following SQL.</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> test.s3test(<span class="keyword">id</span> <span class="built_in">int</span>, description <span class="built_in">varchar</span>(<span class="number">40</span>));</span><br></pre></td></tr></table></figure>
+
+<p>Then exit to the shell environment, ready to import a large amount of data into the table.</p>
+<p>Using shell script to generate a 2.6G CSV file, about 60 million records, the first column is a number, the second column is a randomly generated string,  this file named <code>s3test.csv</code>.</p>
+<p>Import it to the database with the following command:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysqlimport --socket=/tmp/mysql.sock --fields-terminated-by=, test /home/mariadb/s3test.csv</span><br></pre></td></tr></table></figure>
+
+<p>After importing it to the database, check the database file <code>/home/mariadb/data/dir/test/s3test.ibd</code>. The database file size is 4.4G.</p>
+<p>Next, let’s test how long it takes to store this  table to the S3 storage engine.</p>
+<p>Login to the database and execute the following SQL:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">alter</span> <span class="keyword">table</span> test.s3test <span class="keyword">engine</span>=s3;</span><br></pre></td></tr></table></figure>
+
+<p>Output:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Query OK, 63649280 rows affected (2 min 49.886 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br></pre></td></tr></table></figure>
+
+<p>You can see that it took only two minutes and 49 seconds.</p>
+<p>And the local data file  <code>/home/mariadb/data/dir/test/s3test.ibd</code> no longer exists, indicating that the table has been saved to cloud storage.</p>
+<p>Then let’s take a look at the files on the OBS.</p>
+<p>Download an obsutil tool:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">wget https://obs-community.obs.cn-north-1.myhuaweicloud.com/obsutil/current/obsutil_linux_arm64.tar.gz</span><br><span class="line">tar -zxvf obsutil_linux_arm64.tar.gz</span><br><span class="line">cd obsutil_linux_arm64_5.2.10</span><br><span class="line"><span class="meta">#</span><span class="bash">Configure obsutil tool</span></span><br><span class="line">./obsutil config -i=accesskey -k=secrectkey -e=obs.cn-north-4.myhuaweicloud.com</span><br></pre></td></tr></table></figure>
+
+<p>Check the data on OBS:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./obsutil ls obs://mariadb/test/s3test/</span><br></pre></td></tr></table></figure>
+
+<p>Query the data size on OBS, which is 3.22GB,  even a little smaller than InnoDB storage:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Total size of prefix [test&#x2F;s3test&#x2F;] is: 3.22GB</span><br><span class="line">Folder number is: 0</span><br><span class="line">File number is: 826</span><br></pre></td></tr></table></figure>
+
+<p>Next, let’s query the data to see how fast it is. Log in to MariaDB database and enter the following SQL:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> test.s3test <span class="keyword">where</span> <span class="keyword">id</span> = <span class="number">8</span>;</span><br></pre></td></tr></table></figure>
+
+<p> the time is as follows:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">512 rows in set (1 min 17.121 sec)</span><br></pre></td></tr></table></figure>
+
+<p>It took about 1 minute and 17 seconds to query 512 records out of 60 million non indexed records, and the speed was acceptable.</p>
+<p>Next, let’s look at the speed of indexing and the speed of queries after indexing.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; alter table test.s3test add index idx_id(id);</span><br><span class="line">Query OK, 63649280 rows affected (7 min 12.253 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br></pre></td></tr></table></figure>
+
+<p>You can see that the creation of index took seven minutes.</p>
+<p>Query again:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; pager md5sum; select * from test.s3test where id &#x3D; 8;</span><br><span class="line">46ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line">512 rows in set (25.146 sec)</span><br></pre></td></tr></table></figure>
+
+<p>You can see it’s a little bit faster this time, 25 seconds.</p>
+<p>Take a look at the size of index</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./obsutil ls obs://mariadb/test/s3test/</span><br></pre></td></tr></table></figure>
+
+<p>The output size is 3.81GB, which is 600M more than that of no index, indicating that the index takes up about 600M.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Total size of prefix [test&#x2F;s3test&#x2F;] is: 3.81GB</span><br><span class="line">Folder number is: 0</span><br><span class="line">File number is: 979</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./obsutil ls obs://mariadb/test/s3test/index</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Total size of prefix [test&#x2F;s3test&#x2F;index] is: 609.02MB</span><br><span class="line">Folder number is: 0</span><br><span class="line">File number is: 153</span><br></pre></td></tr></table></figure>
+
+<p>Let’s delete the index and see how long it takes.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; alter table test.s3test drop index idx_id;</span><br><span class="line">Query OK, 63649280 rows affected (4 min 18.969 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br></pre></td></tr></table></figure>
+
+<p>It took four minutes to delete the index.</p>
+<p>Change the table storage engine to InnoDB to see how long it takes.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; alter table test.s3test engine&#x3D;innodb;</span><br><span class="line">Query OK, 63649280 rows affected (6 min 6.302 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br></pre></td></tr></table></figure>
+
+<p>It took about six minutes.</p>
+<p><strong>Compare with InnoDB</strong></p>
+<p>Now the table is in the local database, and the storage engine is InnoDB. Let’s repeat the above operation and compare the performance of InnoDB engine and S3 engine.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; pager md5sum;select * from test.s3test where id &#x3D; 8;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">46ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line">512 rows in set (30.218 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; alter table test.s3test add index idx_id(id);</span><br><span class="line">Query OK, 0 rows affected (2 min 1.309 sec)</span><br><span class="line">Records: 0  Duplicates: 0  Warnings: 0</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; pager md5sum;select * from test.s3test where id &#x3D; 8;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">46ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line">512 rows in set (0.009 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; alter table test.s3test drop index idx_id;</span><br><span class="line">Query OK, 0 rows affected (0.009 sec)</span><br><span class="line">Records: 0  Duplicates: 0  Warnings: 0</span><br></pre></td></tr></table></figure>
+
+<p>It can be seen that the local InnoDB engine is still much faster than S3. However, except for index query and index deletion, there is no order of magnitude difference of no index query and create index operation, and the speed of S3 is acceptable.</p>
+<p><strong>Performance after increasing S3 page buffer</strong></p>
+<p>Let’s increase the page buffer size of S3 storage engine to see if the performance is improved.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vi ~&#x2F;mariadb.cnf</span><br></pre></td></tr></table></figure>
+
+<p>Add the following configuration to set the page buffer size of S3 to 5G (the default is 128M)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">s3_pagecache_buffer_size&#x3D;5368709120</span><br></pre></td></tr></table></figure>
+
+<p>Restart the database.</p>
+<p>Now let’s repeat the previous operation:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; alter table test.s3test engine&#x3D;s3;</span><br><span class="line">Query OK, 63649280 rows affected (5 min 8.340 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; pager md5sum;select * from test.s3test where id &#x3D; 8;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">46ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line">512 rows in set (39.110 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; pager md5sum;select * from test.s3test where id &#x3D; 8;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">46ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line">512 rows in set (10.019 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; alter table test.s3test add index idx_id(id);</span><br><span class="line">Query OK, 63649280 rows affected (5 min 45.067 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; pager md5sum;select * from test.s3test where id &#x3D; 8;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">46ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line">512 rows in set (17.479 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; pager md5sum;select * from test.s3test where id &#x3D; 8;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">46ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line">512 rows in set (0.015 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; alter table test.s3test drop index idx_id;</span><br><span class="line">Query OK, 63649280 rows affected (4 min 46.552 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; alter table test.s3test engine&#x3D;innodb;</span><br><span class="line">Query OK, 63649280 rows affected (6 min 28.248 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br></pre></td></tr></table></figure>
+
+<p>It can be seen that the operations such as changing the engine and creating and deleting indexes have not improved substantially. However, the speed of querying data, especially the second query, has an order of magnitude improvement, which is mainly due to the large buffer’s caching of data.</p>
+<p><strong>Performance with compression enabled</strong></p>
+<p>Next, let’s test the compression parameter <code>COMPRESSION_ALGORITHM=zlib</code>.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; alter table test.s3test engine&#x3D;s3  COMPRESSION_ALGORITHM&#x3D;zlib;</span><br><span class="line">Query OK, 63649280 rows affected (6 min 21.659 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br></pre></td></tr></table></figure>
+
+<p>It took more than 6 minutes, more than twice as long as it was not compressed. </p>
+<p>Let’s see how much space can be saved.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./obsutil ls obs://mariadb/test/s3test/</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Total size of prefix [test&#x2F;s3test&#x2F;] is: 1.51GB</span><br><span class="line">Folder number is: 0</span><br><span class="line">File number is: 826</span><br></pre></td></tr></table></figure>
+
+<p>You can see that more than half of the space is saved. However, our data is random, if it is regular data in reality, it is estimated that it can have higher compression rate. In addition, we use the default size of 4MB block, if the size of the block is changed to a larger point, the estimated compression rate should also be improved.</p>
+<p>Let’s look at the query speed:</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; pager md5sum;select * from test.s3test where id = 8;</span><br><span class="line">PAGER <span class="keyword">set</span> <span class="keyword">to</span> <span class="string">'md5sum'</span></span><br><span class="line"><span class="number">46</span>ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line"><span class="number">512</span> <span class="keyword">rows</span> <span class="keyword">in</span> <span class="keyword">set</span> (<span class="number">56.610</span> sec)</span><br><span class="line"></span><br><span class="line">MariaDB [(<span class="keyword">none</span>)]&gt; pager md5sum;<span class="keyword">select</span> * <span class="keyword">from</span> test.s3test <span class="keyword">where</span> <span class="keyword">id</span> = <span class="number">8</span>;</span><br><span class="line">PAGER <span class="keyword">set</span> <span class="keyword">to</span> <span class="string">'md5sum'</span></span><br><span class="line"><span class="number">46</span>ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line"><span class="number">512</span> <span class="keyword">rows</span> <span class="keyword">in</span> <span class="keyword">set</span> (<span class="number">10.110</span> sec)</span><br></pre></td></tr></table></figure>
+
+<p>We can see that the first query is less than twice as slow as that without compression, and it is still acceptable. For the second query, due to the existence of large cache, the speed of compression and non compression is the same.</p>
+<p>Let’s look at the indexing situation:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; alter table test.s3test add index idx_id(id);</span><br><span class="line">Query OK, 63649280 rows affected (9 min 26.030 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br></pre></td></tr></table></figure>
+
+<p>It took nine minutes, and it was less than twice as slow.</p>
+<p>Look at the space occupied by the index:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./obsutil ls obs://mariadb/test/s3test/index</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Total size of prefix [test&#x2F;s3test&#x2F;index] is: 261.54MB</span><br><span class="line">Folder number is: 0</span><br><span class="line">File number is: 153</span><br></pre></td></tr></table></figure>
+
+<p>You can see that after compression is enabled, the index is much smaller, which is  smaller than half of that without compression.</p>
+<p>Let’s look at the query:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; pager md5sum;select * from test.s3test where id &#x3D; 8;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">46ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line">512 rows in set (27.094 sec)</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; pager md5sum;select * from test.s3test where id &#x3D; 8;</span><br><span class="line">PAGER set to &#39;md5sum&#39;</span><br><span class="line">46ebf3c834a4023edec7fe311f50438d  -</span><br><span class="line">512 rows in set (0.009 sec)</span><br></pre></td></tr></table></figure>
+
+<p>The first query is less than twice as slow as that without compression, and the second query is the same as that without compression due to the existence of large cache.</p>
+<p>Finally, take a look at the time taken to delete the index and change the engine back to InnoDB:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">MariaDB [(none)]&gt; alter table test.s3test drop index idx_id;</span><br><span class="line">Query OK, 63649280 rows affected (6 min 39.382 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br><span class="line"></span><br><span class="line">MariaDB [(none)]&gt; alter table test.s3test engine&#x3D;innodb;</span><br><span class="line">Query OK, 63649280 rows affected (6 min 36.595 sec)</span><br><span class="line">Records: 63649280  Duplicates: 0  Warnings: 0</span><br></pre></td></tr></table></figure>
+
+<p>Deleting indexes is less than twice as slow, and changing the engine takes as much time as without compression.</p>
+<p><strong>Summary</strong></p>
+<p>Through our test, we can find that S3 storage engine works well on arm64, and its performance is also good.</p>
+<p>Let us summarize the results of the above tests in a table:</p>
+<table>
+<thead>
+<tr>
+<th>/</th>
+<th>InnoDB</th>
+<th>S3 with default options</th>
+<th>S3 after setting pagecache buffer size  to 5G</th>
+<th>S3 after compression enabled and page buffer size 5G</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Altering  table to S3</td>
+<td>/</td>
+<td>2 min 49.886 sec</td>
+<td>5 min 8.340 sec</td>
+<td>6 min 21.659 sec</td>
+</tr>
+<tr>
+<td>Query without index</td>
+<td>30.218 sec</td>
+<td>1 min 17.121 sec</td>
+<td>39.110 sec</td>
+<td>56.610 sec</td>
+</tr>
+<tr>
+<td>Query without index 2nd time</td>
+<td>28.628 sec</td>
+<td>51.305 sec</td>
+<td>10.019 sec</td>
+<td>10.110 sec</td>
+</tr>
+<tr>
+<td>Creating index</td>
+<td>2 min 1.309 sec</td>
+<td>7 min 12.253 sec</td>
+<td>5 min 45.067 sec</td>
+<td>9 min 26.030 sec</td>
+</tr>
+<tr>
+<td>Query with index</td>
+<td>0.009 sec</td>
+<td>25.146 sec</td>
+<td>17.479 sec</td>
+<td>27.094 sec</td>
+</tr>
+<tr>
+<td>Query with index 2nd time</td>
+<td>0.002 sec</td>
+<td>29.264 sec</td>
+<td>0.015 sec</td>
+<td>0.009 sec</td>
+</tr>
+<tr>
+<td>Dropping index</td>
+<td>0.009 sec</td>
+<td>4 min 18.969 sec</td>
+<td>4 min 46.552 sec</td>
+<td>6 min 39.382 sec</td>
+</tr>
+<tr>
+<td>Altering  table to InnoDB</td>
+<td>/</td>
+<td>6 min 6.302 sec</td>
+<td>6 min 28.248 sec</td>
+<td>6 min 36.595 sec</td>
+</tr>
+<tr>
+<td>Table size</td>
+<td>4.4GB</td>
+<td>3.22GB</td>
+<td>3.22GB</td>
+<td>1.51GB</td>
+</tr>
+<tr>
+<td>Index size</td>
+<td>1.1GB</td>
+<td>609.02MB</td>
+<td>609.02MB</td>
+<td>261.54MB</td>
+</tr>
+</tbody></table>
+<p><strong>Reference link</strong></p>
+<p><a href="https://mariadb.com/kb/en/s3-storage-engine/">https://mariadb.com/kb/en/s3-storage-engine/</a></p>
+<p><a href="https://mariadb.com/kb/en/plugin-overview/#installing-a-plugin">https://mariadb.com/kb/en/plugin-overview/#installing-a-plugin</a></p>
+<p><a href="https://www.percona.com/blog/2020/07/17/mariadb-s3-engine-implementation-and-benchmarking/">https://www.percona.com/blog/2020/07/17/mariadb-s3-engine-implementation-and-benchmarking/</a></p>
+<p><a href="https://support.huaweicloud.com/en-us/obs_gls/index.html">https://support.huaweicloud.com/en-us/obs_gls/index.html</a></p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/12/07/zi-xuan-suo-de-yuan-li-yu-you-hua/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">自旋锁的原理与优化</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/12/04/mariadb-de-s3-cun-chu-yin-qing-zai-arm64-ping-tai-shang-de-biao-xian/">
+                <span class="level-item">MariaDB的S3存储引擎在arm64平台上的表现</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 62,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="Test MariaDB&#39;s S3 storage engine on arm64 platform" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

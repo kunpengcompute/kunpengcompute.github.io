@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>Understanding InnoDB rw-lock stats - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: Krunal Bauskar InnoDB uses mutexes for exclusive access and rw-locks for the shared access of the resources. rw-locks are used to control access to the common shared resources like buffer pool pag">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Understanding InnoDB rw-lock stats">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/04/14/understanding-innodb-rw-lock-stats/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: Krunal Bauskar InnoDB uses mutexes for exclusive access and rw-locks for the shared access of the resources. rw-locks are used to control access to the common shared resources like buffer pool pag">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-04-14T07:21:05.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="Understanding InnoDB rw-lock stats" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="Understanding InnoDB rw-lock stats" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-04-14T07:21:05.000Z">2020-04-14</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                Understanding InnoDB rw-lock stats
+            
+        </h1>
+        <div class="content">
+            <p>作者: Krunal Bauskar</p>
+<p>InnoDB uses mutexes for exclusive access and rw-locks for the shared access of the resources. rw-locks are used to control access to the common shared resources like buffer pool pages, tablespaces, adaptive search systems, data-dictionary, informaton_schema, etc… In short, rw-locks play a very important role in the InnoDB system and so tracking and monitoring them is important too.</p>
+<a id="more"></a>
+
+<p>InnoDB provides an easy way to track them using “SHOW ENGINE INNODB STATUS”.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RW-shared spins 38667, rounds 54868, OS waits 16539</span><br><span class="line">RW-excl spins 6353, rounds 126218, OS waits 3936</span><br><span class="line">RW-sx spins 1896, rounds 43888, OS waits 966</span><br><span class="line">Spin rounds per wait: 1.42 RW-shared, 19.87 RW-excl, 23.15 RW-sx</span><br></pre></td></tr></table></figure>
+
+<p>In this article we will try to understand how these stats are calculated and what is the significance of each of these numbers. We will also try to draw inferences using different use-cases and touch base important stats <a href="https://bugs.mysql.com/bug.php?id=99171">bug</a> that makes the current state of the stats almost ineffective for tuning.</p>
+<h2 id="rw-lock-spin-algorithm"><a href="#rw-lock-spin-algorithm" class="headerlink" title="rw-lock spin algorithm"></a><span style="color:#4885ed">rw-lock spin algorithm</span></h2><p>There are 3 types of rw-locks:</p>
+<ul>
+<li>Shared: offers shared access to the resource. Multiple shared locks are allowed.</li>
+<li>Exclusive: offers exclusive access to the resource. Shared locks wait for exclusive locks.</li>
+<li>Shared-Exclusive (SX): offer write access to the resource with inconsistent read. (relaxed exclusive).</li>
+</ul>
+<p>We will first try to understand the flow and then discuss some tuning steps. <br><br>(For sake of discussion, to start with, let’s assume <span style="background-color: #fff2e6; color: red">spins=0, rounds=0, os-waits=0</span>).</p>
+<h3 id="Locking-Steps"><a href="#Locking-Steps" class="headerlink" title="Locking Steps"></a><span style="color:#1aa260">Locking Steps</span></h3><ul>
+<li><p><strong>Step-1:</strong> Try to obtain the needed lock</p>
+<ul>
+<li>If <span style="color: green">SUCCESS</span> then return immediately. <span style="background-color: #fff2e6; color: red"> (spins=0, rounds=0, os-waits=0)</span></li>
+<li>If <span style="color: red">FAILURE</span> then enter spin-loop.<p></p> 
+</li>
+</ul>
+</li>
+<li><p><strong>Step-2:</strong> Start Spin-loop. Increment spin-count. <em>(Why is spin-loop needed? If we enter wait then the OS will take away CPU from the given thread and then the thread will have to wait for its turns as per OS-scheduling. Better approach is to busy-wait using spin-loop (with condition check) so that the CPU is kept. Since most of these locks are short-duration likely chance of re-obtaining it very high).</em></p>
+<p></p> 
+</li>
+<li><p><strong>Step-3:</strong> Start spinning for N rounds. (Here N is defined and controlled by <a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_sync_spin_loops">innodb_sync_spin_loops</a>). Default is 30 rounds. </p>
+<ul>
+<li><p><strong>Step-3a:</strong> Each round will invoke a PAUSE logic (see a separate section below about PAUSE logic) that will cause the CPU to go to PAUSE for X cycles.</p>
+</li>
+<li><p><strong>Step-3b:</strong> Post each round a soft check is done if the said lock is available (busy-wait).</p>
+<ul>
+<li>If it is available then spin-cycle exits. (There could still be some rounds pending. We will use this info below).</li>
+</ul>
+</li>
+<li><p><strong>Step-3c:</strong> Again try to obtain the needed lock.</p>
+<ul>
+<li>If <span style="color: green">SUCCESS</span> then return.<span style="background-color: #fff2e6; color: red"> (spins=1, rounds=M (M &lt;= N), os-waits=0)</span></li>
+<li>If <span style="color: red">FAILURE</span> and there are some pending rounds (max=innodb_sync_spin_loops) then resume spinning. <em>(How come the loop was interrupted and locking failed. Note: the said lock is being looked upon by multiple threads in parallel. While multiple threads got signals about lock availability by the time said thread tried to obtain the lock, some other thread took it. So the said thread is now back re-trying)</em>.</li>
+</ul>
+</li>
+<li><p><strong>Step-3d:</strong> Say a thread now completes its set rounds of spin-wait and even now it failed to obtain the lock. There is no point in  spinning further and wasting CPU cycles. Better give up pending CPU cycles back to OS and let OS scheduling do the needful. Also, since the said thread is now going to go to sleep it should register itself with some common infrastructure that will help signal it back to active whenever the said lock is available.</p>
+</li>
+<li><p><strong>Step-3e:</strong> This infrastructure to signal it back to active is sync-array infrastructure in InnoDB.</p>
+<ul>
+<li>Said thread registers itself by reserving a slot in the said array.</li>
+<li>Before starting the wait, give another try to see if the lock is available. (since reserving could be time consuming and lock could be available in meantime).</li>
+<li>If still lock is not available then wait for sync-array infrastructure to signal back the said thread.</li>
+<li>This wait is called OS-wait and entering this loop will now cause OS-waits count to increase.</li>
+</ul>
+</li>
+<li><p><strong>Step-3f:</strong> Say the said thread is signaled by sync-array infrastructure for the wait-event. It retries to obtain the needed lock.</p>
+<ul>
+<li>If <span style="color: green">SUCCESS</span> then return. <span style="background-color: #fff2e6; color: red"> (spins=1, rounds=N, os-waits=1)</span></li>
+<li>If <span style="color: red">FAILURE</span> then the whole loop restarts from spinning logic (Back to Step-3 with rounds-count re-intialize to 0). Note: spins count is not re-incremented.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>So let’s now assign the meaning to these counts</p>
+<ul>
+<li><strong>spins:</strong> represent how many times flow failed to get a lock in first go and had to enter spin-loop.</li>
+<li><strong>rounds:</strong> represent how many rounds of PAUSE logic executed.</li>
+<li><strong>os-waits:</strong> how many times spin-loop failed to grant a lock that resulted in os-waits.</li>
+</ul>
+<p>It is possible that during a given spin loop for acquiring said lock flow may need more than 30 (innodb_sync_spin_loops) rounds of PAUSE logic and have to multiple time enter os-waits. This can cause os-waits &gt; spins-count.</p>
+<h3 id="PAUSE-logic"><a href="#PAUSE-logic" class="headerlink" title="PAUSE logic"></a><span style="color:#1aa260">PAUSE logic</span></h3><p>K = {random value from between  (0 - <a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_spin_wait_delay">innodb_spin_wait_delay</a>) * <a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_spin_wait_pause_multiplier">innodb_spin_wait_pause_multiplier</a>}</p>
+<p>Invoke low-level PAUSE instruction K times.</p>
+<p>Not all architectures provide low-level pause instruction. x86 does provide it but ARM doesn’t. Even with x86 latency of this pause instruction continues to change with different families of processors. It was around 10-15 cycles for old generation processors (pre-skylake). Went upto 140 cycles with Skylake and again came down with CascadeLake (I see 13 cycles with Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz which belongs to CascadeLake family). <em>(I have not personally benchmarked it on all platforms (except Cascadelake) but this is based on the references.</em> This means the delay (in terms of cycle) introduced by PAUSE continues to change and so tuning PAUSE logic for each generation/type of processor is important. 2 configurable variables viz. innodb_spin_wait_delay, innodb_spin_wait_pause_multiplier exactly help achieve this.</p>
+<h2 id="Interpreting-stats"><a href="#Interpreting-stats" class="headerlink" title="Interpreting stats"></a><span style="color:#4885ed">Interpreting stats</span></h2><p>Now that we understand the stats let’s look at the number and try to draw some inferences.</p>
+<p>But before we get into further details let me point out a <a href="https://bugs.mysql.com/bug.php?id=99171">bug</a> that makes these stats inconsistent and incorrect.</p>
+<p>To get a fair idea we will use the version of mysql with the patch applied (as pointed in bug, stats w/o patch doesn’t help yield correct picture and so all kinds of interpretation and tuning is bound to fail).</p>
+<h3 id="Use-Case-1"><a href="#Use-Case-1" class="headerlink" title="Use Case 1"></a><span style="color:#1aa260">Use Case 1</span></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RW-shared spins 338969, rounds 20447615, OS waits 592941</span><br><span class="line">RW-excl spins 50582, rounds 1502625, OS waits 56124</span><br><span class="line">RW-sx spins 12583, rounds 360973, OS waits 10484</span><br><span class="line">Spin rounds per wait: 60.32 RW-shared, 29.71 RW-excl, 28.69 RW-sx</span><br></pre></td></tr></table></figure>
+<p>Let’s analyze the shared spins case:<br></p>
+<figure class="highlight plain"><figcaption><span>spins 338969, rounds 20447615, OS waits 592941```</span></figcaption><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"></span><br><span class="line">* 338K times flow couldn’t find the lock in first go, forcing thread to enter spin-lock.</span><br><span class="line">* During each spin-cycle there were 60 rounds of PAUSE cycle executed (so the said spin-cycles were done 2 times).</span><br><span class="line">* OS-waits&#x2F;spins &#x3D; 592&#x2F;338 &#x3D; 1.75 suggest that majority of the flow entered OS-wait (delay from PAUSE was not sufficient).</span><br><span class="line">* It also suggests that for the majority of spin-cycles, single OS -wait was not enough so it was repeated.</span><br><span class="line"></span><br><span class="line">**Conclusion:** Use-case represents heavy contention. Also, it sounds like PAUSE loop is unable to introduce the needed delay that is causing so many ROUNDS of PAUSE loop per spin-cycle.</span><br><span class="line"></span><br><span class="line">&lt;em&gt;256 thread oltp-read-write workload on 24 vCPU ARM machine&lt;&#x2F;em&gt;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">### &lt;span style&#x3D;&quot;color:#1aa260&quot;&gt;Use Case 2&lt;&#x2F;span&gt;</span><br></pre></td></tr></table></figure>
+<p>RW-shared spins 35943, rounds 777178, OS waits 19051<br>RW-excl spins 4269, rounds 121796, OS waits 4164<br>RW-sx spins 13407, rounds 321954, OS waits 7346<br>Spin rounds per wait: 21.62 RW-shared, 28.53 RW-excl, 24.01 RW-sx</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"></span><br><span class="line">Let’s analyze the shared spins case:&lt;br&gt;</span><br><span class="line">&#96;RW-shared spins 35943, rounds 777178, OS waits 19051&#96;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">* Flow invokes spin-loop 35K times.</span><br><span class="line">* Only 19K (that is approximately half of the spin-loop) caused OS-waits.</span><br><span class="line">* Per spin-cycle average too is limited to 21.62 that suggests that for each spin-cycle on average 22 rounds of PAUSE loop was </span><br><span class="line">invoked.</span><br><span class="line"></span><br><span class="line">**Conclusion:** Use-case represents medium contention.</span><br><span class="line"></span><br><span class="line">&lt;em&gt;16 thread oltp-read-write workload on 24 vCPU ARM machine&lt;&#x2F;em&gt;</span><br><span class="line"></span><br><span class="line">### &lt;span style&#x3D;&quot;color:#1aa260&quot;&gt;Use Case 3&lt;&#x2F;span&gt;</span><br><span class="line"></span><br><span class="line">Just for reference, let me put an example of very less contention. This is with 16 threads oltp-read-write workload on x86_64 based VM with 16 CPU.</span><br></pre></td></tr></table></figure>
+<p>RW-shared spins 39578, rounds 424553, OS waits 7329<br>RW-excl spins 5828, rounds 78225, OS waits 1341<br>RW-sx spins 11666, rounds 67297, OS waits 449<br>Spin rounds per wait: 10.73 RW-shared, 13.42 RW-excl, 5.77 RW-sx</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">* Flow invokes spin-loop 39K times.</span><br><span class="line">* Only 7K (that is approximately 20% of the spin-loop) caused OS-waits.</span><br><span class="line">* Per spin-cycle average too is limited to 10.</span><br><span class="line"></span><br><span class="line">**Conclusion:** Use-case represents low contention.</span><br><span class="line"></span><br><span class="line">&lt;em&gt;16 thread oltp-read-write workload on 24 vCPU x86_64 machine&lt;&#x2F;em&gt;</span><br><span class="line"></span><br><span class="line">### &lt;span style&#x3D;&quot;color:#1aa260&quot;&gt;Note on tuning&lt;&#x2F;span&gt;</span><br><span class="line"></span><br><span class="line">Remember the high contention case we saw above. By tuning some things + code changes I could reduce the contention for shared-spins significantly.</span><br></pre></td></tr></table></figure>
+<p>RW-shared spins 318800, rounds 13856732, OS waits 374634<br>RW-excl spins 35759, rounds 656955, OS waits 22310<br>RW-sx spins 10750, rounds 226315, OS waits 5598<br>Spin rounds per wait: 43.47 RW-shared, 18.37 RW-excl, 21.05 RW-sx</p>
+<p>```</p>
+<p>Rounds per spins-cycles: average of 60 -&gt; 43 <br><br>OS-wait per spin-cycle: 1.75 -&gt; 1.17</p>
+<p>Is this good.? Not really. There are multiple factors to consider.</p>
+<ul>
+<li>Do you see improvement in TPS?</li>
+<li>Sometime it may be suggested to simply increase the PAUSE loop. But increasing PAUSE loop beyond some point can cause extended spin-cycle wasting precious CPU cycles especially if that causes it to land back in OS-wait. (Does this help more in HT cases vs multi-core case).</li>
+<li>Also, as pointed above, processor generation and type affect the PAUSE loop latency.</li>
+</ul>
+<p>There are multiple factors to consider. Even I am exploring this to see how we can tune this for all kinds of CPUs. I will blog more about it once I get some good solid algorithms on this front (or maybe we can develop some automated, self-adjustable or adaptive algorithms) so users don’t need to worry about it.</p>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a><span style="color:#4885ed">Conclusion</span></h2><p>As we saw above rw-locks stats can help us get good insight on understanding the contention of the system. Of-course it is not the only in-sight about InnoDB contention as mutexes are not covered as part of these stats. Tuning could be challenging but over-tuning can affect performance in the wrong way too.</p>
+<br>
+<em>If you have more questions/queries do let me know. Will try to answer them.</em>
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/04/15/li-jie-innodb-rw-lock-de-tong-ji-shu-ju/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">理解InnoDB rw-lock的统计数据</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/04/10/web-kai-yuan-fu-wu-zhi-arm64-xian-zhuang/">
+                <span class="level-item">Web开源服务之ARM64现状</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 13,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="Understanding InnoDB rw-lock stats" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

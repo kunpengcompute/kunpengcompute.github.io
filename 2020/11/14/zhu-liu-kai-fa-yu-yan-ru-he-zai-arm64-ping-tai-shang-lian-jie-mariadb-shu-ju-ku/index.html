@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>主流开发语言如何在arm64平台上连接MariaDB数据库 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: zhaorenhai 本文尝试探索下几种主流的开发语言如何在arm64平台上连接MariaDB数据库，并测试一下增删改查各项功能是否都正常。主要包括如下几种语言：C , Java, Node.js, Python, Go, Rust, PHP 测试平台采用华为云的鲲鹏虚拟机，OS采用Ubuntu18.04。 并提前已经在同内网内的另外一台虚拟机上已经部署好了一个MariaDB数据库，并建好">
+<meta property="og:type" content="article">
+<meta property="og:title" content="主流开发语言如何在arm64平台上连接MariaDB数据库">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/11/14/zhu-liu-kai-fa-yu-yan-ru-he-zai-arm64-ping-tai-shang-lian-jie-mariadb-shu-ju-ku/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: zhaorenhai 本文尝试探索下几种主流的开发语言如何在arm64平台上连接MariaDB数据库，并测试一下增删改查各项功能是否都正常。主要包括如下几种语言：C , Java, Node.js, Python, Go, Rust, PHP 测试平台采用华为云的鲲鹏虚拟机，OS采用Ubuntu18.04。 并提前已经在同内网内的另外一台虚拟机上已经部署好了一个MariaDB数据库，并建好">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-11-14T15:58:41.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="主流开发语言如何在arm64平台上连接MariaDB数据库" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="主流开发语言如何在arm64平台上连接MariaDB数据库" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-11-14T15:58:41.000Z">2020-11-14</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                主流开发语言如何在arm64平台上连接MariaDB数据库
+            
+        </h1>
+        <div class="content">
+            <p>作者: zhaorenhai</p>
+<p>本文尝试探索下几种主流的开发语言如何在arm64平台上连接MariaDB数据库，并测试一下增删改查各项功能是否都正常。主要包括如下几种语言：C , Java, Node.js, Python, Go, Rust, PHP</p>
+<p>测试平台采用华为云的鲲鹏虚拟机，OS采用Ubuntu18.04。 并提前已经在同内网内的另外一台虚拟机上已经部署好了一个MariaDB数据库，并建好了供远程连接的数据库用户名和密码, 这里假设我们新建的用户名为proxysql，密码为proxypassword，端口号就用默认的3306端口号。</p>
+<a id="more"></a>
+<p><strong>C语言</strong></p>
+<p>首先安装连接器库</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install libmariadbclient-dev</span><br></pre></td></tr></table></figure>
+
+<p>然后新建一个C语言文件<code>version.c</code>，输入如下内容：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;mysql.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">"MySQL client version: %s\n"</span>, mysql_get_client_info());</span><br><span class="line"></span><br><span class="line">  <span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>编译并执行：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">gcc version.c -o version  `mysql_config --cflags --libs`</span><br><span class="line">./version</span><br></pre></td></tr></table></figure>
+
+<p>可以看到输出如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">MySQL client version: 10.1.47-MariaDB</span><br></pre></td></tr></table></figure>
+
+<p>说明可以成功打印出客户端的版本。</p>
+<p>接下来我们新建一个<code>createdb.c</code>文件，输入如下代码，测试下创建数据库的功能</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;mysql.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  MYSQL *con = mysql_init(<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (con == <span class="literal">NULL</span>)</span><br><span class="line">  &#123;</span><br><span class="line">      <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">"%s\n"</span>, mysql_error(con));</span><br><span class="line">      <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (mysql_real_connect(con, <span class="string">"192.168.0.204"</span>, <span class="string">"proxysql"</span>, <span class="string">"proxypassword"</span>,</span><br><span class="line">    <span class="literal">NULL</span>, <span class="number">0</span>, <span class="literal">NULL</span>, <span class="number">0</span>) == <span class="literal">NULL</span>)</span><br><span class="line">  &#123;</span><br><span class="line">      <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">"%s\n"</span>, mysql_error(con));</span><br><span class="line">      mysql_close(con);</span><br><span class="line">      <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"CREATE DATABASE testdb"</span>))</span><br><span class="line">  &#123;</span><br><span class="line">      <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">"%s\n"</span>, mysql_error(con));</span><br><span class="line">      mysql_close(con);</span><br><span class="line">      <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  mysql_close(con);</span><br><span class="line">  <span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>编译并执行</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">gcc createdb.c -o createdb  `mysql_config --cflags --libs`</span><br><span class="line">./createdb</span><br></pre></td></tr></table></figure>
+
+<p>接下来我们新建一个<code>testdb.c</code>文件，输入如下代码，测试下新增表，插入记录，查询表，关联查询，更新，删除记录，删除表各项功能。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;mysql.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">finish_with_error</span><span class="params">(MYSQL *con)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">"%s\n"</span>, mysql_error(con));</span><br><span class="line">  mysql_close(con);</span><br><span class="line">  <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">int</span> argc, <span class="keyword">char</span> **argv)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">  MYSQL *con = mysql_init(<span class="literal">NULL</span>);</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (con == <span class="literal">NULL</span>)</span><br><span class="line">  &#123;</span><br><span class="line">      <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">"%s\n"</span>, mysql_error(con));</span><br><span class="line">      <span class="built_in">exit</span>(<span class="number">1</span>);</span><br><span class="line">  &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (mysql_real_connect(con, <span class="string">"192.168.0.204"</span>, <span class="string">"proxysql"</span>, <span class="string">"proxypassword"</span>,</span><br><span class="line">    <span class="string">"testdb"</span>, <span class="number">0</span>, <span class="literal">NULL</span>, <span class="number">0</span>) == <span class="literal">NULL</span>)</span><br><span class="line">  &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">    </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"DROP TABLE IF EXISTS cars;"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"DROP TABLE IF EXISTS people;"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"CREATE TABLE cars(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), price INT)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;    </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"CREATE TABLE people(id INT, name VARCHAR(255), car_id INT)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;    </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO cars VALUES(1,'Audi',52642)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO cars VALUES(2,'Mercedes',57127)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO cars VALUES(3,'Skoda',9000)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO cars VALUES(4,'Volvo',29000)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO cars VALUES(5,'Bentley',350000)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO cars VALUES(6,'Citroen',21000)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO cars VALUES(7,'Hummer',41400)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO cars VALUES(8,'Volkswagen',21600)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;    </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO people VALUES(1,'Jim',7)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;  </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO people VALUES(1,'Jim',8)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;    </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"INSERT INTO people VALUES(2,'Tom',6)"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"SELECT * FROM cars"</span>))</span><br><span class="line">  &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  MYSQL_RES *result = mysql_store_result(con);</span><br><span class="line">  <span class="keyword">if</span> (result == <span class="literal">NULL</span>)</span><br><span class="line">  &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">int</span> num_fields = mysql_num_fields(result);</span><br><span class="line">  MYSQL_ROW row;</span><br><span class="line">  <span class="keyword">while</span> ((row = mysql_fetch_row(result)))</span><br><span class="line">  &#123;</span><br><span class="line">      <span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; num_fields; i++)</span><br><span class="line">      &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"%s "</span>, row[i] ? row[i] : <span class="string">"NULL"</span>);</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="built_in">printf</span>(<span class="string">"\n"</span>);</span><br><span class="line">  &#125;</span><br><span class="line">  mysql_free_result(result);</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"update cars set price = 42400 where name = 'Hummer'"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;   </span><br><span class="line">  </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"SELECT people.name,cars.name,cars.price FROM cars,people where cars.id = people.car_id"</span>))</span><br><span class="line">  &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  result = mysql_store_result(con);</span><br><span class="line">  <span class="keyword">if</span> (result == <span class="literal">NULL</span>)</span><br><span class="line">  &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  num_fields = mysql_num_fields(result);</span><br><span class="line">  <span class="keyword">while</span> ((row = mysql_fetch_row(result)))</span><br><span class="line">  &#123;</span><br><span class="line">      <span class="keyword">for</span>(<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; num_fields; i++)</span><br><span class="line">      &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"%s "</span>, row[i] ? row[i] : <span class="string">"NULL"</span>);</span><br><span class="line">      &#125;</span><br><span class="line"></span><br><span class="line">      <span class="built_in">printf</span>(<span class="string">"\n"</span>);</span><br><span class="line">  &#125;  </span><br><span class="line">  mysql_free_result(result);</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"delete from people where id = 1"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;</span><br><span class="line">  </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"drop table people;"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;  </span><br><span class="line">  <span class="keyword">if</span> (mysql_query(con, <span class="string">"drop table cars;"</span>)) &#123;</span><br><span class="line">      finish_with_error(con);</span><br><span class="line">  &#125;  </span><br><span class="line">    </span><br><span class="line">  mysql_close(con);</span><br><span class="line">  <span class="built_in">exit</span>(<span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>编译并执行：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">gcc testdb.c -o testdb  `mysql_config --cflags --libs`</span><br><span class="line">./testdb</span><br></pre></td></tr></table></figure>
+
+<p>输出如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">1 Audi 52642</span><br><span class="line">2 Mercedes 57127</span><br><span class="line">3 Skoda 9000</span><br><span class="line">4 Volvo 29000</span><br><span class="line">5 Bentley 350000</span><br><span class="line">6 Citroen 21000</span><br><span class="line">7 Hummer 41400</span><br><span class="line">8 Volkswagen 21600</span><br><span class="line">Jim Hummer 42400</span><br><span class="line">Jim Volkswagen 21600</span><br><span class="line">Tom Citroen 21000</span><br></pre></td></tr></table></figure>
+
+<p>根据以上测试可以发现，C语言连接MariaDB数据库，增删改查，创建表，删除表，等各项功能在arm64平台上都正常。</p>
+<p>以上测试只是演示了从OS的软件源安装MariaDB的Connector，你如果想用最新版本的Connector，也可以参考官方文档，编译一个最新版本的:  <a href="https://mariadb.com/kb/en/mariadb-connector-c/">https://mariadb.com/kb/en/mariadb-connector-c/</a></p>
+<p>另外MariaDB的C连接器项目是LGPL的License发布的，以动态链接库的方式链接，可以放心使用。</p>
+<p><strong>Java</strong></p>
+<p>首先要确保在测试虚拟机上已经安装了最新版本的OpenJDK和Maven。</p>
+<p>用Maven创建一个样例项目：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mvn archetype:generate -DgroupId=com.mycompany.app -DartifactId=my-app </span><br><span class="line">-DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false</span><br></pre></td></tr></table></figure>
+
+<p>然后在生成的<code>pom.xml</code>中的dependencies模块，添加如下内容：</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.mariadb.jdbc<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>mariadb-java-client<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>2.7.0<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>然后编辑<code>src/main/java/com/mycompany/app</code>目录下的<code>App.java</code>文件，内容如下</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.mycompany.app;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.sql.*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">App</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">( String[] args )</span> <span class="keyword">throws</span> SQLException </span>&#123;</span><br><span class="line">    <span class="keyword">try</span> (Connection conn = DriverManager.getConnection(<span class="string">"jdbc:mariadb://192.168.0.204/"</span>, <span class="string">"proxysql"</span>, <span class="string">"proxypassword"</span>)) &#123;</span><br><span class="line">      <span class="comment">// create a Statement</span></span><br><span class="line">      <span class="keyword">try</span> (Statement stmt = conn.createStatement()) &#123;</span><br><span class="line">        <span class="comment">//execute query</span></span><br><span class="line">        <span class="keyword">try</span> (ResultSet rs = stmt.executeQuery(<span class="string">"SELECT 'Hello World!'"</span>)) &#123;</span><br><span class="line">          <span class="comment">//position result to first</span></span><br><span class="line">          rs.first();</span><br><span class="line">          System.out.println(rs.getString(<span class="number">1</span>)); <span class="comment">//result is "Hello World!"</span></span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>然后执行如下命令编译</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mvn install</span><br></pre></td></tr></table></figure>
+
+<p>执行如下命令执行</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mvn exec:java -Dexec.mainClass="com.mycompany.app.App"</span><br></pre></td></tr></table></figure>
+
+<p>输出<code>Hello Word!</code>代表正常</p>
+<p>上面仅仅是测试了比较简单的功能，下面我们测试下连接池功能，并执行下增删改查等功能。</p>
+<p>修改<code>App.java</code>的内容如下：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.mycompany.app;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.sql.*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">App</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">  <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">( String[] args )</span> <span class="keyword">throws</span> SQLException </span>&#123;</span><br><span class="line">    <span class="comment">//option "pool" must be set to indicate that pool has to be used</span></span><br><span class="line">    String connectionString = <span class="string">"jdbc:mariadb://192.168.0.204/testdb?user=proxysql&amp;password=proxypassword&amp;maxPoolSize=10&amp;pool"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> (Connection connection = DriverManager.getConnection(connectionString)) &#123;</span><br><span class="line">      <span class="keyword">try</span> (Statement stmt = connection.createStatement()) &#123;</span><br><span class="line">        ResultSet rs = stmt.executeQuery(<span class="string">"DROP TABLE IF EXISTS cars;"</span>);</span><br><span class="line">        stmt.executeQuery(<span class="string">"CREATE TABLE cars(id INT PRIMARY KEY AUTO_INCREMENT, name VARCHAR(255), price INT)"</span>);</span><br><span class="line">        stmt.executeQuery(<span class="string">"INSERT INTO cars VALUES(1,'Audi',52642)"</span>);</span><br><span class="line">        stmt.executeQuery(<span class="string">"INSERT INTO cars VALUES(2,'Mercedes',57127)"</span>);</span><br><span class="line">        rs = stmt.executeQuery(<span class="string">"SELECT * FROM cars"</span>);</span><br><span class="line">        rs.next();</span><br><span class="line">        System.out.println(rs.getString(<span class="number">2</span>));</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">try</span> (Connection connection = DriverManager.getConnection(connectionString)) &#123;</span><br><span class="line">      <span class="keyword">try</span> (Statement stmt = connection.createStatement()) &#123;</span><br><span class="line">        stmt.executeQuery(<span class="string">"update cars set name = 'VolksWagen' where id = 1"</span>);</span><br><span class="line">        stmt.executeQuery(<span class="string">"delete from cars where id = 2"</span>);</span><br><span class="line">        ResultSet rs = stmt.executeQuery(<span class="string">"SELECT * FROM cars"</span>);</span><br><span class="line">        rs.next();</span><br><span class="line">        System.out.println(rs.getString(<span class="number">2</span>));</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>编译并执行，成功输出</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Audi</span><br><span class="line">VolksWagen</span><br></pre></td></tr></table></figure>
+
+<p>经过以上测试，连接池功能和增删改查功能也都正常。</p>
+<p>Java的连接器功能比较丰富，还实现了对集群或者主从数据库的负载均衡或者读写分离功能。接下来我们测试下读写分离功能。 在此之前请确保已经搭建好了MariaDB的主从数据库环境。</p>
+<p>将<code>App.java</code>的代码改成如下所示，注意jdbc连接串里面增加了replication关键字，代表主从复制，如果是其他负载均衡环境，也支持loadbalance等关键字，具体参考MariaDB官方文档。另外也注意下连接串中，主数据库地址在前，从数据库地址在后。当connection的属性改成了ReadOnly之后，语句就会到备库去查询了。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.mycompany.app;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.sql.*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">App</span> </span>&#123;</span><br><span class="line"></span><br><span class="line">    <span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">( String[] args )</span> <span class="keyword">throws</span> SQLException </span>&#123;</span><br><span class="line">        String connectionString = <span class="string">"jdbc:mysql:replication://192.168.0.204,192.168.0.64/testdb?user=proxysql&amp;password=proxypassword&amp;maxPoolSize=10&amp;pool"</span>;</span><br><span class="line">    </span><br><span class="line">        <span class="keyword">try</span> (Connection connection = DriverManager.getConnection(connectionString)) &#123;</span><br><span class="line">            <span class="keyword">try</span> (Statement stmt = connection.createStatement()) &#123;</span><br><span class="line">                stmt.executeQuery(<span class="string">"INSERT INTO cars VALUES(2,'Mercedes',57127)"</span>);</span><br><span class="line">                connection.setReadOnly(<span class="keyword">true</span>);</span><br><span class="line">                ResultSet rs = stmt.executeQuery(<span class="string">"SELECT * FROM cars"</span>);</span><br><span class="line">                rs.next();</span><br><span class="line">                System.out.println(rs.getString(<span class="number">2</span>));</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>编译并执行，输出如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">VolksWagen</span><br></pre></td></tr></table></figure>
+
+<p>执行成功。</p>
+<p>以上都是以Maven为例演示的相关功能，如果没使用Maven，也可以参考MariaDB官方文档里面的其他工具的指导：<a href="https://mariadb.com/kb/en/mariadb-connector-j/">https://mariadb.com/kb/en/mariadb-connector-j/</a></p>
+<p>MariaDB Java连接器也是以LGPL协议发布的，可以放心使用。</p>
+<p><strong>Python</strong></p>
+<p>首先确保测试虚拟机上已经安装好了Python3和pip3。</p>
+<p>在Python里面连接MariaDB需要先安装C语言的连接器，可以执行如下命令安装</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt install libmariadb-dev</span><br></pre></td></tr></table></figure>
+
+<p>不过当前Ubuntu18.04的版本自带的mariadb的包版本较老，不能满足python的版本要求，我们从源码编译一个。</p>
+<p>执行如下命令下载连接器源码，并解压</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">wget https://downloads.mariadb.org/interstitial/connector-c-3.1.11/mariadb-connector-c-3.1.11-src.zip</span><br><span class="line">unzip mariadb-connector-c-3.1.11-src.zip</span><br></pre></td></tr></table></figure>
+
+<p>开始编译</p>
+<p>新建一个单独的编译目录，在这个目录下进行编译，并安装</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">mkdir build-mariadb-connector-c</span><br><span class="line">cd build-mariadb-connector-c</span><br><span class="line">cmake ../mariadb-connector-c-3.1.11-src -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local</span><br><span class="line">make</span><br><span class="line">make install</span><br><span class="line">echo "/usr/local/lib/mariadb/" &gt; /etc/ld.so.conf.d/mariadb.conf</span><br><span class="line">ldconfig</span><br></pre></td></tr></table></figure>
+
+<p>然后执行如下命令安装Python的连接器：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pip3 install mariadb</span><br></pre></td></tr></table></figure>
+
+<p>接下来我们直接测试一下连接池功能，并简单测试下查询和新增的功能。</p>
+<p>编辑如下代码，命名为<code>testmariadb.py</code>文件</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> mariadb</span><br><span class="line"></span><br><span class="line">pool = mariadb.ConnectionPool(</span><br><span class="line">        user=<span class="string">"proxysql"</span>,</span><br><span class="line">        password=<span class="string">"proxypassword"</span>,</span><br><span class="line">        host=<span class="string">"192.168.0.204"</span>,</span><br><span class="line">        port=<span class="number">3306</span>,</span><br><span class="line">        pool_name=<span class="string">"web-app"</span>,</span><br><span class="line">        pool_size=<span class="number">20</span></span><br><span class="line">        )</span><br><span class="line"></span><br><span class="line"><span class="keyword">try</span>:</span><br><span class="line">    pconn = pool.get_connection()</span><br><span class="line">    cur = pconn.cursor()</span><br><span class="line">    data = [(<span class="number">3</span>, <span class="string">'Skoda'</span>, <span class="number">9000</span>),(<span class="number">4</span>, <span class="string">'Volvo'</span>, <span class="number">29000</span>),(<span class="number">5</span>, <span class="string">'Bently'</span>, <span class="number">350000</span>)]</span><br><span class="line">    cur.executemany(<span class="string">"INSERT INTO testdb.cars(id, name, price) VALUES (?, ?, ?)"</span>, data)</span><br><span class="line">    cur.execute(<span class="string">"select * from testdb.cars"</span>)</span><br><span class="line">    cars = []</span><br><span class="line">    <span class="keyword">for</span> (id,name,price) <span class="keyword">in</span> cur:</span><br><span class="line">        cars.append(<span class="string">f"<span class="subst">&#123;id&#125;</span> <span class="subst">&#123;name&#125;</span> <span class="subst">&#123;price&#125;</span>"</span>)</span><br><span class="line">    print(<span class="string">"\n"</span>.join(cars))</span><br><span class="line"><span class="keyword">except</span> mariadb.PoolError <span class="keyword">as</span> e:</span><br><span class="line">    <span class="comment"># Report Error</span></span><br><span class="line">    print(<span class="string">f"Error opening connection from pool: <span class="subst">&#123;e&#125;</span>"</span>)</span><br></pre></td></tr></table></figure>
+
+<p>执行</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">python3 testmariadb.py</span><br></pre></td></tr></table></figure>
+
+<p>输出如下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">1 VolksWagen 52642</span><br><span class="line">2 Mercedes 57127</span><br><span class="line">3 Skoda 9000</span><br><span class="line">4 Volvo 29000</span><br><span class="line">5 Bently 350000</span><br></pre></td></tr></table></figure>
+
+<p>说明成功执行。</p>
+<p>关于Python连接器的其他功能，可以参考如下链接：<a href="https://mariadb.com/docs/appdev/connector-python/">https://mariadb.com/docs/appdev/connector-python/</a></p>
+<p>Python连接器也是LGPL协议，可以放心使用。</p>
+<p><strong>Node.js</strong></p>
+<p>我们首先要先安装nodejs和npm， mariadb连接器要求至少nodejs为10.13以上版本，所以我们从官网下载一个arm64的二进制包，手动安装下</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">wget https://nodejs.org/dist/v14.15.0/node-v14.15.0-linux-arm64.tar.xz</span><br><span class="line">xz -d node-v14.15.0-linux-arm64.tar.xz</span><br><span class="line">tar -xf node-v14.15.0-linux-arm64.tar</span><br><span class="line">cd node-v14.15.0-linux-arm64/bin</span><br><span class="line">sudo ln -s `pwd`/node /usr/local/bin/</span><br><span class="line">sudo ln -s `pwd`/npm /usr/local/bin/</span><br></pre></td></tr></table></figure>
+
+<p>然后安装mariadb连接器</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo npm install mariadb</span><br></pre></td></tr></table></figure>
+
+<p>然后编辑一个<code>testmariadb.js</code>文件，内容如下：</p>
+<figure class="highlight javascript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">const</span> mariadb = <span class="built_in">require</span>(<span class="string">'mariadb'</span>);</span><br><span class="line"><span class="keyword">const</span> pool = mariadb.createPool(&#123;</span><br><span class="line">     host:<span class="string">'192.168.0.204'</span>,</span><br><span class="line">     user:<span class="string">'proxysql'</span>,</span><br><span class="line">     password: <span class="string">'proxypassword'</span>,</span><br><span class="line">     connectionLimit: <span class="number">5</span></span><br><span class="line">&#125;);</span><br><span class="line"><span class="keyword">async</span> <span class="function"><span class="keyword">function</span> <span class="title">asyncFunction</span>(<span class="params"></span>) </span>&#123;</span><br><span class="line">  <span class="keyword">let</span> conn;</span><br><span class="line">  <span class="keyword">try</span> &#123;</span><br><span class="line">    conn = <span class="keyword">await</span> pool.getConnection();</span><br><span class="line">    <span class="keyword">const</span> res = <span class="keyword">await</span> conn.query(<span class="string">"INSERT INTO testdb.cars value (?, ?, ?)"</span>, [<span class="number">6</span>,<span class="string">'Citroen'</span>,<span class="number">21000</span>]);</span><br><span class="line">    <span class="built_in">console</span>.log(res);</span><br><span class="line">    <span class="keyword">const</span> rows = <span class="keyword">await</span> conn.query(<span class="string">"SELECT * from testdb.cars"</span>);</span><br><span class="line">    <span class="built_in">console</span>.log(rows);</span><br><span class="line"></span><br><span class="line">  &#125; <span class="keyword">catch</span> (err) &#123;</span><br><span class="line">    <span class="keyword">throw</span> err;</span><br><span class="line">  &#125; <span class="keyword">finally</span> &#123;</span><br><span class="line">    <span class="keyword">if</span> (conn) <span class="keyword">return</span> conn.end();</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br><span class="line">asyncFunction();</span><br></pre></td></tr></table></figure>
+
+<p>然后执行</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">node testmariadb.js</span><br></pre></td></tr></table></figure>
+
+<p>输出如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">OkPacket &#123; affectedRows: 1, insertId: 6, warningStatus: 0 &#125;</span><br><span class="line">[</span><br><span class="line">  &#123; id: 1, name: &#39;VolksWagen&#39;, price: 52642 &#125;,</span><br><span class="line">  &#123; id: 2, name: &#39;Mercedes&#39;, price: 57127 &#125;,</span><br><span class="line">  &#123; id: 3, name: &#39;Skoda&#39;, price: 9000 &#125;,</span><br><span class="line">  &#123; id: 4, name: &#39;Volvo&#39;, price: 29000 &#125;,</span><br><span class="line">  &#123; id: 5, name: &#39;Bently&#39;, price: 350000 &#125;,</span><br><span class="line">  &#123; id: 6, name: &#39;Citroen&#39;, price: 21000 &#125;,</span><br><span class="line">  meta: [</span><br><span class="line">    ColumnDef &#123;</span><br><span class="line">      _parse: [StringParser],</span><br><span class="line">      collation: [Collation],</span><br><span class="line">      columnLength: 11,</span><br><span class="line">      columnType: 3,</span><br><span class="line">      flags: 16899,</span><br><span class="line">      scale: 0,</span><br><span class="line">      type: &#39;LONG&#39;</span><br><span class="line">    &#125;,</span><br><span class="line">    ColumnDef &#123;</span><br><span class="line">      _parse: [StringParser],</span><br><span class="line">      collation: [Collation],</span><br><span class="line">      columnLength: 1020,</span><br><span class="line">      columnType: 253,</span><br><span class="line">      flags: 0,</span><br><span class="line">      scale: 0,</span><br><span class="line">      type: &#39;VAR_STRING&#39;</span><br><span class="line">    &#125;,</span><br><span class="line">    ColumnDef &#123;</span><br><span class="line">      _parse: [StringParser],</span><br><span class="line">      collation: [Collation],</span><br><span class="line">      columnLength: 11,</span><br><span class="line">      columnType: 3,</span><br><span class="line">      flags: 0,</span><br><span class="line">      scale: 0,</span><br><span class="line">      type: &#39;LONG&#39;</span><br><span class="line">    &#125;</span><br><span class="line">  ]</span><br><span class="line">]</span><br></pre></td></tr></table></figure>
+
+<p>MariaDB Node.js的连接器也是用的LGPL协议，可以放心使用。</p>
+<p>关于Node.js连接器的其他信息，请参考：<a href="https://mariadb.com/kb/en/nodejs-connector/">https://mariadb.com/kb/en/nodejs-connector/</a></p>
+<p><strong>PHP</strong></p>
+<p>PHP连接MariaDB和连接Mysql的代码是一样的。</p>
+<p>首先在测试机上安装php和mysql驱动：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install php</span><br><span class="line">sudo apt install php-mysql</span><br></pre></td></tr></table></figure>
+
+<p>然后编辑一个<code>testmariadb.php</code>文件</p>
+<figure class="highlight php"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?php</span></span><br><span class="line">$mysqli = <span class="keyword">new</span> mysqli(<span class="string">"192.168.0.204"</span>, <span class="string">"proxysql"</span>, <span class="string">"proxypassword"</span>, <span class="string">"testdb"</span>);</span><br><span class="line">$mysqli-&gt;query(<span class="string">"insert into cars values(7,'Hummer',41400)"</span>);</span><br><span class="line">$result = $mysqli-&gt;query(<span class="string">"SELECT * FROM cars where id = 7"</span>);</span><br><span class="line">$row = $result-&gt;fetch_assoc();</span><br><span class="line"><span class="keyword">echo</span> htmlentities($row[<span class="string">'name'</span>]);</span><br><span class="line"><span class="meta">?&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>执行：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">php testmariadb.php</span><br></pre></td></tr></table></figure>
+
+<p>输出</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Hummer</span><br></pre></td></tr></table></figure>
+
+<p>对于PHP，我们仅测试了插入和查询两个简单的场景，证明PHP在arm64平台上连接MariaDB数据库可行。关于PHP连接mysql和mariadb数据库的其他信息，可以参考如下链接：</p>
+<p><a href="https://www.php.net/manual/en/mysql.php">https://www.php.net/manual/en/mysql.php</a></p>
+<p><strong>Go</strong></p>
+<p>Go语言连接MariaDB数据库和连接Mysql数据库也是一样的。</p>
+<p>首先安装Go语言的Mysql驱动, （这个驱动的协议是MPL2.0，也是一个比较宽松的协议）</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">go get -u github.com/go-sql-driver/mysql</span><br></pre></td></tr></table></figure>
+
+<p>编辑<code>testmariadb.go</code>文件，内容如下：</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> main</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> <span class="string">"fmt"</span></span><br><span class="line"><span class="keyword">import</span> <span class="string">"strings"</span></span><br><span class="line"><span class="keyword">import</span> <span class="string">"database/sql"</span></span><br><span class="line"><span class="keyword">import</span> _ <span class="string">"github.com/go-sql-driver/mysql"</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span> &#123;</span><br><span class="line">    <span class="keyword">const</span> (</span><br><span class="line">        userName = <span class="string">"proxysql"</span></span><br><span class="line">        password = <span class="string">"proxypassword"</span></span><br><span class="line">        ip = <span class="string">"192.168.0.204"</span></span><br><span class="line">        port = <span class="string">"3306"</span></span><br><span class="line">        dbName = <span class="string">"testdb"</span></span><br><span class="line">    )</span><br><span class="line">    <span class="comment">//Db数据库连接池</span></span><br><span class="line">    <span class="keyword">var</span> DB *sql.DB</span><br><span class="line">    path := strings.Join([]<span class="keyword">string</span>&#123;userName, <span class="string">":"</span>, password, <span class="string">"@tcp("</span>,ip, <span class="string">":"</span>, port, <span class="string">")/"</span>, dbName, <span class="string">"?charset=utf8"</span>&#125;, <span class="string">""</span>)</span><br><span class="line"></span><br><span class="line">    <span class="comment">//打开数据库,前者是驱动名，所以要导入： _ "github.com/go-sql-driver/mysql"</span></span><br><span class="line">    DB, _ = sql.Open(<span class="string">"mysql"</span>, path)</span><br><span class="line">    <span class="comment">//设置数据库最大连接数</span></span><br><span class="line">    DB.SetConnMaxLifetime(<span class="number">100</span>)</span><br><span class="line">    <span class="comment">//设置上数据库最大闲置连接数</span></span><br><span class="line">    DB.SetMaxIdleConns(<span class="number">10</span>)</span><br><span class="line">    <span class="comment">//验证连接</span></span><br><span class="line">    <span class="keyword">if</span> err := DB.Ping(); err != <span class="literal">nil</span>&#123;</span><br><span class="line">        fmt.Println(<span class="string">"open database fail"</span>)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">    &#125;</span><br><span class="line">    fmt.Println(<span class="string">"connnect success"</span>)</span><br><span class="line">    <span class="comment">//开启事务</span></span><br><span class="line">    tx, err := DB.Begin()</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span>&#123;</span><br><span class="line">        fmt.Println(<span class="string">"tx fail"</span>)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//准备sql语句</span></span><br><span class="line">    stmt, err := tx.Prepare(<span class="string">"INSERT INTO cars VALUES (?,?,?)"</span>)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span>&#123;</span><br><span class="line">        fmt.Println(<span class="string">"Prepare fail"</span>)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//将参数传递到sql语句中并且执行</span></span><br><span class="line">    res, err := stmt.Exec(<span class="number">8</span>, <span class="string">"Mercedes"</span>, <span class="number">57127</span>)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span>&#123;</span><br><span class="line">        fmt.Println(<span class="string">"Exec fail"</span>)</span><br><span class="line">        <span class="keyword">return</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//将事务提交</span></span><br><span class="line">    tx.Commit()</span><br><span class="line">    fmt.Println(res.LastInsertId())</span><br><span class="line"></span><br><span class="line">    rows, err := DB.Query(<span class="string">"SELECT * from cars"</span>)</span><br><span class="line">    <span class="keyword">if</span> err != <span class="literal">nil</span>&#123;</span><br><span class="line">        fmt.Println(<span class="string">"query fail"</span>)</span><br><span class="line">    &#125;    </span><br><span class="line">    <span class="comment">//循环读取结果</span></span><br><span class="line">    <span class="keyword">for</span> rows.Next()&#123;</span><br><span class="line">        <span class="keyword">var</span> id <span class="keyword">int</span></span><br><span class="line">        <span class="keyword">var</span> name <span class="keyword">string</span></span><br><span class="line">        <span class="keyword">var</span> price <span class="keyword">int</span></span><br><span class="line">        err := rows.Scan(&amp;id, &amp;name, &amp;price)</span><br><span class="line">        <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;</span><br><span class="line">            fmt.Println(<span class="string">"rows fail"</span>)</span><br><span class="line">        &#125;</span><br><span class="line">        fmt.Printf(<span class="string">"%v %q %v \n"</span>, id, name, price)</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>然后执行</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">go run testmariadb.go</span><br></pre></td></tr></table></figure>
+
+<p>输出如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">connnect success</span><br><span class="line">8 &lt;nil&gt;</span><br><span class="line">1 &quot;VolksWagen&quot; 52642</span><br><span class="line">2 &quot;Mercedes&quot; 57127</span><br><span class="line">3 &quot;Skoda&quot; 9000</span><br><span class="line">4 &quot;Volvo&quot; 29000</span><br><span class="line">5 &quot;Bently&quot; 350000</span><br><span class="line">6 &quot;Citroen&quot; 21000</span><br><span class="line">7 &quot;Hummer&quot; 41400</span><br><span class="line">8 &quot;Mercedes&quot; 57127</span><br></pre></td></tr></table></figure>
+
+<p>上面我们测试了Go语言的MariaDB连接器的连接池，查询，事务，插入等功能，都是成功的。 关于其他功能，大家可以参考go语言的官网或者其他相关网站。</p>
+<p><strong>Rust</strong></p>
+<p>Rust连接MariaDB的方式和连接Mysql也是一样的。</p>
+<p>首先安装最新版本的Rust：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf | sh</span><br></pre></td></tr></table></figure>
+
+<p>安装完后，需要将<code>$HOME/.cargo/bin</code>添加到PATH环境变量里</p>
+<p>对于当前环境，我们执行如下命令先临时生效：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">source $HOME/.cargo/env</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<p>然后执行如下命令，创建一个新工程：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cargo new mariadb_test</span><br></pre></td></tr></table></figure>
+
+<p>然后</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cd mariadb_test</span><br></pre></td></tr></table></figure>
+
+<p>编辑<code>Cargo.toml</code>配置文件，在<code>[dependencies]</code>下面添加如下内容, 设置驱动的版本：</p>
+<figure class="highlight toml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">mysql</span> = <span class="string">"20.0.1"</span></span><br></pre></td></tr></table></figure>
+
+<p>然后编辑<code>src/main.rs</code>文件：</p>
+<figure class="highlight rust"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">use</span> mysql::*;</span><br><span class="line"><span class="keyword">use</span> mysql::prelude::*;</span><br><span class="line"></span><br><span class="line"><span class="meta">#[derive(Debug, PartialEq, Eq)]</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Car</span></span> &#123;</span><br><span class="line">    id: <span class="built_in">i32</span>,</span><br><span class="line">    name: <span class="built_in">String</span>,</span><br><span class="line">    price: <span class="built_in">i32</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">testmariadb</span></span>() -&gt; std::result::<span class="built_in">Result</span>&lt;std::string::<span class="built_in">String</span>, mysql::Error&gt; &#123;</span><br><span class="line">    <span class="keyword">let</span> url = <span class="string">"mysql://proxysql:proxypassword@192.168.0.204:3306/testdb"</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">let</span> pool = Pool::new(url)?;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">let</span> <span class="keyword">mut</span> conn = pool.get_conn()?;</span><br><span class="line">    </span><br><span class="line">    conn.exec_drop(<span class="string">r"delete from cars"</span>,())?;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">let</span> cars = <span class="built_in">vec!</span>[</span><br><span class="line">        Car &#123; id: <span class="number">1</span>, name: <span class="string">"Audi"</span>.into(), price: <span class="number">52642</span> &#125;,</span><br><span class="line">        Car &#123; id: <span class="number">2</span>, name: <span class="string">"Volkswagen"</span>.into(), price: <span class="number">21600</span> &#125;,</span><br><span class="line">        Car &#123; id: <span class="number">3</span>, name: <span class="string">"Skoda"</span>.into(), price: <span class="number">9000</span> &#125;,</span><br><span class="line">    ];</span><br><span class="line">    conn.exec_batch(</span><br><span class="line">        r<span class="string">"INSERT INTO cars (id, name, price)</span></span><br><span class="line"><span class="string">      VALUES (:id, :name, :price)"</span>,</span><br><span class="line">      cars.iter().map(|p| params! &#123;</span><br><span class="line">          <span class="string">"id"</span> =&gt; p.id,</span><br><span class="line">          <span class="string">"name"</span> =&gt; &amp;p.name,</span><br><span class="line">          <span class="string">"price"</span> =&gt; p.price,</span><br><span class="line">      &#125;)</span><br><span class="line">      )?;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">let</span> selected_cars = conn</span><br><span class="line">        .query_map(</span><br><span class="line">            <span class="string">"SELECT id, name, price from cars"</span>,</span><br><span class="line">            |(id, name, price)| &#123;</span><br><span class="line">                Car &#123; id, name, price &#125;</span><br><span class="line">            &#125;,</span><br><span class="line">            )?;</span><br><span class="line">    <span class="built_in">assert_eq!</span>(cars, selected_cars);</span><br><span class="line">    <span class="built_in">println!</span>(<span class="string">"Yay!"</span>);</span><br><span class="line">    <span class="literal">Ok</span>(<span class="string">"Yay!"</span>.into())</span><br><span class="line"></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">fn</span> <span class="title">main</span></span>() &#123;</span><br><span class="line">    testmariadb();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们测试了连接池功能，还测试了，删除，插入，查询等功能，在一个批量的查询之后，将查询出来的结果放到一个列表里面，和插入之前的数据列表进行对比，如果相等，则打印<code>Yay!</code></p>
+<p>在<code>mariadb_test</code>目录下，执行如下命令编译加运行</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cargo run</span><br></pre></td></tr></table></figure>
+
+<p>如果执行因为update crates.io-index超时，需要更改一下下载地址，进行如下配置</p>
+<p>编辑文件: <code>vi $HOME/.cargo/config</code> </p>
+<p>输入如下内容，保存退出。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[source.crates-io]</span><br><span class="line">registry &#x3D; &quot;https:&#x2F;&#x2F;github.com&#x2F;rust-lang&#x2F;crates.io-index&quot;</span><br><span class="line">replace-with &#x3D; &#39;ustc&#39;</span><br><span class="line">[source.ustc]</span><br><span class="line">registry &#x3D; &quot;git:&#x2F;&#x2F;mirrors.ustc.edu.cn&#x2F;crates.io-index&quot;</span><br></pre></td></tr></table></figure>
+
+<p>然后重新<code>cargo run</code></p>
+<p>输出<code>Yay!</code>，成功运行。</p>
+<p>关于Rust Mysql连接器的其他功能，请参考：</p>
+<p><a href="https://docs.rs/mysql/20.0.1/mysql/">https://docs.rs/mysql/20.0.1/mysql/</a></p>
+<p>另外Rust还有一个比较新的异步连接器，具体可以参考下面这两个链接：</p>
+<p><a href="https://docs.rs/mysql_async/0.25.0/mysql_async/">https://docs.rs/mysql_async/0.25.0/mysql_async/</a></p>
+<p><a href="https://github.com/blackbeam/mysql_async">https://github.com/blackbeam/mysql_async</a></p>
+<p>Rust的连接器使用的都是MIT/Apache2.0协议，这两个都是比较宽松的协议。</p>
+<p><strong>总结</strong></p>
+<p>我们测试了C，Java，Node.js， Python，PHP，Go，Rust多种主流语言，都可以在arm64平台上成功的连接MariaDB数据库，而且用法和x86平台都是一样的。而且各个语言连接器的开源协议也都比较宽松。</p>
+<p><strong>参考链接：</strong></p>
+<p><a href="http://zetcode.com/db/mysqlc/">http://zetcode.com/db/mysqlc/</a></p>
+<p><a href="https://mariadb.com/kb/en/mariadb-connector-c/">https://mariadb.com/kb/en/mariadb-connector-c/</a></p>
+<p><a href="https://mariadb.com/kb/en/mariadb-connector-j/">https://mariadb.com/kb/en/mariadb-connector-j/</a></p>
+<p><a href="https://mariadb.com/docs/appdev/connector-python/">https://mariadb.com/docs/appdev/connector-python/</a></p>
+<p><a href="https://mariadb.com/kb/en/nodejs-connector/">https://mariadb.com/kb/en/nodejs-connector/</a></p>
+<p><a href="https://www.php.net/manual/en/mysql.php">https://www.php.net/manual/en/mysql.php</a></p>
+<p><a href="https://www.jianshu.com/p/ee87e989f149">https://www.jianshu.com/p/ee87e989f149</a></p>
+<p><a href="https://golang.org/pkg/database/sql">https://golang.org/pkg/database/sql</a></p>
+<p><a href="https://github.com/go-sql-driver/mysql">https://github.com/go-sql-driver/mysql</a></p>
+<p><a href="https://doc.rust-lang.org/book/title-page.html">https://doc.rust-lang.org/book/title-page.html</a></p>
+<p><a href="https://docs.rs/mysql/20.0.1/mysql/">https://docs.rs/mysql/20.0.1/mysql/</a></p>
+<p><a href="https://docs.rs/mysql_async/0.25.0/mysql_async/">https://docs.rs/mysql_async/0.25.0/mysql_async/</a></p>
+<p><a href="https://github.com/blackbeam/mysql_async">https://github.com/blackbeam/mysql_async</a></p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/11/20/zai-arm64-ping-tai-shang-jian-kong-mariadb-shu-ju-ku-de-xing-neng-he-yun-xing-qing-kuang/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">在arm64平台上监控MariaDB数据库的性能和运行情况</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/11/11/mysql-innodb-cluster-on-arm64-gai-shu/">
+                <span class="level-item">Mysql Innodb cluster on ARM64概述</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 55,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="主流开发语言如何在arm64平台上连接MariaDB数据库" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

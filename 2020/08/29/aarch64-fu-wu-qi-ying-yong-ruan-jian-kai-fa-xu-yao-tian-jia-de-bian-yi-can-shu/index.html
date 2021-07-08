@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>Aarch64服务器应用软件开发需要添加的编译参数 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者： zhaorenhai    本文简单总结了一下，在aarch64服务器平台进行应用软件开发或者移植工作，编译代码时，编译器应该添加哪些选项。网上类似文章不少，但是由于arm平台涉及了移动开发，嵌入式开发，服务器开发各个领域，编译方式也有交叉编译，本地编译等，而且编译器也有gcc，armcc，armclang，clang等等多种，再加上arm平台历史版本众多，又分了32位，64位，网上这些文">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Aarch64服务器应用软件开发需要添加的编译参数">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/08/29/aarch64-fu-wu-qi-ying-yong-ruan-jian-kai-fa-xu-yao-tian-jia-de-bian-yi-can-shu/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者： zhaorenhai    本文简单总结了一下，在aarch64服务器平台进行应用软件开发或者移植工作，编译代码时，编译器应该添加哪些选项。网上类似文章不少，但是由于arm平台涉及了移动开发，嵌入式开发，服务器开发各个领域，编译方式也有交叉编译，本地编译等，而且编译器也有gcc，armcc，armclang，clang等等多种，再加上arm平台历史版本众多，又分了32位，64位，网上这些文">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-08-29T05:00:55.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="Aarch64服务器应用软件开发需要添加的编译参数" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="Aarch64服务器应用软件开发需要添加的编译参数" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-08-29T05:00:55.000Z">2020-08-29</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">基础库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                Aarch64服务器应用软件开发需要添加的编译参数
+            
+        </h1>
+        <div class="content">
+            <p>作者： <a href="https://github.com/zhaorenhai">zhaorenhai</a></p>
+<p>   本文简单总结了一下，在aarch64服务器平台进行应用软件开发或者移植工作，编译代码时，编译器应该添加哪些选项。网上类似文章不少，但是由于arm平台涉及了移动开发，嵌入式开发，服务器开发各个领域，编译方式也有交叉编译，本地编译等，而且编译器也有gcc，armcc，armclang，clang等等多种，再加上arm平台历史版本众多，又分了32位，64位，网上这些文档一般都不明确说明文档涉及的开发平台，对应指令集版本，需要的编译器之类的情况，让人看上去比较头疼。 </p>
+<a id="more"></a>
+
+<p>本文涉及的范围：aarch64 Linux 服务器平台应用软件开发，不涉及交叉编译，只讨论本地编译情况， 只讨论可以免费使用的开源gcc编译器（clang也是可以免费可以使用的开源编译器，但是编译参数全面兼容gcc，所以本文只讨论gcc）。 另外本文也只讨论和aarch64平台强相关的参数，通用的编译参数讨论的文章比较多，本文不再赘述。<br>   最主要的参考资料来自于这篇文档：<a href="https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html。">https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html。</a> 本文主要讨论最主要的也是最容易引起混淆的-march，-mtune，-mcpu参数。其余参数一般都是在一些极特殊的场景下才用到，比如需要改变代码模型，需要改变数据模型，需要指定字节序为大端字节序等等，或者开发特殊的软件比如gcc编译器之类的时候才用到，一般服务器应用软件开发很少用到，所以一般保持默认值即可，后续如果有实际遇到的场景，会再补充到本文中。</p>
+<p>  先看-march参数，原文描述：<br>-march=name<br>Specify the name of the target architecture and, optionally, one or more feature modifiers. This option has the form -march=arch{+[no]feature}*.<br>The table below summarizes the permissible values for arch and the features that they enable by default:</p>
+<table>
+<thead>
+<tr>
+<th>arch value</th>
+<th>Architecture</th>
+<th>Includes by default</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>‘armv8-a’</td>
+<td>Armv8-A</td>
+<td>‘+fp’, ‘+simd’</td>
+</tr>
+<tr>
+<td>‘armv8.1-a’</td>
+<td>Armv8.1-A</td>
+<td>‘armv8-a’, ‘+crc’, ‘+lse’, ‘+rdma’</td>
+</tr>
+<tr>
+<td>‘armv8.2-a’</td>
+<td>Armv8.2-A</td>
+<td>‘armv8.1-a’</td>
+</tr>
+<tr>
+<td>‘armv8.3-a’</td>
+<td>Armv8.3-A</td>
+<td>‘armv8.2-a’</td>
+</tr>
+<tr>
+<td>‘armv8.4-a’</td>
+<td>Armv8.4-A</td>
+<td>‘armv8.3-a’, ‘+fp16fml’, ‘+dotprod’</td>
+</tr>
+<tr>
+<td>‘armv8.5-a’</td>
+<td>Armv8.5-A</td>
+<td>‘armv8.4-a’, ‘+sb’, ‘+ssbs’, ‘+predres’</td>
+</tr>
+<tr>
+<td>‘armv8.6-a’</td>
+<td>Armv8.6-A</td>
+<td>‘armv8.5-a’, ‘+bf16’, ‘+i8mm’</td>
+</tr>
+</tbody></table>
+<p>The value ‘native’ is available on native AArch64 GNU/Linux and causes the compiler to pick the architecture of the host system. This option has no effect if the compiler is unable to recognize the architecture of the host system,<br>The permissible values for feature are listed in the sub-section on -march and -mcpu Feature Modifiers. Where conflicting feature modifiers are specified, the right-most feature is used.<br>GCC uses name to determine what kind of instructions it can emit when generating assembly code. If -march is specified without either of -mtune or -mcpu also being specified, the code is tuned to perform well across a range of target processors implementing the target architecture.</p>
+<p>这个参数可以指定编译的目标架构，这里的架构指得是ARM CPU的指令集架构，那我们应该指定哪个版本的指令集架构，才能做到最好的兼容性，能兼容市场上所有的ARM CPU，或者既能兼顾兼容性，又能兼顾一部分性能，毕竟新版本的指令集架构能用上更新的具有特定功能的指令集。 这个需要看一下目前市场上所有的ARM服务器CPU的情况，网上目前已有的相关文档要么比较老，信息不全，要么就是出现把移动CPU和服务器CPU都放到一起的情况，比较混乱。所以本文重新搜集了目前所有ARM服务器CPU的信息，如下表（资料来源于互联网）：</p>
+<table>
+<thead>
+<tr>
+<th>厂商</th>
+<th>型号</th>
+<th>技术指标</th>
+<th>微架构</th>
+<th>指令集架构</th>
+<th>发布时间</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Ampere</td>
+<td>X-gene-1</td>
+<td>8c   2.4GHz   40nm</td>
+<td>Storm</td>
+<td>ARMv8.0-A</td>
+<td>2012</td>
+</tr>
+<tr>
+<td>Ampere</td>
+<td>X-gene-2</td>
+<td>8c   2.4GHz   28nm</td>
+<td>Shadowcat</td>
+<td>ARMv8.0-A</td>
+<td>2015</td>
+</tr>
+<tr>
+<td>Ampere</td>
+<td>eMag8180   (X-gene-3)</td>
+<td>32c   2.8GHz-3.3GHz   16nm</td>
+<td>Skylark</td>
+<td>ARMv8.0-A</td>
+<td>2018</td>
+</tr>
+<tr>
+<td>Ampere</td>
+<td>Altra</td>
+<td>32-80c   1.7-3.3GHz</td>
+<td>Quicksilver   (Neoverse N1)</td>
+<td>ARMv8.2-A</td>
+<td>2020年3月</td>
+</tr>
+<tr>
+<td>Ampere</td>
+<td>Altra Max</td>
+<td>128c   7nm</td>
+<td>Quicksilver   (Neoverse N1)</td>
+<td>ARMv8.2-A</td>
+<td>2020年6月</td>
+</tr>
+<tr>
+<td>Cavium   (被Marvell收购)</td>
+<td>ThunderX   (CN8890)</td>
+<td>48c   1.9GHz   28nm</td>
+<td>ThunderX1</td>
+<td>ARMv8.1-A</td>
+<td>2016</td>
+</tr>
+<tr>
+<td>Cavium   (被Marvell收购)</td>
+<td>ThunderX2   (CN99xx系列)</td>
+<td>32-54c   1.6-2.5GHz   14nm 16nm</td>
+<td>Vulcan   (从Broadcom收购)</td>
+<td>ARMv8.1-A</td>
+<td>2018年5月</td>
+</tr>
+<tr>
+<td>Cavium   (被Marvell收购)</td>
+<td>ThunderX3</td>
+<td>96c   3.1GHz   7nm</td>
+<td>Triton</td>
+<td>ARMv8.3-A</td>
+<td>2020</td>
+</tr>
+<tr>
+<td>Qualcomm</td>
+<td>Centriq 2400系列</td>
+<td>40-48c   2.2-2.6GHz   10nm</td>
+<td>Falkor</td>
+<td>ARMv8.0-A</td>
+<td>2017</td>
+</tr>
+<tr>
+<td>Phytium</td>
+<td>FT1500</td>
+<td>16c   1.6GHz   28nm</td>
+<td>Earth</td>
+<td>ARMv8.0-A</td>
+<td>2017</td>
+</tr>
+<tr>
+<td>Phytium</td>
+<td>FT2000+</td>
+<td>64c   2.3GHz   16nm</td>
+<td>Mars</td>
+<td>ARMv8.0-A</td>
+<td>2017</td>
+</tr>
+<tr>
+<td>Phytium</td>
+<td>S2500</td>
+<td>64c   2.0-2.2GHz   16nm</td>
+<td></td>
+<td>ARMv8.0-A</td>
+<td>2020</td>
+</tr>
+<tr>
+<td>HiSilicon</td>
+<td>Hi1616</td>
+<td>32c   2.4GHz   16nm</td>
+<td>Cortex-A72</td>
+<td>ARMv8.0-A</td>
+<td>2017</td>
+</tr>
+<tr>
+<td>HiSilicon</td>
+<td>Kunpeng 920   (Hi1620)</td>
+<td>48c   3.0GHz   7nm</td>
+<td>Taishan V110</td>
+<td>ARMv8.2-A</td>
+<td>2019</td>
+</tr>
+<tr>
+<td>Annapurna Labs   （被AWS收购）</td>
+<td>Gravtion</td>
+<td>16c   2.3GHz   16nm</td>
+<td>Cortex-A72</td>
+<td>ARMv8.0-A</td>
+<td>2018年11月</td>
+</tr>
+<tr>
+<td>Annapurna Labs   （被AWS收购）</td>
+<td>Gravtion2</td>
+<td>64c   2.5GHz   7nm</td>
+<td>Neoverse N1</td>
+<td>ARMv8.2-A</td>
+<td>2019年12月</td>
+</tr>
+<tr>
+<td>Nuvia</td>
+<td>Phoenix</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
+<p>备注1：此表仅搜集了64位的arm cpu相关信息，32位的arm服务器cpu比较老，实际应用也不多，可以不用再考虑兼容工作。<br>备注2: 此表仅包含通用arm服务器cpu相关信息，不包含移动平台的cpu以及超算cpu，更不包含嵌入式以及实时计算cpu。</p>
+<p>可以看出来市场上还是有不少ARMv8.0-A指令集架构的CPU，所以如果要做到最佳兼容性，-march参数的name的值就要指定为armv8-a。但是也要看到，高通实际上已经退出服务器CPU市场，Cavium，Ampere，Phytium各有一部分市场，但都不大，Nuvia是新晋厂商，还没有产品问世，市场规模最大的应该主要是海思的Kunpeng920和亚马逊的Gravition2，依托于华为云和亚马逊云，应用较广泛。而且从上图中可以看出各厂商最近两年新出的CPU，基本都已经支持了ARMv8.2-A指令集，考虑到近两年ARM服务器应用刚刚开始大规模普及，特别是华为云和亚马逊云上刚刚开始大规模上线ARM的云服务器实例，所以一些新开发的应用软件或者新迁移的应用软件，甚至可以指定为armv8.2-a，这样可以做到兼容性和性能兼顾。<br>另外-march参数还支持指定一些扩展选项，下面我们来逐个看下这些扩展选项：</p>
+<table>
+<thead>
+<tr>
+<th>扩展选项</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>crc</td>
+<td>从ARMv8.1-a之后就默认包含了此扩展选项，所以当-march参数的name值为armv8-a的时候，才需要添加此选项，如果代码中涉及crc相关功能和指令，建议加上此选项</td>
+</tr>
+<tr>
+<td>crypto</td>
+<td>加密选项，这个是个额外扩展，没有哪个版本的指令集默认包含此选项，所以如果代码中涉及加密相关功能和指令，都要加上此选项。一般的应用开发涉及这个的比较少，所以这个看实际应用情况来决定要不要加</td>
+</tr>
+<tr>
+<td>fp</td>
+<td>浮点指令，从ARMv8-a就开始默认支持，可以忽略</td>
+</tr>
+<tr>
+<td>simd</td>
+<td>高级单指令多数据流指令，从ARMv8-a就开始默认支持，可以忽略</td>
+</tr>
+<tr>
+<td>sve</td>
+<td>目前已出的cpu支持此功能的较少，当前还不能加</td>
+</tr>
+<tr>
+<td>lse</td>
+<td>最新的原子指令集需要此选项，从ARMv8.1-a之后就默认包含，当-march参数的name值为armv8-a的时候，而且确定CPU支持此扩展选项的情况下可以添加。</td>
+</tr>
+<tr>
+<td>rdma</td>
+<td>乘积累加指令，在一些特殊场景会用到，使用较少。不过从ARMv8.1-a之后就默认包含。</td>
+</tr>
+<tr>
+<td>fp16</td>
+<td>半精度浮点指令，在一些图形软件中会用到，用途较少，建议视使用情况添加。</td>
+</tr>
+</tbody></table>
+<p>还有一些其他的扩展选项，不过都是在更新版本的指令集中才支持，当前已经问世的CPU都不支持，这里就不再讨论。</p>
+<p>再来看-mtune参数，原文描述：<br>-mtune=name<br>Specify the name of the target processor for which GCC should tune the performance of the code. Permissible values for this option are: ‘generic’, ‘cortex-a35’, ‘cortex-a53’, ‘cortex-a55’, ‘cortex-a57’, ‘cortex-a72’, ‘cortex-a73’, ‘cortex-a75’, ‘cortex-a76’, ‘cortex-a76ae’, ‘cortex-a77’, ‘cortex-a65’, ‘cortex-a65ae’, ‘cortex-a34’, ‘ares’, ‘exynos-m1’, ‘emag’, ‘falkor’, ‘neoverse-e1’,‘neoverse-n1’,‘qdf24xx’, ‘saphira’, ‘phecda’, ‘xgene1’, ‘vulcan’, ‘octeontx’, ‘octeontx81’, ‘octeontx83’, ‘octeontx2’, ‘octeontx2t98’, ‘octeontx2t96’ ‘octeontx2t93’, ‘octeontx2f95’, ‘octeontx2f95n’, ‘octeontx2f95mm’, ‘a64fx’, ‘thunderx’, ‘thunderxt88’, ‘thunderxt88p1’, ‘thunderxt81’, ‘tsv110’, ‘thunderxt83’, ‘thunderx2t99’, ‘thunderx3t110’, ‘zeus’, ‘cortex-a57.cortex-a53’, ‘cortex-a72.cortex-a53’, ‘cortex-a73.cortex-a35’, ‘cortex-a73.cortex-a53’, ‘cortex-a75.cortex-a55’, ‘cortex-a76.cortex-a55’ ‘native’.<br>The values ‘cortex-a57.cortex-a53’, ‘cortex-a72.cortex-a53’, ‘cortex-a73.cortex-a35’, ‘cortex-a73.cortex-a53’, ‘cortex-a75.cortex-a55’, ‘cortex-a76.cortex-a55’ specify that GCC should tune for a big.LITTLE system.<br>Additionally on native AArch64 GNU/Linux systems the value ‘native’ tunes performance to the host system. This option has no effect if the compiler is unable to recognize the processor of the host system.<br>Where none of -mtune=, -mcpu= or -march= are specified, the code is tuned to perform well across a range of target processors.<br>This option cannot be suffixed by feature modifiers.<br>这个参数比较简单，实际上就是指定目标CPU微架构，让gcc编译的时候，根据目标cpu的微架构进行特定的优化，比如指定为tsv110时，gcc就会根据鲲鹏920的微架构，进行一些指令的流水线重排，会提高一些性能。但是指定这个，同时也就意味着牺牲了兼容性，编译后的软件只能在目标CPU平台上运行。</p>
+<p>最后看一下-mcpu参数，原文描述：<br>-mcpu=name<br>Specify the name of the target processor, optionally suffixed by one or more feature modifiers. This option has the form -mcpu=cpu{+[no]feature}*, where the permissible values for cpu are the same as those available for -mtune. The permissible values for feature are documented in the sub-section on -march and -mcpu Feature Modifiers. Where conflicting feature modifiers are specified, the right-most feature is used.<br>GCC uses name to determine what kind of instructions it can emit when generating assembly code (as if by -march) and to determine the target processor for which to tune for performance (as if by -mtune). Where this option is used in conjunction with -march or -mtune, those options take precedence over the appropriate part of this option.<br>可以看出来，这个参数实际上就是前面两个参数的综合，而且指定两个参数的优先级会高于这个参数。据说后续这个参数会被干掉。建议可以忽略此参数，只用前面两个参数即可。</p>
+<p>总结：在aarch64服务器平台，进行应用软件开发，编译时，除了通用的编译选项之外，一般只需要添加-march=armv8-a即可，考虑到crc扩展选项应用比较多，可以加上crc扩展选项，比如-march=armv8-a+crc，这样可以做到最好的兼容性。 如果确定平台支持最新的原子指令，可以再加上+lse，其余的扩展选项建议根据实际应用情况添加。 如果既想兼顾兼容性和性能，建议直接指定-march=armv8.2-a，这样不仅包含了crc和lse扩展选项，而且最两年新出的CPU都可以做到兼容。 如果想做到最佳性能，还可以添加-mtune参数，但是这个要确保编译出来的软件只在目标平台运行。<br>另外，由于编译器的习惯， ARM平台上char的默认类型为unsigned char，这与x86正好相反（x86的char默认是有符号的），在x86上运行稳定的代码，移植过来将遇到char类型的变化，会带来不少问题。由于x86上的char类型与我们的编程习惯更一致，所以我们一般将ARM平台上的程序的char类型指定为signed char。所以还需要添加编译选项-fsigned-char。</p>
+<p>最后，上述编译选项和扩展是在不同的gcc版本里逐步得到支持的，所以添加这些选项还要注意gcc的版本，对于-march的 name和扩展选项的支持情况，可以参考ARM官方的这个文档：<a href="https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/architecture-support">https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/architecture-support</a>     对于-mtune选项的支持建议参考不同版本的gcc文档，主要看AArch64-Options这个章节就行。</p>
+<p>参考资料：<br><a href="https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html">https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html</a><br><a href="https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/architecture-support">https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/architecture-support</a><br><a href="https://clang.llvm.org/docs/ClangCommandLineReference.html">https://clang.llvm.org/docs/ClangCommandLineReference.html</a><br><a href="http://www.semiinsights.com/s/electronic_components/23/39697.shtml">http://www.semiinsights.com/s/electronic_components/23/39697.shtml</a><br><a href="http://news.eeworld.com.cn/qrs/2019/ic-news011452649.html">http://news.eeworld.com.cn/qrs/2019/ic-news011452649.html</a><br><a href="http://news.eeworld.com.cn/xfdz/ic497298.html">http://news.eeworld.com.cn/xfdz/ic497298.html</a><br><a href="https://www.cirmall.com/articles/31558">https://www.cirmall.com/articles/31558</a><br><a href="https://koolshare.cn/thread-147215-1-3.html">https://koolshare.cn/thread-147215-1-3.html</a><br><a href="http://www.360doc.com/content/20/0101/18/99071_883541215.shtml">http://www.360doc.com/content/20/0101/18/99071_883541215.shtml</a><br><a href="https://en.wikichip.org/wiki/">https://en.wikichip.org/wiki/</a><br><a href="https://blog.csdn.net/u014470361/article/details/85988772">https://blog.csdn.net/u014470361/article/details/85988772</a><br><a href="https://www.cnblogs.com/panda-w/p/11003389.html">https://www.cnblogs.com/panda-w/p/11003389.html</a><br><a href="https://developer.arm.com/ip-products/processors/cortex-a/cortex-a78">https://developer.arm.com/ip-products/processors/cortex-a/cortex-a78</a><br><a href="https://en.wikipedia.org/wiki/Comparison_of_ARMv8-A_cores">https://en.wikipedia.org/wiki/Comparison_of_ARMv8-A_cores</a><br><a href="https://aijishu.com/a/1060000000133361">https://aijishu.com/a/1060000000133361</a><br><a href="http://phytium.com.cn/article/5">http://phytium.com.cn/article/5</a><br><a href="https://www.sohu.com/a/361552782_163726?scm=1002.44003c.fe021c.PC_ARTICLE_REC">https://www.sohu.com/a/361552782_163726?scm=1002.44003c.fe021c.PC_ARTICLE_REC</a><br><a href="https://www.infoq.cn/article/34moxVRHI8qprbh9I1mp">https://www.infoq.cn/article/34moxVRHI8qprbh9I1mp</a></p>
+
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/08/31/postgresql-dui-wai-bu-ya-suo-fang-fa-de-su-qiu/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">PostgreSQL对外部压缩方法的诉求</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/08/04/arm-shi-neng-landscape/">
+                <span class="level-item">ARM使能Landscape</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 44,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="Aarch64服务器应用软件开发需要添加的编译参数" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

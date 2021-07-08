@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>Mysql社区ARM优化汇总 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Community-Contributions-So-Far&#x2F; 社区拥有来自不同组织的开发人员为 MySQL 提供了一些很好的补丁。但是这些补丁中的大多数都在等待Oracle的接受。 这篇博客的目的是分析这些补丁以及它们的利弊。希望这将有助于 Mysql &#x2F;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Mysql社区ARM优化汇总">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/05/13/mysql-she-qu-arm-you-hua-hui-zong/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Community-Contributions-So-Far&#x2F; 社区拥有来自不同组织的开发人员为 MySQL 提供了一些很好的补丁。但是这些补丁中的大多数都在等待Oracle的接受。 这篇博客的目的是分析这些补丁以及它们的利弊。希望这将有助于 Mysql &#x2F;">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-05-13T03:24:14.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="Mysql社区ARM优化汇总" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="Mysql社区ARM优化汇总" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-05-13T03:24:14.000Z">2020-05-13</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                Mysql社区ARM优化汇总
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Krunal Bauskar<br>原文链接: <a href="https://mysqlonarm.github.io/Community-Contributions-So-Far/">https://mysqlonarm.github.io/Community-Contributions-So-Far/</a></p>
+<p>社区拥有来自不同组织的开发人员为 MySQL 提供了一些很好的补丁。但是这些补丁中的大多数都在等待Oracle的接受。 这篇博客的目的是分析这些补丁以及它们的利弊。希望这将有助于 Mysql / Oracle 接受这些期待已久的补丁。</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<h2 id="社区Patches"><a href="#社区Patches" class="headerlink" title="社区Patches"></a>社区Patches</h2><h3 id="1-校验和优化"><a href="#1-校验和优化" class="headerlink" title="1. 校验和优化"></a>1. 校验和优化</h3><ul>
+<li>Mysql 使用的校验和有两种: crc32c 和 crc32。因为它们使用不同的多项式而导致它们的之间的不同。<ul>
+<li>crc32c 被用来在 MySQL Innodb中计算页面校验和</li>
+<li>crc32在 MySQL 中用于表校验和、 binlog-checksum 等…</li>
+</ul>
+</li>
+</ul>
+<h4 id="crc32c"><a href="#crc32c" class="headerlink" title="crc32c"></a>crc32c</h4><ul>
+<li>页面校验和是在读/写每个页面时进行的，所以crc32c可以在perl报告中快速的展示出来。确保在使用优化版本后，它能够提高整个系统的性能。</li>
+<li>crc32c 通常是由硬件完成的功能，例如在 x86(SSE)和 ARM (ACLE)。 Innodb 目前使用基于硬件的 x86实现，但还没有使用 ARM (ACLE)实现。 必要的补丁修复有助于解决上述问题。</li>
+<li>最新的补丁(bug # 85819)还有助于在使用 crypto (PMULL)处理指令时来进行进一步优化.</li>
+</ul>
+<p>开源贡献:<br><a href="https://bugs.mysql.com/bug.php?id=79144">bug#79144</a> No hardware CRC32 implementation for AArch64<br><a href="https://bugs.mysql.com/bug.php?id=85819">bug#85819</a> Optimize AARCH64 CRC32c implementation</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[example test-case runs update-non-index and gets the crc32 as top mysqld function].</span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F;o patch)</span><br><span class="line">+   10.43%          8027  mysqld   [kernel.kallsyms]    [k] _raw_spin_unlock_irqrestore                                                                 </span><br><span class="line">+    3.23%          2486  mysqld   mysqld               [.] ut_crc32_sw                                                                                 </span><br><span class="line">+    2.33%          1797  mysqld   [kernel.kallsyms]    [k] finish_task_switch                                                                          </span><br><span class="line">+    1.73%          1330  mysqld   libc-2.27.so         [.] malloc                                                                                    </span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F; patch)</span><br><span class="line">  Overhead       Samples  Command  Shared Object        Symbol                                                                                          </span><br><span class="line">+   10.60%          8133  mysqld   [kernel.kallsyms]    [k] _raw_spin_unlock_irqrestore                                                                 </span><br><span class="line">+    2.37%          1816  mysqld   [kernel.kallsyms]    [k] finish_task_switch                                                                          </span><br><span class="line">+    1.78%          1366  mysqld   libc-2.27.so         [.] malloc                                                                                      </span><br><span class="line">....</span><br><span class="line">     0.44%           338  mysqld   mysqld               [.] ut_crc32_aarch64</span><br></pre></td></tr></table></figure>
+
+<p><strong>结论:</strong> 明显可以考到节省了大约3%的吞吐量。另外，在更加广泛的测试中，我们可以看到crc32有助于提高所有类型测试场景下的吞吐量。</p>
+<h4 id="crc32"><a href="#crc32" class="headerlink" title="crc32"></a>crc32</h4><p>为了计算表校验和，MySQL 使用基于 zlib 的 crc32(软实现)。 据我所知，x86不支持 crc32计算的硬件优化版本，但幸运的是 ARM (ACLE)支持。 同时Binlog-checksum 也使用相同的代码 / 处理流程。</p>
+<p>开源贡献:<br><a href="https://bugs.mysql.com/bug.php?id=99118">bug#99118</a> ARM CRC32 intrinsic call to accelerate table-checksum (not crc32c but crc32)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">[example test-case runs checksum on all tables and update-non-index].</span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F;o patch)</span><br><span class="line"></span><br><span class="line">checksum:</span><br><span class="line">+   49.46%         13480  mysqld   mysqld               [.] crc32_z</span><br><span class="line"></span><br><span class="line">update-non-index:</span><br><span class="line">     0.40%           311  mysqld   mysqld               [.] crc32_z                                                                                     </span><br><span class="line"></span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F; patch)</span><br><span class="line"></span><br><span class="line">checksum:</span><br><span class="line">+    8.15%           988  mysqld   mysqld               [.] aarch64_crc32_checksum                                                                      </span><br><span class="line"></span><br><span class="line">update-non-index:</span><br><span class="line">     0.07%            56  mysqld   mysqld               [.] aarch64_crc32_checksum</span><br></pre></td></tr></table></figure>
+
+<p><strong>结论:</strong> 这个补丁在两个方面都有提升。超级加速表校验和(平均提高50%) ，并且在 binlog 校验和中也是。</p>
+<h3 id="2-my-convert-in-turn-copy-and-convert-在ARM平台表现不好"><a href="#2-my-convert-in-turn-copy-and-convert-在ARM平台表现不好" class="headerlink" title="2. my_convert (in turn copy_and_convert) 在ARM平台表现不好:"></a>2. my_convert (in turn copy_and_convert) 在ARM平台表现不好:</h3><ul>
+<li>my_convert用作发送结果的一部分步骤中，主要是用于在字符集之间进行转换。</li>
+<li>给定转换的数据量，这个函数会出现在 perf top-list 中</li>
+<li>现有的实现对于 x86使用4字节的复制，但对于 ARM 则退回到单字节复制。 通过对 x86-64和 aarch64使用8个字节的复制，然后再到现有逻辑的尾部处理过程，可以总体改进这一点。 这个简单的补丁可以帮助节省大量的时钟周期并提高系统性能。</li>
+</ul>
+<p>开源贡献:<br><a href="https://bugs.mysql.com/bug.php?id=98737">bug#98737</a> my_convert routine is suboptimal in case of non-x86 platforms</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[example test-case runs oltp-read-write on all tables].</span><br><span class="line">perf analysis (w&#x2F;o patch)</span><br><span class="line">+    0.79%          1114  mysqld   mysqld               [.] my_convert</span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F; patch)</span><br><span class="line">     0.22%           299  mysqld   mysqld               [.] my_convert</span><br></pre></td></tr></table></figure>
+
+<p><strong>结论:</strong> 这个补丁提高了吞吐量。</p>
+<h3 id="3-为原子变量优化内存屏障"><a href="#3-为原子变量优化内存屏障" class="headerlink" title="3. 为原子变量优化内存屏障:"></a>3. 为原子变量优化内存屏障:</h3><ul>
+<li>Mysql / innodb 有很多变量，它使用 gcc 内置的原子函数(sync add and fetch 或 atomic add fetch).</li>
+<li>虽然在x86的强内存模型，它们表现很好，但是大多数这些计数器函数中都是使用顺序内存排序(缺省)来实现的。</li>
+<li>因为Arm 的弱内存模型，因此不推荐使用这种顺序内存排序(缺省的)。</li>
+<li>社区多个补丁来帮助修改这些代码片段。它们有助于实现两个目标:<ul>
+<li>切换到使用 c + + 11原子函数(MySQL现已支持)。</li>
+<li>切换到使用松散的内存顺序(vs 顺序)。</li>
+</ul>
+</li>
+</ul>
+<p>开源贡献:<br><a href="https://bugs.mysql.com/bug.php?id=97228">bug#97228</a> rwlock: refine lock-&gt;lock_word with C11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97230">bug#97230</a> rwlock: refine lock-&gt;waiters with C++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97703">bug#97703</a> innobase/dict: refine dict_temp_file_num with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97704">bug#97704</a> innobase/srv: refine srv0conc with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97765">bug#97765</a> innobase/os: refine os_total_large_mem_allocated with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97766">bug#97766</a> innobase/os_once: optimize os_once with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97767">bug#97767</a> innobase/dict: refine zip_pad_info-&gt;pad with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=99432">bug#99432</a> Improving memory barrier during rseg allocation</p>
+<p><strong>结论:</strong> 由于它的影响分布非常广，所以很难用perf来进行判断。另外，部分修复仅仅是为了改进语义，而不是为了性能因素。</p>
+<h3 id="4-为全局计数器带来核心亲和性调度"><a href="#4-为全局计数器带来核心亲和性调度" class="headerlink" title="4. 为全局计数器带来核心亲和性调度:"></a>4. 为全局计数器带来核心亲和性调度:</h3><p>Arm 以拥有大量的核心(和 numa 套接字)而闻名，为了从多核中获得最大的吞吐量，确保全局计数器的可编程性是非常重要的。拥有一个分布式计数器并将计数器的递增部分尽量与线程核心靠近，应该可以避免跨numa延迟。</p>
+<p>MySQL通过调用call sched_getcpu来获取计数器插槽，但是这个逻辑由于另一个bug的修复而改变了(这对于上述问题来说当然是有意义的) ， 这个bug修复影响了正常的全局计数器。下面的补丁提议纠正这一点，并使用sched_getcpu(核心亲和性)来实现全局计数器。</p>
+<p><em>不幸的是，在 ARM 上，这个补丁由于使用了 sched_getcpu 而产生了开销，但是在x86上在使用VDSO时进行了优化。</em></p>
+<p>开源贡献:<br><a href="https://bugs.mysql.com/bug.php?id=79455">bug#79455</a> Restore get_sched_indexer_t in 5.7</p>
+<h3 id="5-当前UT-RELAX-CPU-在ARM平台上的可伸缩性问题"><a href="#5-当前UT-RELAX-CPU-在ARM平台上的可伸缩性问题" class="headerlink" title="5. 当前UT_RELAX_CPU () 在ARM平台上的可伸缩性问题:"></a>5. 当前UT_RELAX_CPU () 在ARM平台上的可伸缩性问题:</h3><p>Innodb 使用自制的 spin-wait 来实现 rw-locks 和 mutexes。 无论何时需要休眠(或让我纠正称它为PAUSE) ，在 x86 MySQL 上支持PAUSE指令。 ARM不支持 PAUSE 指令，因此流程中使用编译器屏障，但是该指令未能引入所需的延迟。 修补程序建议使用Compare-And-Exchange，这应该有助于引入类似的延迟(如PAUSE)。</p>
+<p>开源贡献:<br><a href="https://bugs.mysql.com/bug.php?id=87933">bug#87933</a> Scalibility issue on Arm platform with the current UT_RELAX_CPU () code.</p>
+<p>基于内部评估，我们得不到补丁所带来的吞吐量提升，因此目前没有将其纳入我们贡献到社区的内容。</p>
+<h3 id="6-在ARM上应用更宽的cacheline来填充"><a href="#6-在ARM上应用更宽的cacheline来填充" class="headerlink" title="6. 在ARM上应用更宽的cacheline来填充:"></a>6. 在ARM上应用更宽的cacheline来填充:</h3><p>大多数 ARM 处理器计划拥有更宽的cacheline size。 补丁提出基于 ARM 处理器使用更大的cachelilne，并填充以避免false sharing问题。</p>
+<p>开源贡献:<br><a href="https://bugs.mysql.com/bug.php?id=98499">bug#98499</a> Improvement about CPU cache line size</p>
+<h3 id="7-其他开源贡献"><a href="#7-其他开源贡献" class="headerlink" title="7. 其他开源贡献"></a>7. 其他开源贡献</h3><p>除了上面列出的6个大类，在其他领域也有很多的贡献。 但是大多数都没有相关的代码提交，或者这个想法已经作为另一个重大改进被放在 MySQL 中(不是针对 ARM 的工作) ，又或者是这个idea不太可能对性能产生影响。</p>
+<h2 id="社区补丁对性能的影响"><a href="#社区补丁对性能的影响" class="headerlink" title="社区补丁对性能的影响"></a>社区补丁对性能的影响</h2><p>基于上面收集的内容，我们分析了引入社区补丁后对性能的影响，下面的表显示了如果我们合入这些补丁，吞吐量将如何提高。 结果限制在较大的可伸缩性(256线程)，因为它显示了主要的影响，我们已经全面运行了测试用例，确定补丁有助于提高总吞吐量(即使对于单线程而言)。</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>point select</th>
+<th>read only</th>
+<th>read write</th>
+<th>update index</th>
+<th>update non index</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>without-patch</td>
+<td>218447</td>
+<td>145755</td>
+<td>5646</td>
+<td>22200</td>
+<td>22601</td>
+</tr>
+<tr>
+<td>with-patch</td>
+<td>224355</td>
+<td>149718</td>
+<td>5829</td>
+<td>23070</td>
+<td>23292</td>
+</tr>
+<tr>
+<td>%</td>
+<td>2.7</td>
+<td>2.72</td>
+<td>3.24</td>
+<td>3.92</td>
+<td>3.06</td>
+</tr>
+</tbody></table>
+<p><em>使用 mysql-8.0.20进行评估。配置参看 <a href="https://github.com/mysqlonarm/benchmark-suites/blob/master/sysbench/conf/96tx1.5m_cpubound.cnf">here</a>. 处理器: ARM Kunpeng 920 24vCPU/48GB</em></p>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>社区提供的补丁确实有助于优化 ARM 上的 MySQL，但影响程度有限，并且需要覆盖很多领域才能看到 MySQL 在 ARM 上加速的程度。 如果你有好的想法，请联系我或者直接在社区进行交流。 ARM MySQL 社区可以尽情针对这一问题爆发头脑风暴，并尝试实现修复这个问题的idea。</p>
+<p><em>如果你有问题 / 疑问，请让我知道，我会尽力回答。</em></p>
+</div>
+<div id="English" class="tab-content">
+
+<h2 id="Community-Patches"><a href="#Community-Patches" class="headerlink" title="Community Patches"></a>Community Patches</h2><h3 id="1-Optimizing-checksum"><a href="#1-Optimizing-checksum" class="headerlink" title="1. Optimizing checksum"></a>1. Optimizing checksum</h3><ul>
+<li>MySQL uses 2 types of checksum: crc32c and crc32. They both are different since both uses different polynomials.<ul>
+<li>crc32c is used in MySQL by InnoDB to calculate page-checksum.</li>
+<li>crc32 is used in MySQL for table checksum, binlog-checksum, etc…</li>
+</ul>
+</li>
+</ul>
+<h4 id="crc32c-1"><a href="#crc32c-1" class="headerlink" title="crc32c"></a>crc32c</h4><ul>
+<li>Page checksum is calculated during each page read/write so crc32c can quickly show up as one of the top functions in perf report. Ensuring use of optimized versions of it could help improve the overall throughput of the system.</li>
+<li>crc32c has been implemented as a hardware function on both x86 (SSE) and ARM (ACLE). InnoDB currently uses hardware based implementation for x86 but not yet for ARM (ACLE). Patch helps address the said issue.</li>
+<li>Latest patch (bug#85819) also helps further optimize it using crypto (PMULL) processing instruction.</li>
+</ul>
+<p>Open Contributions:<br><a href="https://bugs.mysql.com/bug.php?id=79144" title="suggest use of crc32c">bug#79144</a> No hardware CRC32 implementation for AArch64<br><a href="https://bugs.mysql.com/bug.php?id=85819">bug#85819</a> Optimize AARCH64 CRC32c implementation</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[example test-case runs update-non-index and gets the crc32 as top mysqld function].</span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F;o patch)</span><br><span class="line">+   10.43%          8027  mysqld   [kernel.kallsyms]    [k] _raw_spin_unlock_irqrestore                                                                 </span><br><span class="line">+    3.23%          2486  mysqld   mysqld               [.] ut_crc32_sw                                                                                 </span><br><span class="line">+    2.33%          1797  mysqld   [kernel.kallsyms]    [k] finish_task_switch                                                                          </span><br><span class="line">+    1.73%          1330  mysqld   libc-2.27.so         [.] malloc                                                                                    </span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F; patch)</span><br><span class="line">  Overhead       Samples  Command  Shared Object        Symbol                                                                                          </span><br><span class="line">+   10.60%          8133  mysqld   [kernel.kallsyms]    [k] _raw_spin_unlock_irqrestore                                                                 </span><br><span class="line">+    2.37%          1816  mysqld   [kernel.kallsyms]    [k] finish_task_switch                                                                          </span><br><span class="line">+    1.78%          1366  mysqld   libc-2.27.so         [.] malloc                                                                                      </span><br><span class="line">....</span><br><span class="line">     0.44%           338  mysqld   mysqld               [.] ut_crc32_aarch64</span><br></pre></td></tr></table></figure>
+
+
+<p><strong>Conclusion:</strong> Clearly a saving of around 3% in overall throughput can be seen. Also, as part of wider testing we see crc32c helps in overall throughput gain for all kind of test-cases.</p>
+<h4 id="crc32-1"><a href="#crc32-1" class="headerlink" title="crc32"></a>crc32</h4><p>For calculating table checksum MySQL uses zlib-based crc32. As per my knowledge, x86 doesn’t support hardware optimized versions for crc32 calculation but fortunately ARM (ACLE) supports it. The same code/flow path is also used for binlog-checksum.</p>
+<p>Open Contributions:<br><a href="https://bugs.mysql.com/bug.php?id=99118">bug#99118</a> ARM CRC32 intrinsic call to accelerate table-checksum (not crc32c but crc32)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">[example test-case runs checksum on all tables and update-non-index].</span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F;o patch)</span><br><span class="line"></span><br><span class="line">checksum:</span><br><span class="line">+   49.46%         13480  mysqld   mysqld               [.] crc32_z</span><br><span class="line"></span><br><span class="line">update-non-index:</span><br><span class="line">     0.40%           311  mysqld   mysqld               [.] crc32_z                                                                                     </span><br><span class="line"></span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F; patch)</span><br><span class="line"></span><br><span class="line">checksum:</span><br><span class="line">+    8.15%           988  mysqld   mysqld               [.] aarch64_crc32_checksum                                                                      </span><br><span class="line"></span><br><span class="line">update-non-index:</span><br><span class="line">     0.07%            56  mysqld   mysqld               [.] aarch64_crc32_checksum</span><br></pre></td></tr></table></figure>
+
+
+<p><strong>Conclusion:</strong> This patch helps on both front. Super-accelerate table checksum (average improvement of 50%) and also marginally helps in binlog-checksum.</p>
+<h3 id="2-my-convert-in-turn-copy-and-convert-routine-is-suboptimal-for-ARM"><a href="#2-my-convert-in-turn-copy-and-convert-routine-is-suboptimal-for-ARM" class="headerlink" title="2. my_convert (in turn copy_and_convert) routine is suboptimal for ARM:"></a>2. my_convert (in turn copy_and_convert) routine is suboptimal for ARM:</h3><ul>
+<li>my_convert is used as part of the send result for converting among charsets.</li>
+<li>Given the amount of the data that is converted this function gets spotted in perf top-list.</li>
+<li>Existing implementation uses 4 bytes copying for x86 but falls back to byte copy for ARM. This could be overall improved by using 8 bytes copying for x86-64 and aarch64 and then falling back for trailing things to existing logic. Patch for this simple operation help save significant cycles and help improve performance.</li>
+</ul>
+<p>Open Contributions:<br><a href="https://bugs.mysql.com/bug.php?id=98737">bug#98737</a> my_convert routine is suboptimal in case of non-x86 platforms</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[example test-case runs oltp-read-write on all tables].</span><br><span class="line">perf analysis (w&#x2F;o patch)</span><br><span class="line">+    0.79%          1114  mysqld   mysqld               [.] my_convert</span><br><span class="line"></span><br><span class="line">perf analysis (w&#x2F; patch)</span><br><span class="line">     0.22%           299  mysqld   mysqld               [.] my_convert</span><br></pre></td></tr></table></figure>
+
+<p><strong>Conclusion:</strong> Patch can help improve overall throuhgput.</p>
+<h3 id="3-Improving-memory-barrier-for-atomic-variables"><a href="#3-Improving-memory-barrier-for-atomic-variables" class="headerlink" title="3. Improving memory barrier for atomic variables:"></a>3. Improving memory barrier for atomic variables:</h3><ul>
+<li>MySQL/InnoDB has a lot of variables for which it uses gcc inbuilt atomic functions (__sync_add_and_fetch or __atomic_add_fetch).</li>
+<li>While this is all good x86 being a strong memory model most of these counter functions were implemented to use sequential memory ordering (default).</li>
+<li>ARM has a relaxed memory model so using sequential memory ordering (default one) is not recommended.</li>
+<li>Multiple patches were submitted to help revamp the said snippets. Patches help achieve 2 things:<ul>
+<li>Switch to use C++11 atomics. (Now that MySQL supports it).</li>
+<li>Switch to use relaxed memory order (vs sequential).</li>
+</ul>
+</li>
+</ul>
+<p>Open Contributions:<br><a href="https://bugs.mysql.com/bug.php?id=97228">bug#97228</a> rwlock: refine lock-&gt;lock_word with C11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97230">bug#97230</a> rwlock: refine lock-&gt;waiters with C++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97703">bug#97703</a> innobase/dict: refine dict_temp_file_num with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97704">bug#97704</a> innobase/srv: refine srv0conc with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97765">bug#97765</a> innobase/os: refine os_total_large_mem_allocated with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97766">bug#97766</a> innobase/os_once: optimize os_once with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=97767">bug#97767</a> innobase/dict: refine zip_pad_info-&gt;pad with c++11 atomics<br><a href="https://bugs.mysql.com/bug.php?id=99432">bug#99432</a> Improving memory barrier during rseg allocation</p>
+<p><strong>Conclusion:</strong> Impact is wide spread so difficult to judge using perf. Also, some of the fixes help improve semantics and may not be for performance reason as such.</p>
+<h3 id="4-Restore-core-affinity-scheduler-for-global-counter"><a href="#4-Restore-core-affinity-scheduler-for-global-counter" class="headerlink" title="4. Restore core affinity scheduler for global counter:"></a>4. Restore core affinity scheduler for global counter:</h3><p>ARM is known for its large number of cores (and numa sockets) and to harvest the max throughput from multi-cores it is important to ensure that global counters are programmed accordingly. Having a distributed counter and incrementing part of the counter closer to the thread core should avoid cross-numa latency.</p>
+<p>MySQL use to call sched_getcpu for getting the counter slots but this logic was changed as part of the different bug fix (that surely made sense for the said issue) but it also affected the normal global counters. Patch proposes to correct this and use sched_getcpu (core affinity) based counter for global counters.</p>
+<p><em>On ARM this patch unfortunately is running into overhead resulting from use of sched_getcpu which is optimized on x86 using VDSO.</em></p>
+<p>Open Contributions:<br><a href="https://bugs.mysql.com/bug.php?id=79455">bug#79455</a> Restore get_sched_indexer_t in 5.7</p>
+<h3 id="5-Scalability-issue-on-ARM-platform-with-the-current-UT-RELAX-CPU-code"><a href="#5-Scalability-issue-on-ARM-platform-with-the-current-UT-RELAX-CPU-code" class="headerlink" title="5. Scalability issue on ARM platform with the current UT_RELAX_CPU () code:"></a>5. Scalability issue on ARM platform with the current UT_RELAX_CPU () code:</h3><p>InnoDB uses home-grown spin-wait implementation for rw-locks and mutexes. Whenever there is a need to sleep (or let me correctly say PAUSE) then on x86 MySQL uses supported PAUSE instruction. ARM doesn’t have support for PAUSE instruction so the flow uses a compiler barrier but this statement fails to introduce the needed delay. Patch suggest use of Compare-And-Exchange that should help introduce comparable delay (like PAUSE).</p>
+<p>Open Contributions:<br><a href="https://bugs.mysql.com/bug.php?id=87933">bug#87933</a> Scalibility issue on Arm platform with the current UT_RELAX_CPU () code.</p>
+<p>Based on internal evaluation we couldn’t get the patch to help improve on throughput so have not-considered it as part of our community-patch branch for now.</p>
+<h3 id="6-Using-wider-cacheline-padding-for-ARM"><a href="#6-Using-wider-cacheline-padding-for-ARM" class="headerlink" title="6. Using wider cacheline padding for ARM:"></a>6. Using wider cacheline padding for ARM:</h3><p>Most of the ARM processors are scheduled to have a wider cache line. Patch proposes use of a wider cache line padding for ARM based processors to avoid false sharing.</p>
+<p>Open Contributions:<br><a href="https://bugs.mysql.com/bug.php?id=98499">bug#98499</a> Improvement about CPU cache line size</p>
+<h3 id="7-Other-open-contributions"><a href="#7-Other-open-contributions" class="headerlink" title="7. Other open contributions"></a>7. Other open contributions</h3><p>Besides the 6 main categories listed above there are more contributions in other areas too. But most of them didn’t have a patch associated or the said idea has been folded in MySQL as part of another major revamp (not specific to ARM work) or the idea is less likely to have a performance impact. So for now we were not able to consider these set of patches.</p>
+<h2 id="Performance-impact-of-Community-Patches"><a href="#Performance-impact-of-Community-Patches" class="headerlink" title="Performance impact of Community Patches"></a>Performance impact of Community Patches</h2><p>Based on the inputs collected above we have analyzed performance impact of community patches and below table help shows how the throughput would improve if the said patches are accepted. Limiting results for higher scalability (256 threads) where it shows major effect but we have run test-case across the board and patches helps improve overall throughput (even for single threaded).</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>point select</th>
+<th>read only</th>
+<th>read write</th>
+<th>update index</th>
+<th>update non index</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>without-patch</td>
+<td>218447</td>
+<td>145755</td>
+<td>5646</td>
+<td>22200</td>
+<td>22601</td>
+</tr>
+<tr>
+<td>with-patch</td>
+<td>224355</td>
+<td>149718</td>
+<td>5829</td>
+<td>23070</td>
+<td>23292</td>
+</tr>
+<tr>
+<td>%</td>
+<td>2.7</td>
+<td>2.72</td>
+<td>3.24</td>
+<td>3.92</td>
+<td>3.06</td>
+</tr>
+</tbody></table>
+<p><em>Evaluated using mysql-8.0.20. For configuration check <a href="https://github.com/mysqlonarm/benchmark-suites/blob/master/sysbench/conf/96tx1.5m_cpubound.cnf">here</a>. Processor: ARM Kunpeng 920 24vCPU/48GB</em></p>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>Patches contributed by community surely helps in optimizing MySQL on ARM but the impact is still limited and lot of ground to cover to make MySQL accelerate on ARM. If you have good ideas on how things could be pushed further then let’s connect. ARM MySQL community can help brainstorm the idea and aid/help in materializing it to a contribution.</p>
+<p><em>If you have more questions/queries do let me know. Will try to answer them.</em></p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/05/20/memcached-x86-64-vs-arm64-xing-neng-dui-bi/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">Memcached  x86_64 VS arm64 性能对比</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/05/13/apache-tomcat-x86-vs-arm64-xing-neng-bi-pin/">
+                <span class="level-item">Apache Tomcat X86 vs ARM64 性能比拼</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 28,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="Mysql社区ARM优化汇总" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

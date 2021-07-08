@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>理解InnoDB rw-lock的统计数据 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者：bzhaoopenstack 原文链接：https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Understanding-InnoDB-rwlock-stats&#x2F; 作者: Krunal Bauskar InnoDB使用互斥锁进行独占访问，使用rw-locks进行共享访问。rw-locks用于控制对缓冲池页、表空间、自适应搜索系统、数据字典、informaton_schema等公共共享资源">
+<meta property="og:type" content="article">
+<meta property="og:title" content="理解InnoDB rw-lock的统计数据">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/04/15/li-jie-innodb-rw-lock-de-tong-ji-shu-ju/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者：bzhaoopenstack 原文链接：https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Understanding-InnoDB-rwlock-stats&#x2F; 作者: Krunal Bauskar InnoDB使用互斥锁进行独占访问，使用rw-locks进行共享访问。rw-locks用于控制对缓冲池页、表空间、自适应搜索系统、数据字典、informaton_schema等公共共享资源">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-04-15T03:46:30.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="理解InnoDB rw-lock的统计数据" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="理解InnoDB rw-lock的统计数据" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-04-15T03:46:30.000Z">2020-04-15</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                理解InnoDB rw-lock的统计数据
+            
+        </h1>
+        <div class="content">
+            <p>译者：bzhaoopenstack</p>
+<p>原文链接：<a href="https://mysqlonarm.github.io/Understanding-InnoDB-rwlock-stats/">https://mysqlonarm.github.io/Understanding-InnoDB-rwlock-stats/</a></p>
+<p>作者: Krunal Bauskar</p>
+<p>InnoDB使用互斥锁进行独占访问，使用rw-locks进行共享访问。rw-locks用于控制对缓冲池页、表空间、自适应搜索系统、数据字典、informaton_schema等公共共享资源的访问。总之，rw-locks在InnoDB系统中扮演着非常重要的角色，因此跟踪和监视它们也很重要。</p>
+<a id="more"></a>
+
+<p>InnoDB 提供了一种简单的方式来跟踪它们， “SHOW ENGINE INNODB STATUS”.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RW-shared spins 38667, rounds 54868, OS waits 16539</span><br><span class="line">RW-excl spins 6353, rounds 126218, OS waits 3936</span><br><span class="line">RW-sx spins 1896, rounds 43888, OS waits 966</span><br><span class="line">Spin rounds per wait: 1.42 RW-shared, 19.87 RW-excl, 23.15 RW-sx</span><br></pre></td></tr></table></figure>
+
+<p>在本文中，我们将了解这些统计数据是如何计算的，以及每个数据的意义。我们还将尝试使用不同的用例来描述一些推论，并且接触一下基础又重要的统计数据， 这个<a href="https://bugs.mysql.com/bug.php?id=99171">bug</a>使当前状态的统计几乎无法进行调优。</p>
+<h2 id="rw-lock-自旋算法"><a href="#rw-lock-自旋算法" class="headerlink" title="rw-lock 自旋算法"></a>rw-lock 自旋算法</h2><p>rw-locks有三种类型:</p>
+<ul>
+<li>Shared: 提供资源的共享访问。允许多个共享锁。</li>
+<li>Exclusive: 提供对资源的独占访问。共享锁等待排他锁。</li>
+<li>Shared-Exclusive (SX): 对读不一致的资源提供写访问（relaxed exclusive）。</li>
+</ul>
+<p>首先我们先尝试理解流程，然后讨论一些调优步骤。</p>
+<p>(为了便于讨论，假设 spins=0, rounds=0, os-waits=0).</p>
+<h3 id="Locking-步骤"><a href="#Locking-步骤" class="headerlink" title="Locking 步骤"></a>Locking 步骤</h3><ul>
+<li>Step-1:</li>
+</ul>
+<p>  尝试获取所需的锁</p>
+<ul>
+<li>If SUCCESS then return immediately. (spins=0, rounds=0, os-waits=0)</li>
+<li>If FAILURE then enter spin-loop.</li>
+</ul>
+<ul>
+<li><strong>Step-2:</strong> 开始自旋回环(Spin-loop). 增加自旋计数 (spin-count). <em>(为什么需要自旋循环？如果我们的线程进入等待状态，那么操作系统将把CPU从给定的线程中带走，暂时不让它使用CPU，然后线程将不得不按照操作系统调度的次序等待CPU资源，从而进行下面的任务。更好的方法是在繁忙等待中（busy-wait）使用自旋循环(带有条件的检查确认锁是否被释放）以便保留CPU。由于这些锁大多数都是短时间使用，因此重新获得的机会可能性非常高。).</em></li>
+</ul>
+<ul>
+<li><strong>Step-3:</strong> 开始N轮自旋。Start spinning for N rounds. (这里N的定义由<a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_sync_spin_loops">innodb_sync_spin_loops</a>来控制)。默认为30轮。<ul>
+<li><strong>Step-3a:</strong> 每一轮将调用一个PAUSE逻辑（见下面关于PAUSE逻辑的单独一节），这将导致CPU进入PAUSE的X个周期。</li>
+<li><strong>Step-3b:</strong> 每轮检查（软实现）是否对应的锁已经可用(busy-wait)。<ul>
+<li>如果它可用，那么自旋循环退出。（可能还有一些其他同样正在自旋的检查。我们将使用下面的信息）。</li>
+</ul>
+</li>
+<li><strong>Step-3c:</strong> 再次尝试获取所需的锁。<ul>
+<li>If SUCCESS then return. (spins=1, rounds=M (M &lt;= N), os-waits=0)</li>
+<li>If FAILURE，并且此时仍有其他正在自旋，且悬而未决任务 (max=innodb_sync_spin_loops)还是继续自旋。（为什么循环被中断，锁失败。注：该锁被多个线程并行查看。而当多个线程试图获取锁时，它们收到了锁可用的信号。被其他线程取走，所以该线程现在仍在重新尝试）。</li>
+</ul>
+</li>
+<li><strong>Step-3d:</strong> 当这个线程现在完成了它设置的spin-wait轮循次数，到现在它还没有获得锁。那么它会被认为浪费CPU周期，没有必要继续自旋。最好的选择是放弃挂起的CPU周期并交还给操作系统，让操作系统调度做其他有用的事情。此外，由于所述线程现在将要进入睡眠，它应该向一些公共基础设施注册自身，这些基础设施将帮助它在所述锁可用时发出恢复活动的信号。</li>
+<li><strong>Step-3e:</strong> 这个将线程从唤醒的基础设施正式InnoDB中的同步阵列（sync-array）基础设施。<ul>
+<li>所述线程通过在同步阵列中预留插槽来注册自身。</li>
+<li>在开始等待之前，再试一次看锁是否可用。（因为预留可能很费时间，同时锁这个时候是可用的状态）。</li>
+<li>如果仍然没有获得锁，则将等待同步阵列向该线程送回信号。</li>
+<li>这种等待称为OS-wait，进入这个循环现在会导致OS-waits计数增加。</li>
+</ul>
+</li>
+<li><strong>Step-3f:</strong> 如果该线程收到由同步阵列发送回的wait-event信号。它会重新尝试获取锁。<ul>
+<li>If SUCCESS then return. (spins=1, rounds=N, os-waits=1)</li>
+<li>If FAILURE ，则整个循环从旋转逻辑重新启动(返回Step-3，rounds-count重新初始化为0)。注意：自旋计数(spins count)不会重新递增。</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>所以现在我们来给这些计数赋予意义</p>
+<ul>
+<li><strong>spins:</strong> 代表在第一次尝试中多少轮数而未能得到一个锁，并不得不进入自旋循环。</li>
+<li><strong>rounds:</strong> 表示执行多少轮PAUSE逻辑。</li>
+<li><strong>os-waits:</strong>自旋循环在多少轮自旋时仍未得到锁而导致os-waits。</li>
+</ul>
+<p>在获取所述锁流程中的自旋循环期间中，可能需要超过30轮(innodb_sync_spin_loops)PAUSE逻辑，并且还可能多次进入os-waits。这可能会导致os-waits &gt; spins-count。</p>
+<h3 id="PAUSE-逻辑"><a href="#PAUSE-逻辑" class="headerlink" title="PAUSE 逻辑"></a>PAUSE 逻辑</h3><p>K = {取 (0 - <a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_spin_wait_delay">innodb_spin_wait_delay</a>)之间的随机数 * <a href="https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html#sysvar_innodb_spin_wait_pause_multiplier">innodb_spin_wait_pause_multiplier</a>}</p>
+<p>调用底层 PAUSE 指令 K 次.</p>
+<p>并不是所有的架构都提供底层的PAUSE指令。x86有提供，但ARM没有。即使x86深藏了这个PAUSE指令，它也会随着处理器的不同系列而继续变化。老一代处理器的周期约为10-15次（pre-skylake）,Skylake系列的周期约为140次，然后CascadeLake系列的周期数又降下来了 (我看到在属于CascadeLake系列的Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz芯片上是13次). <em>(除了Cascadelake系列以外，我个人并没有在其他平台上对它进行基准测试) 但这些信息是可供参考的。</em>这意味着延迟引入PAUSE指令（按照周期计算）会持续不断的变化，所以针对每一代/类型的处理器调整PAUSE逻辑是非常重要的。 这里有两个可配置的变量可以解决这个问题，innodb_spin_wait_delay 和 innodb_spin_wait_pause_multiplier。</p>
+<h2 id="统计数据解读"><a href="#统计数据解读" class="headerlink" title="统计数据解读"></a>统计数据解读</h2><p>现在我们已经了解了统计数据，让我们看看这个数字，并试着做出一些推断。</p>
+<p>不过，在谈及进一步的细节之前，让我先看看这个<a href="https://bugs.mysql.com/bug.php?id=99171">bug</a>， 它描述了导致这些统计数据不一致和不正确的原因和修复方法。</p>
+<p>为了得到一个公正的结论，我们将使用mysql对应版本，并打上补丁。 (正如bug中指出的，不使用修复补丁统计数据不能产生正确的数据，因此各种解释和调优都毫无用处).</p>
+<h3 id="Use-Case-1"><a href="#Use-Case-1" class="headerlink" title="Use Case 1"></a>Use Case 1</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RW-shared spins 338969, rounds 20447615, OS waits 592941</span><br><span class="line">RW-excl spins 50582, rounds 1502625, OS waits 56124</span><br><span class="line">RW-sx spins 12583, rounds 360973, OS waits 10484</span><br><span class="line">Spin rounds per wait: 60.32 RW-shared, 29.71 RW-excl, 28.69 RW-sx</span><br></pre></td></tr></table></figure>
+
+<p>让我们分析一下共享自旋的情况:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RW-shared spins 338969, rounds 20447615, OS waits 592941</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>在头一次尝试中，用了338K 次仍未获取到锁，迫使线程进去自旋锁状态(spin-lock)。</li>
+<li>在每个自旋周期内，执行了60轮PAUSE周期（因此，所述自旋周期执行了2次）。</li>
+<li>OS-waits/spins = 592/338 = 1.75表明大部分被分流进入了OS-wait（PAUSE的延迟不够）。</li>
+<li>表明对于大多数自旋周期，单一的操OS-wait是不够的，因此这种操作是在重复进行的。</li>
+</ul>
+<p><strong>Conclusion:</strong> 该Use-case是高竞争情况。而且，诸如PAUSE循环无法产生所需的延迟来获得锁，导致每个自旋周期产生如此之多的PAUSE循环。</p>
+<p><em>256 thread oltp-read-write workload on 24 vCPU ARM machine</em></p>
+<h3 id="Use-Case-2"><a href="#Use-Case-2" class="headerlink" title="Use Case 2"></a>Use Case 2</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RW-shared spins 35943, rounds 777178, OS waits 19051</span><br><span class="line">RW-excl spins 4269, rounds 121796, OS waits 4164</span><br><span class="line">RW-sx spins 13407, rounds 321954, OS waits 7346</span><br><span class="line">Spin rounds per wait: 21.62 RW-shared, 28.53 RW-excl, 24.01 RW-sx</span><br></pre></td></tr></table></figure>
+
+<p>让我们分析一下共享自旋的情况:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">RW-shared spins 35943, rounds 777178, OS waits 19051</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>流程中，自旋循环35K次。</li>
+<li>只有19K次(大约是自旋循环的一半)引起了OS-waits。</li>
+<li>平均每个自旋周期也限制在21.62，这表明，对于每个自旋周期，平均有22轮PAUSE循环。</li>
+</ul>
+<p><strong>Conclusion:</strong> 该Use-case表示中度竞争情况。</p>
+<p><em>16 thread oltp-read-write workload on 24 vCPU ARM machine</em></p>
+<h3 id="Use-Case-3"><a href="#Use-Case-3" class="headerlink" title="Use Case 3"></a>Use Case 3</h3><p>让我举一个常见的例子，以供参考。这是16个线程的oltp-read-write工作负载在基于x86_64的16CPU虚拟机上。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RW-shared spins 39578, rounds 424553, OS waits 7329</span><br><span class="line">RW-excl spins 5828, rounds 78225, OS waits 1341</span><br><span class="line">RW-sx spins 11666, rounds 67297, OS waits 449</span><br><span class="line">Spin rounds per wait: 10.73 RW-shared, 13.42 RW-excl, 5.77 RW-sx</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>流程中自旋循环39K次。</li>
+<li>只有7K(约占自旋循环的20%) 导致OS-waits。</li>
+<li>每自旋周期平均数也限制为10。</li>
+</ul>
+<p><strong>Conclusion:</strong> 该Use-case表示低竞争情况。</p>
+<p><em>16 thread oltp-read-write workload on 24 vCPU x86_64 machine</em></p>
+<h3 id="调优注意事项"><a href="#调优注意事项" class="headerlink" title="调优注意事项"></a>调优注意事项</h3><p>记得我们在上面看到的高竞争案例。通过优化一些代码，可以显著减少共享自旋的争用。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">RW-shared spins 318800, rounds 13856732, OS waits 374634</span><br><span class="line">RW-excl spins 35759, rounds 656955, OS waits 22310</span><br><span class="line">RW-sx spins 10750, rounds 226315, OS waits 5598</span><br><span class="line">Spin rounds per wait: 43.47 RW-shared, 18.37 RW-excl, 21.05 RW-sx</span><br></pre></td></tr></table></figure>
+
+<p>每个自旋周期的轮数: 平均数从 60 降到 43</p>
+<p>每个自旋周期的OS-wait次数: 从1.75 降到1.17</p>
+<p>这性能好起来了吗？不是太好。有许多因素需要考虑。</p>
+<ul>
+<li>你看到TPS有改善吗？</li>
+<li>有时，它可能会建议简单地增加PAUSE循环。但是，增加PAUSE循环超过某个点将会导致延长自旋周期，最终浪费宝贵的CPU周期，尤其是这会导致线程返回到OS-wait状态。(这种方式可能对HT案例和多核案例更有效)。</li>
+<li>同样，如上所述，不同处理器的系列和类型会影响PAUSE循环延迟。</li>
+</ul>
+<p>有许多因素需要考虑。甚至我正在研究这个问题，看看我们如何为所有类型的CPU来优化它。一旦我在这个研究中发掘到一些非常好的通用的算法(或者我们可以开发一些自动的、自调整的或自适应的算法)，我会发布更多关于这个问题的博客，用户无需担心。</p>
+<h2 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h2><p>正如我们在上文看到的，rw-locks统计数据可以帮助我们更好地理解系统中锁的争用。当然，它不是有关InnoDB争用的唯一说明，因为互斥锁没在这些统计数据里面。调优可能具有挑战性，因为以错误的方式过度调优也会影响性能。</p>
+<p><em>如果你还有问题/疑问，请告诉我。会试着去回答他们。</em></p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/04/15/rang-github-action-zai-ni-de-arm-ji-qi-shang-pao-qi-lai/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">让Github Action在你的ARM机器上跑起来</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/04/14/understanding-innodb-rw-lock-stats/">
+                <span class="level-item">Understanding InnoDB rw-lock stats</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 14,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="理解InnoDB rw-lock的统计数据" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

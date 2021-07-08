@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>PostgreSQL对外部压缩方法的诉求 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2020&#x2F;08&#x2F;need-for-external-compression-methods.html Amit PSQL专家分析压缩库在PostgreSQL中的迫切诉求。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PostgreSQL对外部压缩方法的诉求">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/08/31/postgresql-dui-wai-bu-ya-suo-fang-fa-de-su-qiu/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2020&#x2F;08&#x2F;need-for-external-compression-methods.html Amit PSQL专家分析压缩库在PostgreSQL中的迫切诉求。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-08-31T01:20:24.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="PostgreSQL对外部压缩方法的诉求" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="PostgreSQL对外部压缩方法的诉求" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-08-31T01:20:24.000Z">2020-08-31</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                PostgreSQL对外部压缩方法的诉求
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Amit Dattatray Khandekar<br>原文链接: <a href="https://amitdkhan-pg.blogspot.com/2020/08/need-for-external-compression-methods.html">https://amitdkhan-pg.blogspot.com/2020/08/need-for-external-compression-methods.html</a></p>
+<p>Amit PSQL专家分析压缩库在PostgreSQL中的迫切诉求。</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<p>现今的每个数据库系统都有一定程度的数据压缩方法。很明显，这是为了减少数据库的大小，特别是在当今数据呈指数增长的时代。另外的原因是为了提高查询性能; 其思想是: 更小的数据大小意味着需要扫描的数据页面更少，这意味着更少的磁盘 i/o 和更快的数据访问。因此，无论如何，数据解压缩的速度应该足够快，以免影响查询性能(如果不能提高的话)。</p>
+<p>压缩提供了不同的层次: 页面压缩、行压缩、列压缩等。柱型数据库的优点是它的列压缩比很高，因为在一个列中存在连续数据的重复区域。另一种情况是，在面向行的数据库中，列值非常大，因此有必要压缩列的单个值。如果这些值不适合放在单个页面中，甚至可以单独保留它们，并且该行具有指向行外压缩数据的指针。在 PostgreSQL 中，这种技术被称为 TOAST (超大型属性存储技术) ，对于可以包含可变长度数据的列，数据被明显地压缩并存储在同一行中，或者如果数据仍然太大，则将数据以较小的块形式单独的存储在称为 TOAST table表的行中，这些块本身可能被压缩，也可能不被压缩。</p>
+<p>压缩为不同的数据操作提供了可能性。它可能不会被限制只有几秒数据压缩。例如，在容灾系统中，把redo logs从主服务器到从服务器的传输可能成为一个巨大的网络瓶颈，因此许多 RDBMS 提供压缩redo logs的功能。</p>
+<p>然后是 RDBMS 使用或提供选项可选的压缩算法。这一点尤其适用于数据压缩。由于数据是用户的数据，用户数据中的特定格式可能适合特定的压缩算法，而不同的存储格式可能适合另一种压缩算法。此外，这意味着，如果 RDBMS 提供一个选项，为特定列选择特定的压缩算法，或者从众所周知的标准压缩库列表(如 zlib、 lz4、 zstd、 snappy、 gzip 等)中选择特定的用户定义类型，那么这种方法将更加有益。或者，库算法都可以是完全定制的。</p>
+<p>并且提供了与 CPU 内核紧密耦合的压缩、加密和 SIMD 硬件加速器，这些硬件加速器可以通过压缩或加密算法加以利用。其中一个例子是<a href="https://github.com/kunpengcompute/KAEzip">Kunpeng Zlib Acceleration Engine</a>, 它提供了一个支持硬件的基础设施，用于在“ Kunpeng 920” ARM64处理器上进行压缩。我还没有机会测试这种能力，但它听起来很有希望。</p>
+<p>此外，压缩/加密算法在数据上执行重复的任务，这是利用 SIMD 向量化的自然选择。已经有一些独立的项目在 ARM64和 Intel 上进行，以便在 zlib、 lz4等著名的压缩库中进行这种特定于平台的增强。参看<a href="https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/neon-programmers-guide-for-armv8-a/neon-intrinsics-chromium-case-study/adler-32">NEON Intrinsics case study</a> 关于优化 zlib 的 adler-32算法的 NEON intrinsic 案例研究。</p>
+<p>所有这些都直接表明，RDBMS 服务器迫切需要为用户提供针对特定表或特定列的本地压缩算法/库的选择。在写这篇文章的时候，PostgreSQL 使用基于 LZ<a href="https://doxygen.postgresql.org/pg__lzcompress_8c_source.html">它自己的内建压缩算法</a> 来压缩Toast 表。想象一下，如果有一个用于选择 zlib 的接口，而不是内置的算法。进一步，选择 zlib 压缩级别。更进一步，为用户添加一个界面来创建一个扩展，该扩展使用特定平台的自定义算法，该平台使用硬件加速。</p>
+<p>OK，我们正在实现一个这样的特性。在 PostgreSQL 黑客社区中查看这个 <a href="https://www.postgresql.org/message-id/flat/CAFiTN-uUpX3ck%3DK0mLEk-G_kUQY%3DSNOTeqdaNRR9FMdQrHKebw%40mail.gmail.com#81b25677aea9423d8ebb3feebcd1af46">讨论主题</a>。这个特性可能还有很长的路要走(截至本文撰写之时) ，但是我对这个特性充满希望，因为如上所示，用例足够强大，对这个功能没有反对意见，并且提交了work-in-progress的补丁。</p>
+<p>我查看了这个补丁，玩了一下。粗略地说，下面是操作界面的样子。在补丁集完全具体化之后，接口可能会有所不同，但我认为它的本质或多或少会保持不变。下面是我的测试结果; 请注意，这只是为了通过例子强调这个功能是多么的酷和有用，并且使我在这个博客中解释的任何东西都有意义。</p>
+<p>CREATE TABLE zlibtab(t TEXT COMPRESSION zlib WITH (level ‘4’));<br>CREATE TABLE lztab(t TEXT);<br>ALTER TABLE lztab ALTER COLUMN t SET COMPRESSION pglz;              </p>
+<p>pgg:s2:pg$ time psql -c “\copy zlibtab from text.data”<br>COPY 13050                                    </p>
+<p>real  0m1.344s<br>user  0m0.031s<br>sys   0m0.026s                                 </p>
+<p>pgg:s2:pg$ time psql -c “\copy lztab from text.data”<br>COPY 13050                                    </p>
+<p>real  0m2.088s<br>user  0m0.008s<br>sys   0m0.050s                                 </p>
+<p>pgg:s2:pg$ time psql -c “select pg_table_size(‘zlibtab’::regclass), pg_table_size(‘lztab’::regclass)”<br> pg_table_size | pg_table_size<br>—————+—————<br>    1261568 |    1687552                          </p>
+<p>pgg:s2:pg$ time psql -c “select NULL from zlibtab where t like ‘0000’” &gt; /dev/null</p>
+<p>real  0m0.127s<br>user  0m0.000s<br>sys   0m0.002s</p>
+<p>pgg:s2:pg$ time psql -c “select NULL from lztab where t like ‘0000’” &gt; /dev/null</p>
+<p>real  0m0.050s<br>user  0m0.002s<br>sys   0m0.000s</p>
+<p>注意两种不同的压缩算法在压缩大小、插入数据(压缩)和选择数据(解压)的速度上是如何不同的。</p>
+<p>你甚至可以创建一个新的压缩访问函数，就像我们创建一个新的索引一样:</p>
+<p>CREATE ACCESS METHOD pglz1 TYPE COMPRESSION HANDLER my_compression_handler;<br>其中my_compression_handler 应该是一个 PostgreSQL C 函数，可以使用 PostgreSQL 扩展创建。这个函数为一组预定义的钩子分配它自己的实现函数，这些钩子定义了 PostgreSQL 核心使用压缩访问方法所需要知道的一切: </p>
+<p>Datum<br>my_compression_handler(PG_FUNCTION_ARGS)<br>{<br>    CompressionAmRoutine *routine = makeNode(CompressionAmRoutine);</p>
+<p>​    routine-&gt;cmcheck = my_cmcheck;<br>​    routine-&gt;cminitstate = my_cminitstate;<br>​    routine-&gt;cmcompress = my_cmcompress;<br>​    routine-&gt;cmdecompress = my_cmdecompress;<br>​    routine-&gt;cmdecompress_slice = NULL;</p>
+<p>​    PG_RETURN_POINTER(routine);<br>}</p>
+<p>这是 PostgreSQL 高度可扩展的方式: 允许用户使用内置方法，但也为用户提供了一种方法来定义他/她自己的方法来完成相同的工作。上面的所有函数都在一个 PostgreSQL 扩展中，可以使用:<br>CREATE EXTENSION my_compression;</p>
+</div>
+<div id="English" class="tab-content">
+
+<p> Every modern database system has some way to compress its data at some level. The obvious reason for this feature is to reduce the size of it’s database, especially in today’s world where the data is growing exponentially. The less obvious reason is to improve query performance; the idea is: smaller data size means less data pages to scan, which means lesser disk i/o and faster data access. So, in any case, data de-compression should be fast enough so as not to hamper the query performance, if not improve it.</p>
+<p>Compression is offered at different levels : page compression, row compression, column compression, etc. Columnar databases have the advantage of a very high compression ratio of its column because of presence of a repetetive pattern of contiguous data in a column. Another case is when, in a row oriented database, the column values are so large that it makes sense to compress individual values of the column. Such values can even be kept separately if they do not fit in a single page. And the row has pointers to the out-of-line compressed data. In PostgreSQL, such technique is called TOAST (The Oversized-Attribute Storage Technique), where, for columns that can contain variable-length data, the data is transparently compressed and stored in the same row, or else if it is still too large, it is stored in smaller chunks as rows in a separate table called a toast table, where these chunks themselves may or may not be compressed.</p>
+<p>Compression is offered for different purposes. It may not be restricted for only data compression. E.g. in a replication system, the transfer of redo logs from the master to slave can become a huge network bottleneck, so many RDBMS offer to compress redo logs.</p>
+<p>And then comes the compression algorithms that the RDBMS uses or gives options to choose. This applies especially more to data compression. Since data is user’s data, a specific pattern in the user data might suit a particular compression algorithm, while a different pattern might be suitable for another compression algorithm. Moreover, this implies that it would be far more beneficial if the RDBMS gives an option to choose a specific compression algorithm for a specific column or a specific user-defined type out of a list of well-known standard compression libraries such as zlib, lz4, ztd, snappy, gzip, etc. Or, the library algorithm may very well be a completely customized one.</p>
+<p>Secondly, there has been a lot of advancements to optimize compression algorithms for specific platforms, and provide hardware accelerators for Compression, Encryption and SIMD that are closely coupled to CPU cores, which can then be levergaed by compression or encryption algorithms. One such example is the <a href="https://github.com/kunpengcompute/KAEzip">Kunpeng Zlib Acceleration Engine</a>, which offers a hardware-enabled infrastructure for compression on a “Kunpeng 920” ARM64 processor. I haven’t got a chance to test this capability, but it does sound promising.</p>
+<p>Furthermore, the compression/encryption algorithms inherently do repetitive tasks over the data, which is a natural fit for leveraging SIMD vectorization. There has been independent projects going on on both ARM64 and Intel to do such platform-specific enhancements in well known libraries like zlib, lz4 etc. Check out this <a href="https://developer.arm.com/architectures/instruction-sets/simd-isas/neon/neon-programmers-guide-for-armv8-a/neon-intrinsics-chromium-case-study/adler-32">NEON Intrinsics case study</a> that optimizes zlib’s adler-32 algorithm using NEON intrinsics.</p>
+<p>All this directly points to an urgent need for RDBMS servers to give users a choice for specific native compression algorithms/libraries for specific tables or specific columns. As of this writing, PostgreSQL uses <a href="https://doxygen.postgresql.org/pg__lzcompress_8c_source.html">its own built-in compression algorithm</a> based on LZ for toast table compression. Imagine if there were an interface to select zlib instead of the built-in algorithm. Further, select the zlib compression level. Still further, add an interface for users to create an extension that uses a customized algorithm native to a specific platform that uses hardware acceleration.</p>
+<p>Well, there is exactly such a proposed feature in the making. Check out this <a href="https://www.postgresql.org/message-id/flat/CAFiTN-uUpX3ck%3DK0mLEk-G_kUQY%3DSNOTeqdaNRR9FMdQrHKebw%40mail.gmail.com#81b25677aea9423d8ebb3feebcd1af46">discussion thread</a> in the PostgreSQL hackers community. It may be a long way to go (as of this writing), but I am very hopeful of this feature going in, because the use-cases are strong enough as shown above, there are no fundamental objections to this functionality, and there are work-in-progress patches submitted.</p>
+<p>I went ahead and applied this patch, and played around it. Roughly, below is how the interface looks like. After the patch-set fully materializes, the interface might be different, but I think the essence of it would remain more or less the same. Below is the output of my tests; please note that it is just to emphasize with examples how cool and useful this feature would be, and to make sense of whatever I explained above in this blog.</p>
+<p>CREATE TABLE zlibtab(t TEXT COMPRESSION zlib WITH (level ‘4’));<br>CREATE TABLE lztab(t TEXT);<br>ALTER TABLE lztab ALTER COLUMN t SET COMPRESSION pglz;              </p>
+<p>pgg:s2:pg$ time psql -c “\copy zlibtab from text.data”<br>COPY 13050                                    </p>
+<p>real  0m1.344s<br>user  0m0.031s<br>sys   0m0.026s                                 </p>
+<p>pgg:s2:pg$ time psql -c “\copy lztab from text.data”<br>COPY 13050                                    </p>
+<p>real  0m2.088s<br>user  0m0.008s<br>sys   0m0.050s                                 </p>
+<p>pgg:s2:pg$ time psql -c “select pg_table_size(‘zlibtab’::regclass), pg_table_size(‘lztab’::regclass)”<br> pg_table_size | pg_table_size<br>—————+—————<br>    1261568 |    1687552                          </p>
+<p>pgg:s2:pg$ time psql -c “select NULL from zlibtab where t like ‘0000’” &gt; /dev/null</p>
+<p>real  0m0.127s<br>user  0m0.000s<br>sys   0m0.002s</p>
+<p>pgg:s2:pg$ time psql -c “select NULL from lztab where t like ‘0000’” &gt; /dev/null</p>
+<p>real  0m0.050s<br>user  0m0.002s<br>sys   0m0.000s</p>
+<p>Notice how two different compression algorithms differ in the compressed size, and the speed of inserting data (compression) and selecting data (decompression).</p>
+<p>You would even be able to create a new compression access method using the same way as we do for creating a new index :<br>CREATE ACCESS METHOD pglz1 TYPE COMPRESSION HANDLER my_compression_handler;<br>where my_compression_handler should be a PostgreSQL C function that could be created using a PostgreSQL extension. This function assigns its own implementation functions for a set of pre-defined hooks that define everything that the PostgreSQL core needs to know to make use of the compression access method :</p>
+<p>Datum<br>my_compression_handler(PG_FUNCTION_ARGS)<br>{<br>    CompressionAmRoutine *routine = makeNode(CompressionAmRoutine);</p>
+<p>​    routine-&gt;cmcheck = my_cmcheck;<br>​    routine-&gt;cminitstate = my_cminitstate;<br>​    routine-&gt;cmcompress = my_cmcompress;<br>​    routine-&gt;cmdecompress = my_cmdecompress;<br>​    routine-&gt;cmdecompress_slice = NULL;</p>
+<p>​    PG_RETURN_POINTER(routine);<br>}</p>
+<p>This is PostgreSQL’s way of being highly extensible : Allow user to use built-in methods, but also provide a way for the user to define his/her own methods for doing the same job. All the above functions would be inside an PostgreSQL extension, that could be created using:<br>CREATE EXTENSION my_compression;</p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/09/20/guan-yu-yuan-zi-cao-zuo-he-ruo-nei-cun-xu/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">关于原子操作和弱内存序</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/08/29/aarch64-fu-wu-qi-ying-yong-ruan-jian-kai-fa-xu-yao-tian-jia-de-bian-yi-can-shu/">
+                <span class="level-item">Aarch64服务器应用软件开发需要添加的编译参数</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 45,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="PostgreSQL对外部压缩方法的诉求" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

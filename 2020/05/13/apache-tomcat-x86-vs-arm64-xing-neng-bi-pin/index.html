@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>Apache Tomcat X86 vs ARM64 性能比拼 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: wangxiyuan作者:  Martin Grigorov原文链接:  https:&#x2F;&#x2F;medium.com&#x2F;@martin.grigorov&#x2F;compare-apache-tomcat-performance-on-x86-64-and-arm64-cpu-architectures-aacfbb0b5bb6 Tomcat PMC Martin Grigorov带来的Tomcat X8">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Apache Tomcat X86 vs ARM64 性能比拼">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/05/13/apache-tomcat-x86-vs-arm64-xing-neng-bi-pin/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: wangxiyuan作者:  Martin Grigorov原文链接:  https:&#x2F;&#x2F;medium.com&#x2F;@martin.grigorov&#x2F;compare-apache-tomcat-performance-on-x86-64-and-arm64-cpu-architectures-aacfbb0b5bb6 Tomcat PMC Martin Grigorov带来的Tomcat X8">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-05-13T01:28:58.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="Web">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="Apache Tomcat X86 vs ARM64 性能比拼" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="Apache Tomcat X86 vs ARM64 性能比拼" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-05-13T01:28:58.000Z">2020-05-13</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/Web/">Web</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                Apache Tomcat X86 vs ARM64 性能比拼
+            
+        </h1>
+        <div class="content">
+            <p>译者: <a href="https://github.com/wangxiyuan">wangxiyuan</a><br>作者:  <a href="https://github.com/martin-g">Martin Grigorov</a><br>原文链接:  <a href="https://medium.com/@martin.grigorov/compare-apache-tomcat-performance-on-x86-64-and-arm64-cpu-architectures-aacfbb0b5bb6">https://medium.com/@martin.grigorov/compare-apache-tomcat-performance-on-x86-64-and-arm64-cpu-architectures-aacfbb0b5bb6</a></p>
+<p>Tomcat PMC Martin Grigorov带来的Tomcat X86 VS ARM64性能测试。</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<p>大多数软件开发人员通常不会考虑他们的软件将在何种 CPU 架构上运行。 尽管没有官方的统计数据，但根据我的经验，大多数桌面和后端应用软件都运行在 x86_64架构(英特尔和 AMD 处理器)上，大多数移动和物联网设备都运行在 ARM 架构上。 开发人员使用一些高级编程语言为各自的 CPU 架构编写软件，并不考虑在运行时执行何种汇编指令。 而这正是高级编程语言的目的—- 让编译器处理低级硬件指令，并简化我们的任务，使其只专注于高级业务相关问题。</p>
+<p>生活简单而美好，但有时候，笔记本电脑和台式机硬件及软件制造业的<a href="https://www.apple.com/">巨头</a>会说，我们的软件必须在不同的架构上运行——先是从 <a href="https://en.wikipedia.org/wiki/Apple%27s_transition_to_Intel_processors#Timeline">PowerPC 到英特尔</a>，现在从英特尔到 ARM64(消息来源: <a href="https://www.bloomberg.com/news/articles/2020-04-23/apple-aims-to-sell-macs-with-its-own-chips-starting-in-2021">Bloomberg</a> &amp; <a href="https://appleinsider.com/articles/20/02/25/why-apple-will-move-macs-to-arm-and-what-consumers-get">AppleInsider</a>)。 由于电力消耗较低，甚至一些较大的云供应商也开始提供 ARM64虚拟机(如<a href="https://aws.amazon.com/ec2/graviton/">亚马逊 AWS</a>、<a href="https://www.huaweicloud.com/en-us/product/ecs.html">华为云</a>、 <a href="https://www.linaro.cloud/">Linaro</a>)。 但还有以下不确定性:</p>
+<ul>
+<li>我的软件能在新的 CPU 架构上运行吗?</li>
+<li>我需要做出什么样的改变才能让它发挥作用</li>
+<li>它会像以前一样表现出色吗</li>
+</ul>
+<p>为了能够回答这些问题，你必须撸起袖子进行测试！</p>
+<p>您可以在任何云供应商上部署软件。 有些还提供免费试用期！ 或者如果你的预算很少，你可以试试 <a href="https://www.raspberrypi.org/">RaspberryPi</a>。</p>
+<p>根据您编写软件所使用的编程语言，您可能需要进行一些更改，或者根本不需要更改！ 如果你使用一个直译语言文件(例如 Python，Perl，Ruby，JVM，…) ，那么解释器已经支持 ARM64的可能性相当高，你可以不做任何改变就继续使用它！ 但是，如果你的软件需要被编译，那么你需要调整你的工具链，并确保有 ARM64二进制文件为你所有的依赖！ 根据您的软件开发堆栈，您的修改量可能会有所不同！</p>
+<p>一旦我们的软件在新架构上运行良好，我们将能够检查它是否像以前那样执行良好。 最近一些用户在 Apache Tomcat 邮件列表中询问是否支持 ARM64架构。 因为 Apache Tomcat 大部分代码是用 Java 编写的，所以它可以基本的运行在ARM64上。 如果您需要使用 <code>libtcnative</code> 和 / 或 <code>mod_jk</code>，那么您需要自己在 ARM64上构建它们。 Apache Tomcat 团队使用 TravisCI 在 ARM64上测试 <a href="https://travis-ci.org/github/apache/tomcat">Java</a> 和 <a href="https://travis-ci.org/github/martin-g/tomcat-connectors">C</a> 代码，目前还没有已知的问题！</p>
+<p>为了比较某些软件的两个版本的性能，通常您将在同一个硬件上运行测试，但在这种情况下，由于我们使用不同的 CPU 架构，这是不可能的。 在我的测试中，我使用了两个具有类似规范的 vm：</p>
+<ul>
+<li><p>X86_64处理器是：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">Architecture:        x86_64</span><br><span class="line">CPU op-mode(s):      32-bit, 64-bit</span><br><span class="line">Byte Order:          Little Endian</span><br><span class="line">CPU(s):              8</span><br><span class="line">On-line CPU(s) list: 0-7</span><br><span class="line">Thread(s) per core:  2</span><br><span class="line">Core(s) per socket:  4</span><br><span class="line">Socket(s):           1</span><br><span class="line">NUMA node(s):        1</span><br><span class="line">Vendor ID:           GenuineIntel</span><br><span class="line">CPU family:          6</span><br><span class="line">Model:               85</span><br><span class="line">Model name:          Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz</span><br><span class="line">Stepping:            7</span><br><span class="line">CPU MHz:             3000.000</span><br><span class="line">BogoMIPS:            6000.00</span><br><span class="line">Hypervisor vendor:   KVM</span><br><span class="line">Virtualization type: full</span><br><span class="line">L1d cache:           32K</span><br><span class="line">L1i cache:           32K</span><br><span class="line">L2 cache:            1024K</span><br><span class="line">L3 cache:            30976K</span><br><span class="line">NUMA node0 CPU(s):   0-7</span><br><span class="line">Flags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch invpcid_single ssbd ibrs ibpb stibp ibrs_enhanced fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm mpx avx512f avx512dq rdseed adx smap clflushopt clwb avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1 arat avx512_vnni md_clear flush_l1d arch_capabilities</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>Arm64处理器是：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">Architecture:        aarch64</span><br><span class="line">Byte Order:          Little Endian</span><br><span class="line">CPU(s):              8</span><br><span class="line">On-line CPU(s) list: 0-7</span><br><span class="line">Thread(s) per core:  1</span><br><span class="line">Core(s) per socket:  8</span><br><span class="line">Socket(s):           1</span><br><span class="line">NUMA node(s):        1</span><br><span class="line">Vendor ID:           0x48</span><br><span class="line">Model:               0</span><br><span class="line">Stepping:            0x1</span><br><span class="line">BogoMIPS:            200.00</span><br><span class="line">L1d cache:           64K</span><br><span class="line">L1i cache:           64K</span><br><span class="line">L2 cache:            512K</span><br><span class="line">L3 cache:            32768K</span><br><span class="line">NUMA node0 CPU(s):   0-7</span><br><span class="line">Flags:               fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma dcpop asimddp asimdfhm</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>两个虚拟机具有相同数量的 RAM、磁盘和网络连接。</p>
+<p>测试应用程序基于 Spring Boot (2.2.7) ，运行嵌入式 Apache Tomcat 9.0.x + OpenSSL 1.1.1h-dev 和 Apache Apr 1.7.x。 每晚构建，并且有一个单独的 REST 客户端，该客户端公开一个用于创建实体的 PUT Endpoint、一个用于读取它的 GET Endpoint、一个用于更新它的 POST Endpoint和一个用于删除它的 DELETE Endpoint。 它使用 <a href="https://memcached.org/">Memcached</a> 作为数据库。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br></pre></td><td class="code"><pre><span class="line">package info.mgsolutions.testbed.rest;</span><br><span class="line"></span><br><span class="line">import info.mgsolutions.testbed.domain.Error;</span><br><span class="line">import info.mgsolutions.testbed.domain.Person;</span><br><span class="line">import info.mgsolutions.testbed.domain.Response;</span><br><span class="line">import lombok.extern.slf4j.Slf4j;</span><br><span class="line">import net.rubyeye.xmemcached.MemcachedClient;</span><br><span class="line">import net.rubyeye.xmemcached.exception.MemcachedException;</span><br><span class="line">import net.rubyeye.xmemcached.transcoders.SerializingTranscoder;</span><br><span class="line">import org.springframework.http.HttpStatus;</span><br><span class="line">import org.springframework.http.MediaType;</span><br><span class="line">import org.springframework.http.ResponseEntity;</span><br><span class="line">import org.springframework.http.server.ServletServerHttpRequest;</span><br><span class="line">import org.springframework.web.bind.annotation.DeleteMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.GetMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.PostMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.PutMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.RequestBody;</span><br><span class="line">import org.springframework.web.bind.annotation.RequestMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.RequestParam;</span><br><span class="line">import org.springframework.web.bind.annotation.RestController;</span><br><span class="line">import org.springframework.web.util.UriComponents;</span><br><span class="line">import org.springframework.web.util.UriComponentsBuilder;</span><br><span class="line"></span><br><span class="line">import javax.servlet.http.HttpServletRequest;</span><br><span class="line">import java.net.URI;</span><br><span class="line">import java.nio.charset.StandardCharsets;</span><br><span class="line">import java.util.Base64;</span><br><span class="line">import java.util.concurrent.TimeoutException;</span><br><span class="line"></span><br><span class="line">&#x2F;**</span><br><span class="line"> * A REST endpoint that uses Memcached to get its data.</span><br><span class="line"> *&#x2F;</span><br><span class="line">@RestController</span><br><span class="line">@RequestMapping(&quot;testbed&#x2F;memcached&quot;)</span><br><span class="line">@Slf4j</span><br><span class="line">public class MemcachedTestController &#123;</span><br><span class="line"></span><br><span class="line">	public static final int TTL_IN_SECONDS &#x3D; 1000;</span><br><span class="line"></span><br><span class="line">	private final SerializingTranscoder coder &#x3D; new SerializingTranscoder();</span><br><span class="line">	private final MemcachedClient client;</span><br><span class="line"></span><br><span class="line">	public MemcachedTestController(MemcachedClient client) &#123;</span><br><span class="line">		this.client &#x3D; client;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@PutMapping(value &#x3D;&quot;&quot;, consumes &#x3D; MediaType.APPLICATION_JSON_VALUE, produces &#x3D; MediaType.APPLICATION_JSON_VALUE)</span><br><span class="line">	public ResponseEntity&lt;Response&gt; create(@RequestBody Person person,</span><br><span class="line">	                                       HttpServletRequest servletRequest) throws InterruptedException, MemcachedException, TimeoutException &#123;</span><br><span class="line"></span><br><span class="line">		final String base64Name &#x3D; base64(person.name);</span><br><span class="line">		Person existing &#x3D; client.get(base64Name);</span><br><span class="line">		if (existing !&#x3D; null) &#123;</span><br><span class="line">			log.info(&quot;Create: Person with name &#123;&#125; already exists!&quot;, person.name);</span><br><span class="line">			Error error &#x3D; new Error(&quot;Person with name &quot; + person.name + &quot; already exists!&quot;);</span><br><span class="line">			return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)</span><br><span class="line">			                     .body(error);</span><br><span class="line">		&#125;</span><br><span class="line">		log.info(&quot;Create: Going to create &#39;&#123;&#125;&#39;&quot;, person);</span><br><span class="line">		client.set(base64Name, TTL_IN_SECONDS, person, coder);</span><br><span class="line"></span><br><span class="line">		ServletServerHttpRequest request &#x3D; new ServletServerHttpRequest(servletRequest);</span><br><span class="line">		final UriComponents uriComponents &#x3D; UriComponentsBuilder.fromHttpRequest(request).build();</span><br><span class="line">		final URI uri &#x3D; uriComponents.encode(StandardCharsets.UTF_8).toUri();</span><br><span class="line">		return ResponseEntity.created(uri).contentType(MediaType.APPLICATION_JSON).body(person);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@GetMapping(value &#x3D;&quot;&quot;, consumes &#x3D; MediaType.ALL_VALUE, produces &#x3D; MediaType.APPLICATION_JSON_VALUE)</span><br><span class="line">	public ResponseEntity&lt;Person&gt; get(@RequestParam String name) throws InterruptedException, MemcachedException, TimeoutException &#123;</span><br><span class="line"></span><br><span class="line">		Person person &#x3D; (Person) client.get(base64(name), coder);</span><br><span class="line">		if (person &#x3D;&#x3D; null) &#123;</span><br><span class="line">			log.info(&quot;Get: Cannot find a person with name &#123;&#125;!&quot;, name);</span><br><span class="line">			return ResponseEntity.notFound().build();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		log.info(&quot;Get: Found person with name: &#123;&#125;!&quot;, name);</span><br><span class="line">		return ResponseEntity.ok().body(person);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@PostMapping(value &#x3D;&quot;&quot;, consumes &#x3D; MediaType.APPLICATION_JSON_VALUE, produces &#x3D; MediaType.APPLICATION_JSON_VALUE)</span><br><span class="line">	public ResponseEntity&lt;Person&gt; update(@RequestBody Person person) throws InterruptedException, MemcachedException, TimeoutException &#123;</span><br><span class="line">		final String name &#x3D; person.name;</span><br><span class="line">		final String base64Name &#x3D; base64(name);</span><br><span class="line">		final Person existing &#x3D; (Person) client.get(base64Name, coder);</span><br><span class="line">		if (existing !&#x3D; null) &#123;</span><br><span class="line">			log.info(&quot;Update: Going to update: &#123;&#125;&quot;, person);</span><br><span class="line">			client.set(base64Name, TTL_IN_SECONDS, person, coder);</span><br><span class="line">			return ResponseEntity.ok().build();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		log.info(&quot;Update: Cannot find a person with name &#123;&#125;!&quot;, person.name);</span><br><span class="line">		return ResponseEntity.notFound().build();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@DeleteMapping(value &#x3D;&quot;&quot;, produces &#x3D; MediaType.APPLICATION_JSON_VALUE)</span><br><span class="line">	public ResponseEntity&lt;Person&gt; delete(@RequestParam String name) throws InterruptedException, MemcachedException, TimeoutException &#123;</span><br><span class="line"></span><br><span class="line">		final String base64Name &#x3D; base64(name);</span><br><span class="line">		final Person person &#x3D; client.get(base64Name);</span><br><span class="line">		if (person !&#x3D; null) &#123;</span><br><span class="line">			log.info(&quot;Delete: Going to delete: &#123;&#125;&quot;, person);</span><br><span class="line">			client.delete(base64Name);</span><br><span class="line">			return ResponseEntity.ok().build();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		log.info(&quot;Delete: Cannot find a person with name &#123;&#125;!&quot;, name);</span><br><span class="line">		return ResponseEntity.notFound().build();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	private String base64(String name) &#123;</span><br><span class="line">		return Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于负载测试，我使用了 <a href="https://jmeter.apache.org/">Apache JMeter 5.2.1</a>和基于主干代码的 <a href="https://github.com/wg/wrk">wrk</a>。 Jmeter 用于一个真实的情况场景，有1000个并发用户，在 HTTP 请求之间有一个适应期和一段思考时间。 然后用 wrk 测试最大吞吐量。</p>
+<p>使用以下参数执行 JMeter:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">jmeter.sh \</span><br><span class="line">		--testfile JMeter_plan.jmx \</span><br><span class="line">		--logfile $RESULTS_FILE \</span><br><span class="line">		--reportoutputfolder $RESULTS_FOLDER \</span><br><span class="line">		--reportatendofloadtests \</span><br><span class="line">		--nongui \</span><br><span class="line">		--forceDeleteResultFile \</span><br><span class="line">		--jmeterproperty httpclient4.validate_after_inactivity&#x3D;4900 \</span><br><span class="line">		--jmeterproperty httpclient4.time_to_live&#x3D;120000 \</span><br><span class="line">		-Jhost&#x3D;$JMETER_HOST \</span><br><span class="line">		-Jport&#x3D;$JMETER_PORT \</span><br><span class="line">		-Jprotocol&#x3D;$JMETER_PROTOCOL \</span><br><span class="line">		-JresourceFolder&#x3D;$JMETER_RESOURCE_FOLDER \</span><br><span class="line">		-Jusers&#x3D;1000 \</span><br><span class="line">		-JrampUpSecs&#x3D;5 \</span><br><span class="line">		-Jloops&#x3D;10 \</span><br><span class="line">		-JrequestPath&#x3D;&#x2F;testbed&#x2F;memcached</span><br></pre></td></tr></table></figure>
+
+<p>重用 HTTPS 连接需要 <code>httpclient4. * *</code> 属性，否则 Keep-Alive 不会有效。</p>
+<p>Jmeter 和 wrk 的结果与存储在 Elasticsearch 的 Logstash 一起解析，并由 Kibana 进行可视化。</p>
+<p>Jmeter 的响应时间:<br><img src="https://user-images.githubusercontent.com/10891919/81760860-f6b4cb80-94fa-11ea-9d31-27fb43687cc5.png" alt="image"></p>
+<p>正如你所看到的，在5月8日之前 HTTPS 的结果并不是很好。 没有重用 HTTPS 连接，每个请求都进行了 TLS 握手，尽管请求头“ Connection: keep-alive”。 因为 wrk 没有这样的问题，我在 JMeter 邮件列表中询问过，他们给了我上面提到的 httpclient4参数。 (谢谢你，菲利普 · 穆瓦德!) . 不管有没有 HttpClient 的调整，我们看到 x8664和 arm64的响应时间非常相似。 太棒了！</p>
+<p>对于 wrk 的吞吐量测试，我使用以下参数运行它:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wrk -c96 -t8 -d30s -s &#x2F;scripts&#x2F;wrk-report-to-csv.lua $HOST:$PORT</span><br></pre></td></tr></table></figure>
+<p>例如，8个线程将使用96个 HTTP (s)连接访问服务器30秒。</p>
+<p>为了收集 CSV 文件中的摘要，我使用了这个自定义 Lua 脚本:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br></pre></td><td class="code"><pre><span class="line">-- Initialize the pseudo random number generator</span><br><span class="line">-- Resource: http:&#x2F;&#x2F;lua-users.org&#x2F;wiki&#x2F;MathLibraryTutorial</span><br><span class="line">math.randomseed(os.time())</span><br><span class="line">math.random(); math.random(); math.random()</span><br><span class="line"></span><br><span class="line">local _request &#x3D; &#123;&#125;</span><br><span class="line">method &#x3D; &#39;&#39;</span><br><span class="line"></span><br><span class="line">-- Load URL config from the file</span><br><span class="line">function load_request_objects_from_file(csvFile)</span><br><span class="line">  local data &#x3D; &#123;&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  for line in io.lines(csvFile) do</span><br><span class="line">    local idx &#x3D; string.find(line, &quot;:&quot;)</span><br><span class="line">    local key &#x3D; string.sub(line, 0, idx-1)</span><br><span class="line">    local value &#x3D; string.sub(line, idx+1, string.len(line))</span><br><span class="line">    data[key] &#x3D; value</span><br><span class="line">  end</span><br><span class="line"></span><br><span class="line">  return data</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">function trim(s)</span><br><span class="line">  return s:match &quot;^%s*(.-)%s*$&quot;</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">function readMethod()</span><br><span class="line">  local method &#x3D; &#39;&#39;</span><br><span class="line">  local f &#x3D; io.open(&#39;&#x2F;data&#x2F;method.txt&#39;,&quot;r&quot;)</span><br><span class="line">  if f ~&#x3D; nil then</span><br><span class="line">    method &#x3D; f:read(&quot;*all&quot;)</span><br><span class="line">    io.close(f)</span><br><span class="line">    return trim(method)</span><br><span class="line">  else</span><br><span class="line">    print(&#39;Cannot read the method name from &#x2F;data&#x2F;method.txt&#39;)</span><br><span class="line">    os.exit(123)</span><br><span class="line">  end</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">function init(args)</span><br><span class="line">  local method &#x3D; readMethod()</span><br><span class="line">  -- Load request config from file</span><br><span class="line">  _request &#x3D; load_request_objects_from_file(&quot;&#x2F;data&#x2F;&quot; .. method ..&quot;.conf&quot;)</span><br><span class="line"></span><br><span class="line">  --for i, val in pairs(_request) do</span><br><span class="line">  --  print(&#39;Request:\t&#39;, i, val)</span><br><span class="line">  --end</span><br><span class="line"></span><br><span class="line">  if _request[method] ~&#x3D; nil then</span><br><span class="line">    print(&quot;multiplerequests: No requests found.&quot;)</span><br><span class="line">    os.exit()</span><br><span class="line">  end</span><br><span class="line"></span><br><span class="line">  print(&quot;multiplerequests: Found a &quot; .. _request.method .. &quot; request&quot;)</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">request &#x3D; function()</span><br><span class="line">  local request_object &#x3D; _request</span><br><span class="line"></span><br><span class="line">  -- Return the request object with the current URL path</span><br><span class="line">  local headers &#x3D;  &#123;&#125;</span><br><span class="line">  headers[&quot;Content-type&quot;] &#x3D; &quot;application&#x2F;json&quot;</span><br><span class="line"></span><br><span class="line">  local url &#x3D; wrk.format(request_object.method, request_object.path, headers, request_object.body)</span><br><span class="line">  return url</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">function done(summary, latency, reqs)</span><br><span class="line"></span><br><span class="line">  local date_table &#x3D; os.date(&quot;*t&quot;)</span><br><span class="line">  local ms &#x3D; string.match(tostring(os.clock()), &quot;%d%.(%d+)&quot;) &#x2F; 1000</span><br><span class="line">  local hour, minute, second &#x3D; date_table.hour, date_table.min, date_table.sec</span><br><span class="line">  local year, month, day &#x3D; date_table.year, date_table.month, date_table.day</span><br><span class="line">  local timeStamp &#x3D; string.format(&quot;%04d-%02d-%02dT%02d:%02d:%02d.%03d&quot;, year, month, day, hour, minute, second, ms)</span><br><span class="line">  print(&quot;Timestamp: &quot; .. timeStamp)</span><br><span class="line"></span><br><span class="line">  local method &#x3D; readMethod()</span><br><span class="line">  file &#x3D; io.open(&#39;&#x2F;results&#x2F;today&#x2F;&#39; .. method .. &#39;.csv&#39;, &#39;w&#39;)</span><br><span class="line">  io.output(file)</span><br><span class="line"></span><br><span class="line">  -- summary</span><br><span class="line">  io.write(&quot;timeStamp,&quot;)</span><br><span class="line">  io.write(&quot;duration_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;num_requests,&quot;)</span><br><span class="line">  io.write(&quot;total_bytes,&quot;)</span><br><span class="line">  io.write(&quot;connect_errors,&quot;)</span><br><span class="line">  io.write(&quot;read_errors,&quot;)</span><br><span class="line">  io.write(&quot;write_errors,&quot;)</span><br><span class="line">  io.write(&quot;error_status_codes,&quot;)</span><br><span class="line">  io.write(&quot;timeouts,&quot;)</span><br><span class="line">  io.write(&quot;requests_per_sec,&quot;)</span><br><span class="line">  io.write(&quot;bytes_per_sec,&quot;)</span><br><span class="line">  -- latency</span><br><span class="line">  io.write(&quot;lat_min_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_max_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_mean_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_stdev_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_percentile_90_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_percentile_95_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_percentile_99_microseconds\n&quot;)</span><br><span class="line"></span><br><span class="line">  -- summary</span><br><span class="line">  io.write(string.format(&quot;%s,&quot;, timeStamp))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.duration))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.requests))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.bytes))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.connect))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.read))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.write))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.status))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.timeout))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, summary.requests&#x2F;(summary.duration &#x2F; 1000 &#x2F; 1000)))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, summary.bytes&#x2F;summary.duration))</span><br><span class="line">  -- latency</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency.min))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency.max))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency.mean))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency.stdev))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency:percentile(90.0)))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency:percentile(95.0)))</span><br><span class="line">  io.write(string.format(&quot;%.2f\n&quot;,  latency:percentile(99.0)))</span><br><span class="line"></span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+<p>结果显示，x86_64上的 Tomcat 比 arm64快两倍:<br><img src="https://user-images.githubusercontent.com/10891919/81760902-16e48a80-94fb-11ea-84a9-ea88b895d06e.png" alt="image"></p>
+<p>我将试图找出这种差异的原因，并在后续的帖子中与你分享。 如果你有什么想法和建议，我很乐意试试！</p>
+<p>祝你黑客生活愉快，注意安全！</p>
+</div>
+<div id="English" class="tab-content">
+
+<p>The majority of the software developers usually do not think about the CPU architecture their software will run on. I do not have official statistics but in my experience most of the software for desktop and backend applications run on x86_64 architecture (Intel and AMD processors) and most of the mobile and IoT devices run on ARM architecture. The developers write their software for the respective CPU architecture using some high level programming language and do not think what kind of Assembly instructions are being executed at runtime. And this is the purpose of the high level programming languages — to let the compiler deal with the low level hardware instructions and simplify our task to focus only on the high level business related problems.</p>
+<p>Life is simple and beautiful but there are times when a <a href="https://www.apple.com/">big player</a> in the laptop and desktop hardware and software manufacturing comes and says that our software will have to run on a different architecture — first from <a href="https://en.wikipedia.org/wiki/Apple%27s_transition_to_Intel_processors#Timeline">PowerPC to Intel</a> and now from Intel to ARM64 (sources: <a href="https://www.bloomberg.com/news/articles/2020-04-23/apple-aims-to-sell-macs-with-its-own-chips-starting-in-2021">Bloomberg</a> &amp; <a href="https://appleinsider.com/articles/20/02/25/why-apple-will-move-macs-to-arm-and-what-consumers-get">AppleInsider</a>). Due to the lower consumption of electricity even several of the bigger cloud providers started providing ARM64 virtual machines (e.g. <a href="https://aws.amazon.com/ec2/graviton/">Amazon AWS</a>, <a href="https://www.huaweicloud.com/en-us/product/ecs.html">HuaweiCloud</a>, <a href="https://www.linaro.cloud/">Linaro</a>). And here comes the uncertainty —</p>
+<ul>
+<li>Will my software run on the new CPU architecture ?!</li>
+<li>What kind of changes I will have to do to make it work ?!</li>
+<li>Will it perform as good as before ?!</li>
+</ul>
+<p>To be able to answer these questions you will have to roll up your sleeves and test!</p>
+<p>You can deploy your software on any of the cloud providers. Some of them give free trial period! Or if you are on a low budget you can experiment on <a href="https://www.raspberrypi.org/">RaspberryPi</a>.</p>
+<p>Depending on what programming language you use to write your software you might need to do some changes or not at all! If you use an interpreted language (e.g. Python, Perl, Ruby, JVM, …) then the chances the interpreter already supports ARM64 are pretty high and you are good to go without any changes! But if your software needs to be compiled then you will need to adapt your toolchain and make sure that there are ARM64 binaries for all your dependencies! Depending on your software development stack your mileage may vary!</p>
+<p>Once our software runs fine on the new architecture we will be able to check whether it performs as good as before. Recently some users have asked in Apache Tomcat mailing lists whether ARM64 architecture is supported. Since Apache Tomcat is written mostly in Java it “Just Works”. If you need to use libtcnative and/or mod_jk then you will need to build them yourself on ARM64. Apache Tomcat team uses TravisCI to test both <a href="https://travis-ci.org/github/apache/tomcat">Java</a> and <a href="https://travis-ci.org/github/martin-g/tomcat-connectors">C</a> code on ARM64 and there are no known issues at the moment!</p>
+<p>To compare the performance of two versions of some software usually you will run it on the same hardware but in this case since we use different CPU architectures this makes it impossible. For my tests I have used two VMs with similar specifications:</p>
+<ul>
+<li><p>The x86_64 processor is:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">Architecture:        x86_64</span><br><span class="line">CPU op-mode(s):      32-bit, 64-bit</span><br><span class="line">Byte Order:          Little Endian</span><br><span class="line">CPU(s):              8</span><br><span class="line">On-line CPU(s) list: 0-7</span><br><span class="line">Thread(s) per core:  2</span><br><span class="line">Core(s) per socket:  4</span><br><span class="line">Socket(s):           1</span><br><span class="line">NUMA node(s):        1</span><br><span class="line">Vendor ID:           GenuineIntel</span><br><span class="line">CPU family:          6</span><br><span class="line">Model:               85</span><br><span class="line">Model name:          Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz</span><br><span class="line">Stepping:            7</span><br><span class="line">CPU MHz:             3000.000</span><br><span class="line">BogoMIPS:            6000.00</span><br><span class="line">Hypervisor vendor:   KVM</span><br><span class="line">Virtualization type: full</span><br><span class="line">L1d cache:           32K</span><br><span class="line">L1i cache:           32K</span><br><span class="line">L2 cache:            1024K</span><br><span class="line">L3 cache:            30976K</span><br><span class="line">NUMA node0 CPU(s):   0-7</span><br><span class="line">Flags:               fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch invpcid_single ssbd ibrs ibpb stibp ibrs_enhanced fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm mpx avx512f avx512dq rdseed adx smap clflushopt clwb avx512cd avx512bw avx512vl xsaveopt xsavec xgetbv1 arat avx512_vnni md_clear flush_l1d arch_capabilities</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>The ARM64 processor is:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">Architecture:        aarch64</span><br><span class="line">Byte Order:          Little Endian</span><br><span class="line">CPU(s):              8</span><br><span class="line">On-line CPU(s) list: 0-7</span><br><span class="line">Thread(s) per core:  1</span><br><span class="line">Core(s) per socket:  8</span><br><span class="line">Socket(s):           1</span><br><span class="line">NUMA node(s):        1</span><br><span class="line">Vendor ID:           0x48</span><br><span class="line">Model:               0</span><br><span class="line">Stepping:            0x1</span><br><span class="line">BogoMIPS:            200.00</span><br><span class="line">L1d cache:           64K</span><br><span class="line">L1i cache:           64K</span><br><span class="line">L2 cache:            512K</span><br><span class="line">L3 cache:            32768K</span><br><span class="line">NUMA node0 CPU(s):   0-7</span><br><span class="line">Flags:               fp asimd evtstrm aes pmull sha1 sha2 crc32 atomics fphp asimdhp cpuid asimdrdm jscvt fcma dcpop asimddp asimdfhm</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<p>Both VMs have same amount of RAM, disk and network connectivity.</p>
+<p>The test application is based on Spring Boot (2.2.7) running an embedded Apache Tomcat 9.0.x nightly builds and has a single REST controller that exposes a PUT endpoint for creating an entity, a GET endpoint to read it, a POST endpoint to update it and a DELETE endpoint to remove it. It uses <a href="https://memcached.org/">Memcached</a> as a database.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br></pre></td><td class="code"><pre><span class="line">package info.mgsolutions.testbed.rest;</span><br><span class="line"></span><br><span class="line">import info.mgsolutions.testbed.domain.Error;</span><br><span class="line">import info.mgsolutions.testbed.domain.Person;</span><br><span class="line">import info.mgsolutions.testbed.domain.Response;</span><br><span class="line">import lombok.extern.slf4j.Slf4j;</span><br><span class="line">import net.rubyeye.xmemcached.MemcachedClient;</span><br><span class="line">import net.rubyeye.xmemcached.exception.MemcachedException;</span><br><span class="line">import net.rubyeye.xmemcached.transcoders.SerializingTranscoder;</span><br><span class="line">import org.springframework.http.HttpStatus;</span><br><span class="line">import org.springframework.http.MediaType;</span><br><span class="line">import org.springframework.http.ResponseEntity;</span><br><span class="line">import org.springframework.http.server.ServletServerHttpRequest;</span><br><span class="line">import org.springframework.web.bind.annotation.DeleteMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.GetMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.PostMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.PutMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.RequestBody;</span><br><span class="line">import org.springframework.web.bind.annotation.RequestMapping;</span><br><span class="line">import org.springframework.web.bind.annotation.RequestParam;</span><br><span class="line">import org.springframework.web.bind.annotation.RestController;</span><br><span class="line">import org.springframework.web.util.UriComponents;</span><br><span class="line">import org.springframework.web.util.UriComponentsBuilder;</span><br><span class="line"></span><br><span class="line">import javax.servlet.http.HttpServletRequest;</span><br><span class="line">import java.net.URI;</span><br><span class="line">import java.nio.charset.StandardCharsets;</span><br><span class="line">import java.util.Base64;</span><br><span class="line">import java.util.concurrent.TimeoutException;</span><br><span class="line"></span><br><span class="line">&#x2F;**</span><br><span class="line"> * A REST endpoint that uses Memcached to get its data.</span><br><span class="line"> *&#x2F;</span><br><span class="line">@RestController</span><br><span class="line">@RequestMapping(&quot;testbed&#x2F;memcached&quot;)</span><br><span class="line">@Slf4j</span><br><span class="line">public class MemcachedTestController &#123;</span><br><span class="line"></span><br><span class="line">	public static final int TTL_IN_SECONDS &#x3D; 1000;</span><br><span class="line"></span><br><span class="line">	private final SerializingTranscoder coder &#x3D; new SerializingTranscoder();</span><br><span class="line">	private final MemcachedClient client;</span><br><span class="line"></span><br><span class="line">	public MemcachedTestController(MemcachedClient client) &#123;</span><br><span class="line">		this.client &#x3D; client;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@PutMapping(value &#x3D;&quot;&quot;, consumes &#x3D; MediaType.APPLICATION_JSON_VALUE, produces &#x3D; MediaType.APPLICATION_JSON_VALUE)</span><br><span class="line">	public ResponseEntity&lt;Response&gt; create(@RequestBody Person person,</span><br><span class="line">	                                       HttpServletRequest servletRequest) throws InterruptedException, MemcachedException, TimeoutException &#123;</span><br><span class="line"></span><br><span class="line">		final String base64Name &#x3D; base64(person.name);</span><br><span class="line">		Person existing &#x3D; client.get(base64Name);</span><br><span class="line">		if (existing !&#x3D; null) &#123;</span><br><span class="line">			log.info(&quot;Create: Person with name &#123;&#125; already exists!&quot;, person.name);</span><br><span class="line">			Error error &#x3D; new Error(&quot;Person with name &quot; + person.name + &quot; already exists!&quot;);</span><br><span class="line">			return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)</span><br><span class="line">			                     .body(error);</span><br><span class="line">		&#125;</span><br><span class="line">		log.info(&quot;Create: Going to create &#39;&#123;&#125;&#39;&quot;, person);</span><br><span class="line">		client.set(base64Name, TTL_IN_SECONDS, person, coder);</span><br><span class="line"></span><br><span class="line">		ServletServerHttpRequest request &#x3D; new ServletServerHttpRequest(servletRequest);</span><br><span class="line">		final UriComponents uriComponents &#x3D; UriComponentsBuilder.fromHttpRequest(request).build();</span><br><span class="line">		final URI uri &#x3D; uriComponents.encode(StandardCharsets.UTF_8).toUri();</span><br><span class="line">		return ResponseEntity.created(uri).contentType(MediaType.APPLICATION_JSON).body(person);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@GetMapping(value &#x3D;&quot;&quot;, consumes &#x3D; MediaType.ALL_VALUE, produces &#x3D; MediaType.APPLICATION_JSON_VALUE)</span><br><span class="line">	public ResponseEntity&lt;Person&gt; get(@RequestParam String name) throws InterruptedException, MemcachedException, TimeoutException &#123;</span><br><span class="line"></span><br><span class="line">		Person person &#x3D; (Person) client.get(base64(name), coder);</span><br><span class="line">		if (person &#x3D;&#x3D; null) &#123;</span><br><span class="line">			log.info(&quot;Get: Cannot find a person with name &#123;&#125;!&quot;, name);</span><br><span class="line">			return ResponseEntity.notFound().build();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		log.info(&quot;Get: Found person with name: &#123;&#125;!&quot;, name);</span><br><span class="line">		return ResponseEntity.ok().body(person);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@PostMapping(value &#x3D;&quot;&quot;, consumes &#x3D; MediaType.APPLICATION_JSON_VALUE, produces &#x3D; MediaType.APPLICATION_JSON_VALUE)</span><br><span class="line">	public ResponseEntity&lt;Person&gt; update(@RequestBody Person person) throws InterruptedException, MemcachedException, TimeoutException &#123;</span><br><span class="line">		final String name &#x3D; person.name;</span><br><span class="line">		final String base64Name &#x3D; base64(name);</span><br><span class="line">		final Person existing &#x3D; (Person) client.get(base64Name, coder);</span><br><span class="line">		if (existing !&#x3D; null) &#123;</span><br><span class="line">			log.info(&quot;Update: Going to update: &#123;&#125;&quot;, person);</span><br><span class="line">			client.set(base64Name, TTL_IN_SECONDS, person, coder);</span><br><span class="line">			return ResponseEntity.ok().build();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		log.info(&quot;Update: Cannot find a person with name &#123;&#125;!&quot;, person.name);</span><br><span class="line">		return ResponseEntity.notFound().build();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	@DeleteMapping(value &#x3D;&quot;&quot;, produces &#x3D; MediaType.APPLICATION_JSON_VALUE)</span><br><span class="line">	public ResponseEntity&lt;Person&gt; delete(@RequestParam String name) throws InterruptedException, MemcachedException, TimeoutException &#123;</span><br><span class="line"></span><br><span class="line">		final String base64Name &#x3D; base64(name);</span><br><span class="line">		final Person person &#x3D; client.get(base64Name);</span><br><span class="line">		if (person !&#x3D; null) &#123;</span><br><span class="line">			log.info(&quot;Delete: Going to delete: &#123;&#125;&quot;, person);</span><br><span class="line">			client.delete(base64Name);</span><br><span class="line">			return ResponseEntity.ok().build();</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		log.info(&quot;Delete: Cannot find a person with name &#123;&#125;!&quot;, name);</span><br><span class="line">		return ResponseEntity.notFound().build();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	private String base64(String name) &#123;</span><br><span class="line">		return Base64.getEncoder().encodeToString(name.getBytes(StandardCharsets.UTF_8));</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>For load testing I have used <a href="https://jmeter.apache.org/">Apache JMeter</a> 5.2.1 and <a href="https://github.com/wg/wrk">wrk</a> from its master branch. JMeter is used for a real case scenario with 1000 simultaneous users, ramp-up period and think time between the HTTP requests. And wrk is used to test the maximal throughput.<br>JMeter is executed with these arguments:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">jmeter.sh \</span><br><span class="line">		--testfile JMeter_plan.jmx \</span><br><span class="line">		--logfile $RESULTS_FILE \</span><br><span class="line">		--reportoutputfolder $RESULTS_FOLDER \</span><br><span class="line">		--reportatendofloadtests \</span><br><span class="line">		--nongui \</span><br><span class="line">		--forceDeleteResultFile \</span><br><span class="line">		--jmeterproperty httpclient4.validate_after_inactivity&#x3D;4900 \</span><br><span class="line">		--jmeterproperty httpclient4.time_to_live&#x3D;120000 \</span><br><span class="line">		-Jhost&#x3D;$JMETER_HOST \</span><br><span class="line">		-Jport&#x3D;$JMETER_PORT \</span><br><span class="line">		-Jprotocol&#x3D;$JMETER_PROTOCOL \</span><br><span class="line">		-JresourceFolder&#x3D;$JMETER_RESOURCE_FOLDER \</span><br><span class="line">		-Jusers&#x3D;1000 \</span><br><span class="line">		-JrampUpSecs&#x3D;5 \</span><br><span class="line">		-Jloops&#x3D;10 \</span><br><span class="line">		-JrequestPath&#x3D;&#x2F;testbed&#x2F;memcached</span><br></pre></td></tr></table></figure>
+
+<p>The httpclient4.** properties are needed to reuse the HTTPS connections, otherwise Keep-Alive was not effective.</p>
+<p>The results from both JMeter and wrk are parsed with Logstash, stored in Elasticsearch and visualized by Kibana.</p>
+<p>JMeter’s response times:<br><img src="https://user-images.githubusercontent.com/10891919/81760860-f6b4cb80-94fa-11ea-9d31-27fb43687cc5.png" alt="image"></p>
+<p>As you can see the results for HTTPS were not very good before May 8th. The HTTPS connections were not reused and TLS handshake has been done for each request, despite request header “Connection: keep-alive”. Since there was no such issue with wrk I’ve asked at JMeter mailing lists and they gave me the httpclient4 arguments above. (Thank you, Philippe Mouawad!). With or without the HttpClient tweak we see that the response times are very similar for x86_64 and arm64.</p>
+<p>For the throughput test with wrk I have run it with these parameters:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wrk -c96 -t8 -d30s -s &#x2F;scripts&#x2F;wrk-report-to-csv.lua $HOST:$PORT</span><br></pre></td></tr></table></figure>
+
+<p>i.e. 8 threads will hit the server for 30 seconds using 96 HTTP(S) connections.</p>
+<p>To collect the summary in a CSV file I used this custom Lua script:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br></pre></td><td class="code"><pre><span class="line">-- Initialize the pseudo random number generator</span><br><span class="line">-- Resource: http:&#x2F;&#x2F;lua-users.org&#x2F;wiki&#x2F;MathLibraryTutorial</span><br><span class="line">math.randomseed(os.time())</span><br><span class="line">math.random(); math.random(); math.random()</span><br><span class="line"></span><br><span class="line">local _request &#x3D; &#123;&#125;</span><br><span class="line">method &#x3D; &#39;&#39;</span><br><span class="line"></span><br><span class="line">-- Load URL config from the file</span><br><span class="line">function load_request_objects_from_file(csvFile)</span><br><span class="line">  local data &#x3D; &#123;&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">  for line in io.lines(csvFile) do</span><br><span class="line">    local idx &#x3D; string.find(line, &quot;:&quot;)</span><br><span class="line">    local key &#x3D; string.sub(line, 0, idx-1)</span><br><span class="line">    local value &#x3D; string.sub(line, idx+1, string.len(line))</span><br><span class="line">    data[key] &#x3D; value</span><br><span class="line">  end</span><br><span class="line"></span><br><span class="line">  return data</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">function trim(s)</span><br><span class="line">  return s:match &quot;^%s*(.-)%s*$&quot;</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">function readMethod()</span><br><span class="line">  local method &#x3D; &#39;&#39;</span><br><span class="line">  local f &#x3D; io.open(&#39;&#x2F;data&#x2F;method.txt&#39;,&quot;r&quot;)</span><br><span class="line">  if f ~&#x3D; nil then</span><br><span class="line">    method &#x3D; f:read(&quot;*all&quot;)</span><br><span class="line">    io.close(f)</span><br><span class="line">    return trim(method)</span><br><span class="line">  else</span><br><span class="line">    print(&#39;Cannot read the method name from &#x2F;data&#x2F;method.txt&#39;)</span><br><span class="line">    os.exit(123)</span><br><span class="line">  end</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">function init(args)</span><br><span class="line">  local method &#x3D; readMethod()</span><br><span class="line">  -- Load request config from file</span><br><span class="line">  _request &#x3D; load_request_objects_from_file(&quot;&#x2F;data&#x2F;&quot; .. method ..&quot;.conf&quot;)</span><br><span class="line"></span><br><span class="line">  --for i, val in pairs(_request) do</span><br><span class="line">  --  print(&#39;Request:\t&#39;, i, val)</span><br><span class="line">  --end</span><br><span class="line"></span><br><span class="line">  if _request[method] ~&#x3D; nil then</span><br><span class="line">    print(&quot;multiplerequests: No requests found.&quot;)</span><br><span class="line">    os.exit()</span><br><span class="line">  end</span><br><span class="line"></span><br><span class="line">  print(&quot;multiplerequests: Found a &quot; .. _request.method .. &quot; request&quot;)</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">request &#x3D; function()</span><br><span class="line">  local request_object &#x3D; _request</span><br><span class="line"></span><br><span class="line">  -- Return the request object with the current URL path</span><br><span class="line">  local headers &#x3D;  &#123;&#125;</span><br><span class="line">  headers[&quot;Content-type&quot;] &#x3D; &quot;application&#x2F;json&quot;</span><br><span class="line"></span><br><span class="line">  local url &#x3D; wrk.format(request_object.method, request_object.path, headers, request_object.body)</span><br><span class="line">  return url</span><br><span class="line">end</span><br><span class="line"></span><br><span class="line">function done(summary, latency, reqs)</span><br><span class="line"></span><br><span class="line">  local date_table &#x3D; os.date(&quot;*t&quot;)</span><br><span class="line">  local ms &#x3D; string.match(tostring(os.clock()), &quot;%d%.(%d+)&quot;) &#x2F; 1000</span><br><span class="line">  local hour, minute, second &#x3D; date_table.hour, date_table.min, date_table.sec</span><br><span class="line">  local year, month, day &#x3D; date_table.year, date_table.month, date_table.day</span><br><span class="line">  local timeStamp &#x3D; string.format(&quot;%04d-%02d-%02dT%02d:%02d:%02d.%03d&quot;, year, month, day, hour, minute, second, ms)</span><br><span class="line">  print(&quot;Timestamp: &quot; .. timeStamp)</span><br><span class="line"></span><br><span class="line">  local method &#x3D; readMethod()</span><br><span class="line">  file &#x3D; io.open(&#39;&#x2F;results&#x2F;today&#x2F;&#39; .. method .. &#39;.csv&#39;, &#39;w&#39;)</span><br><span class="line">  io.output(file)</span><br><span class="line"></span><br><span class="line">  -- summary</span><br><span class="line">  io.write(&quot;timeStamp,&quot;)</span><br><span class="line">  io.write(&quot;duration_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;num_requests,&quot;)</span><br><span class="line">  io.write(&quot;total_bytes,&quot;)</span><br><span class="line">  io.write(&quot;connect_errors,&quot;)</span><br><span class="line">  io.write(&quot;read_errors,&quot;)</span><br><span class="line">  io.write(&quot;write_errors,&quot;)</span><br><span class="line">  io.write(&quot;error_status_codes,&quot;)</span><br><span class="line">  io.write(&quot;timeouts,&quot;)</span><br><span class="line">  io.write(&quot;requests_per_sec,&quot;)</span><br><span class="line">  io.write(&quot;bytes_per_sec,&quot;)</span><br><span class="line">  -- latency</span><br><span class="line">  io.write(&quot;lat_min_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_max_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_mean_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_stdev_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_percentile_90_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_percentile_95_microseconds,&quot;)</span><br><span class="line">  io.write(&quot;lat_percentile_99_microseconds\n&quot;)</span><br><span class="line"></span><br><span class="line">  -- summary</span><br><span class="line">  io.write(string.format(&quot;%s,&quot;, timeStamp))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.duration))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.requests))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.bytes))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.connect))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.read))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.write))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.status))</span><br><span class="line">  io.write(string.format(&quot;%d,&quot;, summary.errors.timeout))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, summary.requests&#x2F;(summary.duration &#x2F; 1000 &#x2F; 1000)))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, summary.bytes&#x2F;summary.duration))</span><br><span class="line">  -- latency</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency.min))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency.max))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency.mean))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency.stdev))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency:percentile(90.0)))</span><br><span class="line">  io.write(string.format(&quot;%.2f,&quot;, latency:percentile(95.0)))</span><br><span class="line">  io.write(string.format(&quot;%.2f\n&quot;,  latency:percentile(99.0)))</span><br><span class="line"></span><br><span class="line">end</span><br></pre></td></tr></table></figure>
+
+<p>the results show that Tomcat on x86_64 is twice faster than on arm64:<br><img src="https://user-images.githubusercontent.com/10891919/81760902-16e48a80-94fb-11ea-84a9-ea88b895d06e.png" alt="image"></p>
+<p>I will try to find out </p>
+<p>what is the reason for this difference and share it with you in a follow up post. If you have any ideas I would be happy to test them!</p>
+<p>Happy hacking and stay safe!</p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/Web/" rel="tag">Web</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/05/13/mysql-she-qu-arm-you-hua-hui-zong/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">Mysql社区ARM优化汇总</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/04/28/pao-benchmark-dang-xin-ni-de-xin/">
+                <span class="level-item">跑benchmark？当心你的芯</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 27,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="Apache Tomcat X86 vs ARM64 性能比拼" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

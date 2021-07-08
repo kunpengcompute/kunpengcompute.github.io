@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>在arm64平台上监控MariaDB数据库的性能和运行情况 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: zhaorenhai 本篇文章尝试探索下，在arm64平台上都有哪些好用的性能监控工具，可以用来监控MariaDB数据库。 测试平台仍然选用华为云的鲲鹏虚拟机，OS采用Ubuntu18.04。 并提前已经在同内网内其他虚拟机上部署好了一对MariaDB主从数据库，并建好了供远程连接的数据库用户名和密码。MariaDB采用Ubuntu自带的10.1版本。 本文准备测试四个免费并且开源的工具，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在arm64平台上监控MariaDB数据库的性能和运行情况">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/11/20/zai-arm64-ping-tai-shang-jian-kong-mariadb-shu-ju-ku-de-xing-neng-he-yun-xing-qing-kuang/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: zhaorenhai 本篇文章尝试探索下，在arm64平台上都有哪些好用的性能监控工具，可以用来监控MariaDB数据库。 测试平台仍然选用华为云的鲲鹏虚拟机，OS采用Ubuntu18.04。 并提前已经在同内网内其他虚拟机上部署好了一对MariaDB主从数据库，并建好了供远程连接的数据库用户名和密码。MariaDB采用Ubuntu自带的10.1版本。 本文准备测试四个免费并且开源的工具，">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-11-20T06:40:52.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="在arm64平台上监控MariaDB数据库的性能和运行情况" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="在arm64平台上监控MariaDB数据库的性能和运行情况" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-11-20T06:40:52.000Z">2020-11-20</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                在arm64平台上监控MariaDB数据库的性能和运行情况
+            
+        </h1>
+        <div class="content">
+            <p>作者: zhaorenhai</p>
+<p>本篇文章尝试探索下，在arm64平台上都有哪些好用的性能监控工具，可以用来监控MariaDB数据库。</p>
+<p>测试平台仍然选用华为云的鲲鹏虚拟机，OS采用Ubuntu18.04。 并提前已经在同内网内其他虚拟机上部署好了一对MariaDB主从数据库，并建好了供远程连接的数据库用户名和密码。MariaDB采用Ubuntu自带的10.1版本。</p>
+<p>本文准备测试四个免费并且开源的工具，两个命令行工具，两个大型的图形化运维工具。</p>
+<p>两个命令行工具是innotop和mytop</p>
+<p>图形化运维工具就是Zabbix和Prometheus</p>
+<a id="more"></a>
+<p><strong>innotop</strong></p>
+<p>innotop是一个用Perl写成的监控工具。源码在这里<a href="https://github.com/innotop/innotop">https://github.com/innotop/innotop</a> 。</p>
+<p>我们直接下载下最新代码。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git clone https://github.com/innotop/innotop</span><br></pre></td></tr></table></figure>
+
+<p>编译：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd innotop</span><br><span class="line">perl Makefile.PL</span><br></pre></td></tr></table></figure>
+
+<p>安装：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo make install</span><br></pre></td></tr></table></figure>
+
+<p>运行 （-w参数代表持久化模式，配置会持久化到文件里）：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">innotop -w</span><br></pre></td></tr></table></figure>
+
+<p>再输入一个？号，就可以看到使用指导。如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">Query List (? for help)                                                                                                                                                                                                 Servers: server</span><br><span class="line"></span><br><span class="line">Switch to a different mode:</span><br><span class="line">   A  Dashboard         I  InnoDB I&#x2F;O Info     Q  Query List</span><br><span class="line">   B  InnoDB Buffers    K  InnoDB Lock Waits   R  InnoDB Row Ops</span><br><span class="line">   C  Command Summary   L  Locks               S  Variables &amp; Status</span><br><span class="line">   D  InnoDB Deadlocks  M  Replication Status  T  InnoDB Txns</span><br><span class="line">   F  InnoDB FK Err     O  Open Tables         U  User Statistics</span><br><span class="line"></span><br><span class="line">Actions:</span><br><span class="line">   a  Toggle the innotop process    n  Switch to the next connection</span><br><span class="line">   c  Choose visible columns        p  Pause innotop</span><br><span class="line">   d  Change refresh interval       q  Quit innotop</span><br><span class="line">   e  Explain a thread&#39;s query      r  Reverse sort order</span><br><span class="line">   f  Show a thread&#39;s full query    s  Change the display&#39;s sort column</span><br><span class="line">   h  Toggle the header on and off  t  Toggle slave processes</span><br><span class="line">   i  Toggle idle processes         x  Kill a query</span><br><span class="line">   k  Kill a query&#39;s connection</span><br><span class="line"></span><br><span class="line">Other:</span><br><span class="line"> TAB  Switch to the next server group   &#x2F;  Quickly filter what you see</span><br><span class="line">   !  Show license and warranty         &#x3D;  Toggle aggregation</span><br><span class="line"></span><br><span class="line">   #  Select&#x2F;create server groups       @  Select&#x2F;create server connections</span><br><span class="line"></span><br><span class="line">   $  Edit configuration settings       \  Clear quick-filters</span><br><span class="line">Press any key to continue</span><br></pre></td></tr></table></figure>
+
+<p>我们输入一个@，回车，来配置一个数据库，监控一下看看效果。</p>
+<p>第一次输入之后，没有任何连接，可以先随便输入一个名字，命名一下新的连接，然后回车。</p>
+<p>接下来按照提示输入数据库地址，端口，配置数据库地址和端口的格式如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">DBI:mysql:;host&#x3D;192.168.0.204;port&#x3D;3306</span><br></pre></td></tr></table></figure>
+
+<p>然后回车，会提示你用户名，密码等等，提示还是很友好的。</p>
+<p>配置好以后，就可以正常使用了。</p>
+<p>我们可以输入大写的A，B，Q，I等命令分别切换不同的界面看到数据库的缓存信息，IO信息，TPS等等。</p>
+<p>为了能在同一个界面显示多个数据库，我们可以先输入@，配置一下多个数据库链接。</p>
+<p>然后再输入一个#，创建一个服务器组，输入已建好的多个连接名字，用空格分隔，就可以了。</p>
+<p>操作的时候我们选择服务器组，就可以在同一个界面显示多个服务器。</p>
+<p>比如我们配置了一个master数据库，一个slave数据库，并将他们放置到了server组内。</p>
+<p>下面是显示的这两个数据库的IO界面，效果还是很不错的：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">InnoDB I&#x2F;O Info (? for help)                                                                                                                                                                                            Servers: server</span><br><span class="line"></span><br><span class="line">_____________________________ I&#x2F;O Threads ______________________________</span><br><span class="line">CXN     Thread  Purpose               Thread Status</span><br><span class="line">master       0  insert buffer thread  waiting for completed aio requests</span><br><span class="line">master       1  log thread            waiting for completed aio requests</span><br><span class="line">master       2  read thread           waiting for completed aio requests</span><br><span class="line">master       3  read thread           waiting for completed aio requests</span><br><span class="line">master       4  read thread           waiting for completed aio requests</span><br><span class="line">master       5  read thread           waiting for completed aio requests</span><br><span class="line">master       6  write thread          waiting for completed aio requests</span><br><span class="line">master       7  write thread          waiting for completed aio requests</span><br><span class="line">master       8  write thread          waiting for completed aio requests</span><br><span class="line">master       9  write thread          waiting for completed aio requests</span><br><span class="line">slave        0  insert buffer thread  waiting for completed aio requests</span><br><span class="line">slave        1  log thread            waiting for completed aio requests</span><br><span class="line">slave        2  read thread           waiting for completed aio requests</span><br><span class="line">slave        3  read thread           waiting for completed aio requests</span><br><span class="line">slave        4  read thread           waiting for completed aio requests</span><br><span class="line">slave        5  read thread           waiting for completed aio requests</span><br><span class="line">slave        6  write thread          waiting for completed aio requests</span><br><span class="line">slave        7  write thread          waiting for completed aio requests</span><br><span class="line">slave        8  write thread          waiting for completed aio requests</span><br><span class="line">slave        9  write thread          waiting for completed aio requests</span><br><span class="line"></span><br><span class="line">________________________________ Pending I&#x2F;O _________________________________</span><br><span class="line">CXN     Async Rds  Async Wrt  IBuf Async Rds  Sync I&#x2F;Os  Log Flushes  Log I&#x2F;Os</span><br><span class="line">master                                     0          0            0         0</span><br><span class="line">slave                                      0          0            0         0</span><br><span class="line"></span><br><span class="line">____________________________ File I&#x2F;O Misc _____________________________</span><br><span class="line">CXN     OS Reads  OS Writes  OS fsyncs  Reads&#x2F;Sec  Writes&#x2F;Sec  Bytes&#x2F;Sec</span><br><span class="line">master       178        984        372       0.00        0.00          0</span><br><span class="line">slave        182       1529        584       0.00        0.00          0</span><br><span class="line"></span><br><span class="line">_________________________ Log Statistics _________________________</span><br><span class="line">CXN     Sequence No.  Flushed To  Last Checkpoint  IO Done  IO&#x2F;Sec</span><br><span class="line">master  1818551       1818551     1818551              207    0.00</span><br><span class="line">slave   1939016       1939016     1939016              306    0.00</span><br></pre></td></tr></table></figure>
+
+<p>本文不是innotop的介绍文档，仅仅是测试一下innotop是否能在arm64平台上正常运行，是否能正常监控MariaDB数据库。所以关于inntop的其他使用方法和界面介绍, 就不再啰嗦了。有兴趣的小伙伴也可以试一下，网上也有很多innotop的资料，用命令<code>man innotop</code>也可以看到使用指导。</p>
+<p><strong>mytop</strong></p>
+<p>mytop也是一个用Perl写的小工具，业界应用也比较广泛。不过缺点是只能连一个数据库服务器，而且比较老了，功能也比较简单，得到的信息比较有限。</p>
+<p>mytop可以直接从apt命令安装：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install mytop</span><br></pre></td></tr></table></figure>
+
+<p>配置，编辑如下文件：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vi ~/.mytop</span><br></pre></td></tr></table></figure>
+
+<p>输入如下内容：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">user&#x3D;proxysql</span><br><span class="line">pass&#x3D;proxypassword</span><br><span class="line">host&#x3D;192.168.0.204</span><br><span class="line">db&#x3D;testdb</span><br><span class="line">delay&#x3D;5</span><br><span class="line">port&#x3D;3306</span><br><span class="line">socket&#x3D;</span><br><span class="line">batchmode&#x3D;0</span><br><span class="line">header&#x3D;1</span><br><span class="line">color&#x3D;1</span><br><span class="line">idle&#x3D;1</span><br></pre></td></tr></table></figure>
+
+<p>执行：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mytop</span><br></pre></td></tr></table></figure>
+
+
+
+<p>界面如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">MySQL on 192.168.0.204 (10.1.47)                                                                                                                                             load 0.00 0.00 0.00 1&#x2F;1397 32133 up 16+23:58:33 [17:45:26]</span><br><span class="line"> Queries: 50.0     qps:    0 Slow:     0.0         Se&#x2F;In&#x2F;Up&#x2F;De(%):    12&#x2F;00&#x2F;00&#x2F;00</span><br><span class="line"> Sorts:      0 qps now:    1 Slow qps: 0.0  Threads:    5 (   2&#x2F;   7) 00&#x2F;00&#x2F;00&#x2F;00</span><br><span class="line"> Key Efficiency: 84.0%  Bps in&#x2F;out:   0.0&#x2F;  0.2   Now in&#x2F;out:  21.3&#x2F; 3.6k</span><br><span class="line"></span><br><span class="line">       Id      User         Host&#x2F;IP         DB       Time    Cmd    State Query</span><br><span class="line">       --      ----         -------         --       ----    ---    ----- ----------</span><br><span class="line">       46 replicati hadoop-arm-kae-               1466725 Binlog Master h</span><br><span class="line">       63  proxysql hadoop-arm-kae-       test          4  Sleep</span><br><span class="line">       57   monitor hadoop-arm-kae-                     3  Sleep</span><br><span class="line">      838   monitor hadoop-arm-kae-                     0  Sleep</span><br><span class="line">    24644  proxysql hadoop-arm-kae-     testdb          0  Query     init show full processlist</span><br></pre></td></tr></table></figure>
+
+<p>可以看到风格和top差不多，效果也挺不错的。</p>
+<p>关于mytop的更多信息，可以参考如下链接：<a href="http://jeremy.zawodny.com/mysql/mytop/">http://jeremy.zawodny.com/mysql/mytop/</a> 。网上相关资料也很多，用<code>man mytop</code>命令也可看到相关指导。</p>
+<p><strong>Zabbix</strong></p>
+<p>Zabbix是一个大型的监控告警运维工具，不仅仅只是用来监控数据库的，不过我们这里只简单用它来监控一下MariaDB。</p>
+<p>关于它的架构，功能等等的详细介绍，官网上包括其他网站上资料已经很多，这里不再详述。这里只描述在我们的测试环境上测试的步骤。(具体的安装步骤，不同版本的Zabbix可能不太一样，不同的OS也有不同，这里安装的是Ubuntu 18.04自带的Zabbix3.0版本，仅供参考)</p>
+<p>首先我们在测试虚拟机上安装Zabbix Server和Zabbix Frontend</p>
+<p>zabbix-server根据自身用的内置数据库的不同，有PostgreSql和Mysql两个版本，这里为了和我们要监控的目标数据库MariaDB区分开来，我们这里安装PostgreSql版本。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install zabbix-server-pgsql zabbix-frontend-php php-pgsql</span><br></pre></td></tr></table></figure>
+
+<p>在我们要监控的主从数据库节点上都安装Zabbix Agent</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install zabbix-agent</span><br></pre></td></tr></table></figure>
+
+<p>Zabbix Agent安装之后就会自动启动。</p>
+<p>Zabbix Server需要配置下，登陆Server所在节点</p>
+<p>首先创建一个Zabbix Server自用的数据库</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">sudo -u postgres createuser --pwprompt zabbix</span><br><span class="line">sudo -u postgres createdb -O zabbix -E Unicode -T template0 zabbix</span><br></pre></td></tr></table></figure>
+
+<p>然后导入数据</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">zcat /usr/share/zabbix-server-pgsql/schema.sql.gz |sudo -u zabbix psql zabbix</span><br><span class="line">zcat /usr/share/zabbix-server-pgsql/images.sql.gz |sudo -u zabbix psql zabbix</span><br><span class="line">zcat /usr/share/zabbix-server-pgsql/data.sql.gz |sudo -u zabbix psql zabbix</span><br></pre></td></tr></table></figure>
+
+<p>在Zabbix Server配置文件中配置刚刚设置的自用数据库的相关信息</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vi /etc/zabbix/zabbix_server.conf</span><br></pre></td></tr></table></figure>
+
+<p>确保如下配置项都配置正确</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">DBHost&#x3D;localhost</span><br><span class="line">DBName&#x3D;zabbix</span><br><span class="line">DBUser&#x3D;zabbix</span><br><span class="line">DBPassword&#x3D;zabbix</span><br></pre></td></tr></table></figure>
+
+<p>启动Zabbix Server</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">service zabbix-server start</span><br><span class="line">update-rc.d zabbix-server enable</span><br></pre></td></tr></table></figure>
+
+<p>开始配置Frontend</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd /etc/apache2/conf-enabled</span><br><span class="line">ln -s ../conf-available/zabbix-frontend-php.conf zabbix-frontend-php.conf</span><br><span class="line">vi zabbix-frontend-php.conf</span><br></pre></td></tr></table></figure>
+
+<p>将里面的时区参数配置正确，默认的如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"># php_value date.timezone Europe&#x2F;Riga</span><br></pre></td></tr></table></figure>
+
+<p>我们改成如下设置：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">php_value date.timezone Asia&#x2F;Shanghai</span><br></pre></td></tr></table></figure>
+
+<p>修改成正确的时区后，继续做如下操作：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">service apache2 restart</span><br></pre></td></tr></table></figure>
+
+<p>然后从浏览器访问如下链接（注意其中的地址要替换为你环境的地址，另外如果要从公网的地址访问的话，注意配置好华为云的安全组规则，限制要登陆的地址范围。）</p>
+<p><em>http://测试机的ip地址/zabbix</em></p>
+<p>然后点击next，根据提示一步步配置即可。</p>
+<p>配置数据库连接的地方，按下图配置</p>
+<p><img src="https://i.loli.net/2020/11/20/9BM2ECHVf8X3ybA.png" alt="image-20201118144826675"></p>
+<p>配置server的地方，直接默认值即可</p>
+<p><img src="https://i.loli.net/2020/11/20/DvoruKhilXWFjcm.png" alt="image-20201118144923513"></p>
+<p>最后一步，会提示下载一个配置文件，将配置文件下载下来，上传到<code>/etc/zabbix</code>目录下即可。</p>
+<p><img src="https://i.loli.net/2020/11/20/OIWoK3hz6GBE1tx.png" alt="image-20201118150217001"></p>
+<p>最后重启下apache2</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">service apache2 restart</span><br></pre></td></tr></table></figure>
+
+<p>然后重新登陆 <em>http://测试机的ip地址/zabbix</em> 网页，输入用户名Admin，密码zabbix，就可以看到Zabbix的系统页面了。</p>
+<p>然后我们创建两个Host，一个是MariaDB主库，一个是MariaDB从库。</p>
+<p>点击Configuration，Hosts，Create host，其中Host name，Groups和IP地址，是必填项。</p>
+<p><img src="https://i.loli.net/2020/11/20/vzFMQmtLAkD9WZU.png" alt="image-20201119101133383"></p>
+<p>主机创建好后，可以点击上图中的圈红的那个Templates按钮，到如下页面，输入mysql搜索模板，然后点击add按钮，把mysql监控模板关联到主机</p>
+<p><img src="https://i.loli.net/2020/11/20/TGKsMeYZyQSUHhm.png" alt="image-20201119101336228"></p>
+<p>Frontend上面的配置就完成了。</p>
+<p>登陆两个agent所在虚拟机，做如下配置</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cp /usr/share/doc/zabbix-agent/examples/userparameter_mysql.conf /etc/zabbix/zabbix_agentd.conf.d/</span><br><span class="line">mkdir -p /var/lib/zabbix</span><br></pre></td></tr></table></figure>
+
+<p>编辑配置文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vi /var/lib/zabbix/.my.cnf</span><br></pre></td></tr></table></figure>
+
+<p>输入如下内容：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[mysql]</span><br><span class="line">user&#x3D;proxysql</span><br><span class="line">password&#x3D;proxypassword</span><br><span class="line">host&#x3D;127.0.0.1</span><br><span class="line"></span><br><span class="line">[mysqladmin]</span><br><span class="line">user&#x3D;proxysql</span><br><span class="line">password&#x3D;proxypassword</span><br><span class="line">host&#x3D;127.0.0.1</span><br></pre></td></tr></table></figure>
+
+<p>注意输入的用户要有在本机连接MariaDB，并有查询的相关权限。</p>
+<p>然后编辑<code>/etc/zabbix/zabbix_agentd.conf</code>文件，确保如下三项的配置是正确的</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Server&#x3D;192.168.0.54</span><br><span class="line">ServerActive&#x3D;192.168.0.54</span><br><span class="line">Hostname&#x3D;mariadb_slave</span><br></pre></td></tr></table></figure>
+
+<p>其中Server和ServerActive是Zabbix Server的IP地址，Hostname是在Frontend上面配置的Agent所在的Host的名字，每个Agent的配置不一样。</p>
+<p>然后重启agent</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">service zabbix-agent restart</span><br></pre></td></tr></table></figure>
+
+<p>现在重新登陆前端，就可以看到监控效果了。</p>
+<p>点击Monitoring，Latest Data，可以看到很多监控项，带宽，慢查询，select，insert，delete请求的qps等等，都有。</p>
+<p>我们看看一个带宽的监控图，效果如下：</p>
+<p><img src="https://i.loli.net/2020/11/20/Ie3qKTyPkN2DM1h.png" alt="image-20201119102130275"></p>
+<p>如果觉得默认的Mysql的模板功能不够完善，感兴趣的小伙伴可以自己定制模板，也可以从Percona的网站上面下载已经定制好的功能比较完善的模板，导入进来。 这里就不详细介绍了</p>
+<p><strong>Prometheus</strong></p>
+<p>Prometheus 也是一个大型的监控运维工具，这次我们也只是简单测试下他的数据库监控功能，关于他的架构，功能等各方面的介绍，这里就不再多说。</p>
+<p>我们首先来安装一下Prometheus Server。</p>
+<p>我们从官网下载一个最新的arm64版本的Prometheus来安装。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/prometheus/prometheus/releases/download/v2.22.2/prometheus-2.22.2.linux-arm64.tar.gz</span><br><span class="line">tar -zxvf prometheus-2.22.2.linux-arm64.tar.gz</span><br><span class="line">cd prometheus-2.22.2.linux-arm64</span><br></pre></td></tr></table></figure>
+
+<p>在主从数据库节点上下载最新的mysqld_exporter来安装</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget https://github.com/prometheus/mysqld_exporter/releases/download/v0.12.1/mysqld_exporter-0.12.1.linux-arm64.tar.gz</span><br><span class="line">tar -zxvf mysqld_exporter-0.12.1.linux-arm64.tar.gz</span><br><span class="line">cd mysqld_exporter-0.12.1.linux-arm64</span><br></pre></td></tr></table></figure>
+
+<p>编辑文件<code>vi prometheus.yml</code>，追加如下配置，里面的IP地址是主从数据库节点的IP，端口是稍后我们会安装在主从数据库节点的相当于客户端进程的端口，我们这里先配置上。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">- job_name: &#39;mariadb&#39;</span><br><span class="line">  static_configs:</span><br><span class="line">  - targets: [&#39;192.168.0.204:9104&#39;,&#39;192.168.0.64:9104&#39;]</span><br></pre></td></tr></table></figure>
+
+<p>启动Prometheus</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">.&#x2F;prometheus --config.file&#x3D;prometheus.yml</span><br></pre></td></tr></table></figure>
+
+<p>在主从数据库节点上都编辑如下的文件</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">vi .my.cnf</span><br></pre></td></tr></table></figure>
+
+<p>输入如下内容，注意确保输入的用户有在本地连接MariaDB的权限，并有相关查询的权限：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[client]</span><br><span class="line">user&#x3D;proxysql</span><br><span class="line">password&#x3D;proxypassword</span><br></pre></td></tr></table></figure>
+
+<p>启动mysqld_exporter</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nohup ./mysqld_exporter --config.my-cnf=./.my.cnf &amp;</span><br></pre></td></tr></table></figure>
+
+<p>登陆Prometheus 页面：（注意其中的地址要替换为你环境的地址，另外如果要从公网的地址访问的话，注意配置好华为云的安全组规则，限制要登陆的地址范围。）</p>
+<p>http://你的IP地址:9090</p>
+<p>可以在Execute按钮旁边的下拉框里面看到很多指标，我们选择一个连接数的，调整一下监控时间，比如我们调整成过去30分钟，然后就可以看到如下图所示的监控图</p>
+<p><img src="https://i.loli.net/2020/11/20/2RTmQVrpZGzevg1.png" alt="image-20201120143145987"></p>
+<p><strong>总结</strong></p>
+<p>通过以上的测试我们可以发现，这几款常用的监控工具，都可以在arm64平台上运行良好，而且都可以监控MariaDB数据库，效果都不错。而且这几款工具还都是开源免费的，有兴趣的小伙伴可以探索一下更多的功能。</p>
+<p><strong>参考链接：</strong></p>
+<p><a href="https://www.cnblogs.com/ivictor/p/5101506.html">https://www.cnblogs.com/ivictor/p/5101506.html</a></p>
+<p><a href="https://www.jianshu.com/p/b8508fe10b8e">https://www.jianshu.com/p/b8508fe10b8e</a></p>
+<p><a href="https://github.com/innotop/innotop">https://github.com/innotop/innotop</a></p>
+<p><a href="https://github.com/jzawodn/mytop">https://github.com/jzawodn/mytop</a></p>
+<p><a href="http://jeremy.zawodny.com/mysql/mytop/">http://jeremy.zawodny.com/mysql/mytop/</a></p>
+<p><a href="https://www.zabbix.com/documentation/4.0/zh/manual/introduction">https://www.zabbix.com/documentation/4.0/zh/manual/introduction</a></p>
+<p><a href="https://prometheus.io/docs/prometheus/latest/getting_started/">https://prometheus.io/docs/prometheus/latest/getting_started/</a></p>
+<p><a href="https://www.cnblogs.com/heian99/p/12189317.html">https://www.cnblogs.com/heian99/p/12189317.html</a></p>
+<p><a href="https://prometheus.io/download/">https://prometheus.io/download/</a></p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/11/24/arm64-ping-tai-shang-du-you-na-xie-hao-yong-de-mariadb-ke-hu-duan-ruan-jian/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">Arm64平台上都有哪些好用的MariaDB客户端软件</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/11/14/zhu-liu-kai-fa-yu-yan-ru-he-zai-arm64-ping-tai-shang-lian-jie-mariadb-shu-ju-ku/">
+                <span class="level-item">主流开发语言如何在arm64平台上连接MariaDB数据库</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 56,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="在arm64平台上监控MariaDB数据库的性能和运行情况" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>在ARM平台上玩转perl - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: bzhaoopenstack 在ARM平台上如何愉快的切换perl版本，给自己的项目提供方便，请看过来。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在ARM平台上玩转perl">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/11/27/zai-arm-ping-tai-shang-wan-zhuan-perl/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: bzhaoopenstack 在ARM平台上如何愉快的切换perl版本，给自己的项目提供方便，请看过来。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-11-27T06:27:49.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="基础库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="在ARM平台上玩转perl" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="在ARM平台上玩转perl" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-11-27T06:27:49.000Z">2020-11-27</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">基础库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                在ARM平台上玩转perl
+            
+        </h1>
+        <div class="content">
+            <p>作者: <a href="https://github.com/bzhaoopenstack">bzhaoopenstack</a></p>
+<p>在ARM平台上如何愉快的切换perl版本，给自己的项目提供方便，请看过来。</p>
+<a id="more"></a>
+<h1 id="在ARM平台上玩转perl"><a href="#在ARM平台上玩转perl" class="headerlink" title="在ARM平台上玩转perl"></a>在ARM平台上玩转perl</h1><p>最近在给开源项目接入ARM CI的工作中，遇到了很多问题。因为一般开源的主战场都在github，几乎所有在github上开源的项目在做自己的自动化构建时都会知道一个名字<code>travis</code> , 作为github上首屈一指的自动化构建平台，<code>travis</code>也是唯一一家支持ARM自动化构建的。所以，在给使用<code>travis</code>的开源项目接入ARM自动化构建平台时，我们往往也会想到直接用<code>travis</code>的ARM资源来进行构建。</p>
+<p>但是，travis ARM 资源确实与AMD64资源相比差距比较大，注意，这里的差距比较大不是性能方面的，而是如下：</p>
+<blockquote>
+<ol>
+<li>Travis ARM资源缺少很多基本库，原因之一是很多基本库是支持X86的，但是在aarch64平台上travis ARM测试床没有做很好的适配。</li>
+<li>Travis build-in的工具没有及时跟进ARM平台，导致很多在X86平台已经配置好的travis job<strong>不能</strong>平滑的迁往ARM。即便项目是基于上层语言（Java/Python）。</li>
+<li>由于Travis CI系统非常庞大，周边使用它的github项目也非常多，所以往往造成它的支撑团队没有足够的精力来处理成吨的需求，所以往往对于当前还处于成长期的ARM平台/资源来说，优先级可想而知。所以这会造成对于ARM的需求，无法很及时的响应。</li>
+</ol>
+</blockquote>
+<p>根据上面的问题，我们主要举几个例子：</p>
+<ol>
+<li><p>例如在travis job配置过程中，用的ubuntu镜像，在使用apt安装某一个软件时，在X86正常安装，但是在ARM平台上报找不到包。这个时候就必须在ARM的travis job中手动换源，换成包含这个包的ubuntu源。</p>
+</li>
+<li><p>对于build-in工具，拿个最近遇到的case来举例：</p>
+<blockquote>
+<p>a. travis openjdk-ea安装。</p>
+<p>​    我们知道在travis测试环境中安装jdk，travis是有通用字段可以描述的,看<a href="https://docs.travis-ci.com/user/languages/java/#testing-against-multiple-jdks">这里</a>。但是在ARM平台上就是装不了，是因为它内建的工具大部分没有做ARM适配，比如在这里遇到的<code>jdk_switcher</code>, 在ARM的ubuntu镜像里没有安装这个工具。所以给了接入travis ARM CI一定的难度。有两个方案：</p>
+<blockquote>
+<p>1). 推动上游travis支持。— 太慢</p>
+<p>2). 手动模拟travis行为，尽可能模仿，一旦将来travis完善了，也能做到平滑迁移。</p>
+</blockquote>
+<p>当然，这两个方案可以同时进行，现在travis上游提出需求，同时在对想接入travis ARM CI的项目进行适配。这里我们找到了对应问题的项目：</p>
+<p><a href="https://github.com/michaelklishin/jdk_switcher">jdk_switcher</a> 和 安装不同版本jdk的<a href="https://github.com/sormuras/bach/tree/master">install-jdk.sh</a>,比较幸运的是，后者还有人维护，并且新版本开始支持ARM平台的jdk版本下载及安装。所以在项目接入过程中，手动进行ARM适配。</p>
+</blockquote>
+</li>
+</ol>
+<p>接下来，介绍的perl在ARM上的精力也是在调试travis ARM CI过程中遇到的，所以为了一次捋顺，让我们看看如何搞。</p>
+<p>我们用ubuntu bionic环境来举例。以下对于选用多个perl版本的项目比较有用。我们将会用到多个工具，我会做简要的介绍。</p>
+<p>通常在ubuntu内建的软件包中都会含有perl，因为在apt-get工具对perl有强依赖，所以在安装和更新perl，甚至是替换<code>which perl</code>目录的软连接需要小心，你可能在破坏apt-get工具的依赖，导致apt-get都用不了。</p>
+<p>这里我们先用系统内建的perl来安装后面我们需要的工具，如：</p>
+<p>perlbrew 可以用源码方式安装perl的各种版本，可以容纳多个perl版本共存，并随意切换。</p>
+<p>cpan 用于安装perl module的工具，比较古老，并且内置的cpan工具不太好用，而且做不到版本隔离。</p>
+<p>cpanm 克服了cpan的一系列缺点，相当好用。</p>
+<ol>
+<li><p>首先通过内建的cpan安装perlbrew，因为内建的perl是与cpan关联的，由它开始是最为稳妥的办法，直接以源码或deb/yum包安装perl很快就会让你抓耳挠腮。命令如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"># 由内建的cpan工具安装perlbrew，与内建的perl关联</span><br><span class="line">echo &quot;yes&quot; | sudo cpan App::perlbrew ;</span><br><span class="line"></span><br><span class="line"># 初始化，在用户家目录下导入必备的环境变量等等</span><br><span class="line">perlbrew init ;</span><br><span class="line"></span><br><span class="line"># 导入当前perlbrew的环境变量，为了确保我将它写在了~&#x2F;.bashrc里</span><br><span class="line">source ~&#x2F;perl5&#x2F;perlbrew&#x2F;etc&#x2F;bashrc ;</span><br><span class="line">cat ~&#x2F;perl5&#x2F;perlbrew&#x2F;etc&#x2F;bashrc &gt;&gt; ~&#x2F;.bashrc ;</span><br><span class="line"></span><br><span class="line"># 查看现在可用的所有perl版本</span><br><span class="line">perlbrew available</span><br><span class="line"> </span><br><span class="line"># 下载并安装对应的版本，它会默认安装到~&#x2F;perl5目录下，并且以版本号区分好，真正引用的时候可以用perlbrew非常方便的切换</span><br><span class="line">perlbrew install 5.18.2</span><br><span class="line">perlbrew install perl-5.8.1</span><br><span class="line">perlbrew install perl-5.19.9</span><br><span class="line"> </span><br><span class="line"># 查看已安装在本地的perl列表</span><br><span class="line">perlbrew list</span><br><span class="line"> </span><br><span class="line"># 设置默认使用的perl版本，注意，这个不影响apt-get命令，因为所有的bin&#x2F;lib都是与其分开的</span><br><span class="line">perlbrew switch perl-5.18.2</span><br><span class="line"> </span><br><span class="line"># 暂时切换使用的perl版本，比如在一个shell脚本里，切换完成后，你可以查看perl当前的版本是否对应</span><br><span class="line">perlbrew use perl-5.8.1</span><br><span class="line">perl -v</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>下面在通过perlbrew安装cpanm，不要简单的认为，你能从apt-get 或者 官方脚本下载安装，这样非常不安全，因为如果从apt-get下载会与内建的perl耦合，非常影响后续的测试，官方脚本下载安装会重新创建一个新的perl运行环境，与之前利用内建cpan安装的perlbrew环境是隔离的，对之后版本切换以及perl module安装配置会很麻烦。所以，我们需要利用第一步安装的perlbrew来安装cpanm，这样既不破坏内建perl又能做到隔离，避免后续相当麻烦的配置工作。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">perlbrew install-cpanm ;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>cpanm已经安装好后，下面我们可以根据不同版本的perl来安装不同的perl module环境，类似于python的虚环境。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"># 安装local::lib并切换导入的lib路径，你完全可以自定义。</span><br><span class="line">cpanm --local-lib&#x3D;~&#x2F;perl5 local::lib &amp;&amp; eval $(perl -I ~&#x2F;perl5&#x2F;lib&#x2F;perl5&#x2F; -Mlocal::lib)</span><br><span class="line"></span><br><span class="line"># 用cpanm安装一个perl module，后面的-n表示不执行测试进行安装，主要是为了提升安装速度。</span><br><span class="line">cpanm IPC::Run -n</span><br></pre></td></tr></table></figure>
+
+</li>
+</ol>
+<p>在最后，提醒一点，这样操作后，你可以在编译基于perl的项目时仍然遇到缺少perl module的情况，如缺少XXX.pm等等，那是因为上面只是给当前运行的perl导入了lib路径，在编译是你仍然需要做的是, 导入LD_LIBRARY_PATH，举个我在编译PG时的例子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">export LD_LIBRARY_PATH&#x3D;$HOME&#x2F;perl5&#x2F;lib&#x2F;perl5&#x2F;</span><br><span class="line">sudo apt install libperl-dev -y</span><br><span class="line">cd</span><br><span class="line">git clone https:&#x2F;&#x2F;github.com&#x2F;postgres&#x2F;postgres</span><br><span class="line">cd postgres</span><br><span class="line">.&#x2F;configure --prefix&#x3D;$HOME&#x2F;pgsql-install --enable-tap-tests --with-perl</span><br><span class="line">make -j</span><br><span class="line">make install</span><br><span class="line"></span><br><span class="line">## Fix </span><br><span class="line">#pg@pg-test:~&#x2F;postgres&#x2F;src&#x2F;bin&#x2F;pg_basebackup$ pg_recvlogical -S test -d postgres --create-slot</span><br><span class="line">#pg_recvlogical: error: could not send replication command &quot;CREATE_REPLICATION_SLOT &quot;test&quot; LOGICAL &quot;test_decoding&quot; NOEXPORT_SNAPSHOT&quot;: ERROR:  could not access file &quot;test_decoding&quot;: No such file or directory</span><br><span class="line">cd contrib&#x2F;test_decoding&#x2F;</span><br><span class="line">make all</span><br><span class="line">cp test_decoding.so &#96;pg_config --pkglibdir&#96;</span><br><span class="line"></span><br><span class="line">export PGDATA&#x3D;$HOME&#x2F;pgsql-install&#x2F;data</span><br><span class="line">export LD_LIBRARY_PATH&#x3D;$HOME&#x2F;pgsql-install&#x2F;lib:$LD_LIBRARY_PATH</span><br><span class="line">export PATH&#x3D;$PATH:$HOME&#x2F;pgsql-install&#x2F;bin&#x2F;</span><br><span class="line">which psql</span><br><span class="line">psql --version</span><br></pre></td></tr></table></figure>
+
+<p>好了，以上就可以用perl在ARM平台上快乐的玩耍了，非常方便易用。</p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/" rel="tag">基础库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/12/04/mariadb-de-s3-cun-chu-yin-qing-zai-arm64-ping-tai-shang-de-biao-xian/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">MariaDB的S3存储引擎在arm64平台上的表现</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/11/26/zai-arm64-ping-tai-shang-ce-shi-percona-toolkit/">
+                <span class="level-item">在arm64平台上测试Percona Toolkit</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 60,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="在ARM平台上玩转perl" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

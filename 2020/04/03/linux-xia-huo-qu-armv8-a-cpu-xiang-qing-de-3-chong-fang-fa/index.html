@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>Linux下获取ARMv8-A CPU详情的3种方法 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者：郑振宇 在ARM平台上进行软件适配时，经常遇到需要根据不同CPU的具体型号、额外属性等信息进行分支处理的需求，因而需要获取CPU的详情信息；ARM架构CPU与X86架构芯片在CPU详情信息的呈现上有很大不同。本文将简述ARM CPU与CPU详情相关的知识及在Linux下获取ARMv8-A CPU详情的三种方法。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Linux下获取ARMv8-A CPU详情的3种方法">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/04/03/linux-xia-huo-qu-armv8-a-cpu-xiang-qing-de-3-chong-fang-fa/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者：郑振宇 在ARM平台上进行软件适配时，经常遇到需要根据不同CPU的具体型号、额外属性等信息进行分支处理的需求，因而需要获取CPU的详情信息；ARM架构CPU与X86架构芯片在CPU详情信息的呈现上有很大不同。本文将简述ARM CPU与CPU详情相关的知识及在Linux下获取ARMv8-A CPU详情的三种方法。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-04-03T01:49:34.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="虚拟化">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="Linux下获取ARMv8-A CPU详情的3种方法" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="Linux下获取ARMv8-A CPU详情的3种方法" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-04-03T01:49:34.000Z">2020-04-03</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">虚拟化</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                Linux下获取ARMv8-A CPU详情的3种方法
+            
+        </h1>
+        <div class="content">
+            <p>作者：郑振宇</p>
+<p>在ARM平台上进行软件适配时，经常遇到需要根据不同CPU的具体型号、额外属性等信息进行分支处理的需求，因而需要获取CPU的详情信息；ARM架构CPU与X86架构芯片在CPU详情信息的呈现上有很大不同。本文将简述ARM CPU与CPU详情相关的知识及在Linux下获取ARMv8-A CPU详情的三种方法。</p>
+<a id="more"></a>
+
+<h1 id="ARM-CPU中有关CPU详情的寄存器"><a href="#ARM-CPU中有关CPU详情的寄存器" class="headerlink" title="ARM CPU中有关CPU详情的寄存器"></a>ARM CPU中有关CPU详情的寄存器</h1><p>根据<a href="https://developer.arm.com/docs/ddi0595/b/aarch64-system-registers/midr_el1">ARM CPU官方技术手册</a>，ARM CPU的CPU型号、Vendor、版本等信息存于<code>MIDR_EL1</code>寄存器中:<br><img width="492" alt="MIDR" src="https://user-images.githubusercontent.com/10849016/78315745-79f41080-7590-11ea-97cd-787ed68d6933.PNG"><br>其中从低至高第0-3 bit表示<code>revision</code>，代表固件版本的小版本号，如r1p3中的p3；<br>第4-15 bit表示<code>part number(id)</code>，代表这款CPU在所在<code>vendor</code>产品中定义的产品代码，如在<code>HiSilicon</code>产品中，<code>part_id=0xd01</code>代表<code>Kunpeng-920</code>芯片；<br>第16-19 bit表示<code>architecture</code>，即架构版本，<code>0x8</code>即ARMv8；<br>第20-23 bit表示<code>variant</code>，即固件版本的大版本号，如r1p3中的r1；<br>第24-31 bit表示<code>implementer</code>，即<code>vendor id</code>，如<code>vendor_id=0x48</code>表示<code>HiSilicon</code>。</p>
+<p>想要知道一款ARM CPU的具体型号，则需要首先解析<code>vendor_id(implementer)</code> 然后再在该Vendor的所有型号中匹配<code>part_id</code>，才能获取到具体的信息；这里列出目前系统中已有的Vendor列表和其ID对应关系</p>
+<table>
+<thead>
+<tr>
+<th align="center">Vendor Name</th>
+<th align="center">Vendor ID</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">ARM</td>
+<td align="center">0x41</td>
+</tr>
+<tr>
+<td align="center">Broadcom</td>
+<td align="center">0x42</td>
+</tr>
+<tr>
+<td align="center">Cavium</td>
+<td align="center">0x43</td>
+</tr>
+<tr>
+<td align="center">DigitalEquipment</td>
+<td align="center">0x44</td>
+</tr>
+<tr>
+<td align="center">HiSilicon</td>
+<td align="center">0x48</td>
+</tr>
+<tr>
+<td align="center">Infineon</td>
+<td align="center">0x49</td>
+</tr>
+<tr>
+<td align="center">Freescale</td>
+<td align="center">0x4D</td>
+</tr>
+<tr>
+<td align="center">NVIDIA</td>
+<td align="center">0x4E</td>
+</tr>
+<tr>
+<td align="center">APM</td>
+<td align="center">0x50</td>
+</tr>
+<tr>
+<td align="center">Qualcomm</td>
+<td align="center">0x51</td>
+</tr>
+<tr>
+<td align="center">Marvell</td>
+<td align="center">0x56</td>
+</tr>
+<tr>
+<td align="center">Intel</td>
+<td align="center">0x69</td>
+</tr>
+</tbody></table>
+<p>而对于具体型号来说，对应关系则更为复杂，这里就不一一列举，可以参考<a href="https://kunpengcompute.github.io/2020/04/03/arm-cpu-vendor-ji-part-id-ying-she-guan-xi-chi-xu-geng-xin/">本站文章</a>或<a href="https://github.com/karelzak/util-linux/blob/master/sys-utils/lscpu-arm.c">util-linux/lscpu</a>工具中的相关具体实现来获取完整的映射关系，<code>lscpu</code>工具我们则将在后面的部分中进行介绍。</p>
+<p>上面介绍过，除了CPU型号之外，我们通常还会关注CPU是否支持我们需要的特性(扩展指令集，CPU Flags, CPU features)；与X86相差较大(CPU features定义集中在EBX,ECX和EDX寄存器中)，ARM架构的这些特性分散于<a href="https://www.kernel.org/doc/Documentation/arm64/cpu-feature-registers.txt"><code>ID_PFR0_EL1</code>, <code>ID_PFR1_EL1</code>, <code>ID_DFR0_EL1</code>, <code>ID_ISAR0_EL1</code></a> 等等若干个专用寄存器中，解析起来难度较高，后面我们会详细讨论如何获取这些内容。</p>
+<h1 id="在Linux下如何获取CPU详情信息"><a href="#在Linux下如何获取CPU详情信息" class="headerlink" title="在Linux下如何获取CPU详情信息"></a>在Linux下如何获取CPU详情信息</h1><p>在介绍具体的方法前，首先需要介绍一下ARMv8架构下的安全分层机制(Exception Level):<br><img src="https://user-images.githubusercontent.com/10849016/78317406-c9d4d680-7594-11ea-9a35-14158c262d1d.png" alt="image"><br>如上图所示，ARMv8架构是专为数据中心场景而设计的架构，相比较早的ARM架构，新增了<code>EL2</code>层用于实现硬件虚拟化；较高层的用户是无权直接限访问下一层的数据内容的，对于我们的场景来说，由上面介绍的内容中可以看到，前面所有介绍的寄存器都存在于<code>EL1</code>层，而我们通常使用的应用程序都处于<code>EL0</code>层，因此是无法直接访问到这些寄存器的。那么该如何读取这些内容呢？</p>
+<h2 id="1-从文件节点获取"><a href="#1-从文件节点获取" class="headerlink" title="1. 从文件节点获取"></a>1. 从文件节点获取</h2><p>OS在启动时，会将底层硬件信息载入到相应的文件节点中，这样，位于<code>EL0</code>层的用户就可以通过读取这些文件节点来获取这些信息，比较常用的有两个：</p>
+<ol>
+<li><strong>/sys/devices/system/cpu:</strong><br>该文件夹下保存了较全的CPU信息文件，并按单个CPU进行区分，读取其中某一个的<code>regs</code>文件目录就可以获得相应的CPU详情信息，如我们尝试获取CPU0的相关信息：<br><img src="https://user-images.githubusercontent.com/10849016/78318946-9c8a2780-7598-11ea-8a31-3a76d422a055.png" alt="image"><br>可以看到，我们读取的仍然是<code>MIDR_EL1</code>寄存器相对应的信息，并且是未解析的数据，需要对应上文介绍的方法进行解析。并且目前没有在这个文件夹下找到<code>CPU Flags</code>的相关的信息，如果后续找到其所在位置，会刷新。</li>
+<li><strong>/proc/cpuinfo:</strong><br><img src="https://user-images.githubusercontent.com/10849016/78318499-731ccc00-7597-11ea-8229-de07a2e0db92.png" alt="image"><br>通过读取cpuinfo可以看到，通过这种方法获取的CPU详情，是进行过解析的，对原始数据进行了拆分，并且是包含了<code>CPU Flag</code>信息的，但仍与X86下的结果有较大不同，各个key所对应的信息仍然需要根据表单进行解析才能转变为人为可读的信息。</li>
+</ol>
+<h2 id="2-使用LSCPU命令读取"><a href="#2-使用LSCPU命令读取" class="headerlink" title="2.使用LSCPU命令读取"></a>2.使用LSCPU命令读取</h2><p>Linux内核的开发者显然也发现了上文介绍的两种方法获取信息不够全面且需要二次解析的问题，因此在Linux外围工具组<code>util-linux/lscpu</code>(<a href="https://en.wikipedia.org/wiki/Util-linux">wiki</a>)中进行了改进，从<a href="https://lwn.net/Articles/749882/">2.32</a>版本开始增加了对ARM平台CPU信息的解析，从而提供人为可读的内容(由于2019年11月才合入相关Patch，HiSilicon芯片的解析需要手动编译最新主干代码才能实现)。<br><img src="https://user-images.githubusercontent.com/10849016/78319822-95fcaf80-759a-11ea-92b3-41367a2ed5da.png" alt="image"><br>从上图可以看到，<code>lscpu</code>提供了非常丰富且直观的内容。</p>
+<h2 id="3-使用内联汇编和辅助向量直接解析"><a href="#3-使用内联汇编和辅助向量直接解析" class="headerlink" title="3.使用内联汇编和辅助向量直接解析"></a>3.使用内联汇编和辅助向量直接解析</h2><p>上文介绍的两种方法相对来说比较简单，但需要进行读取文件、运行外部命令等操作；当想在自己的程序中引用上述信息时，速度会相对较慢且会引入新的依赖(lscpu)。因此最快速的方法是通过内联汇编直接读取并解析相应的寄存器；上文中已经提到，用户在<code>EL0</code>无法直接读取到位于<code>EL1</code>的寄存器内的内容，那么该如何去做呢？</p>
+<p>ARM已经为我们准备好了一切，用户可以通过<code>MRS</code>指令将程序状态寄存器的内容传送到通用寄存器中，再进行进一步的解析，因此我们可以这样做：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* read the cpuid data from MIDR_EL1 register */</span></span><br><span class="line"><span class="keyword">asm</span>(<span class="string">"mrs %0, MIDR_EL1"</span> : <span class="string">"=r"</span> (cpuid));</span><br><span class="line">VIR_DEBUG(<span class="string">"CPUID read from register:  0x%016lx"</span>, cpuid);</span><br><span class="line"></span><br><span class="line"><span class="comment">/* parse the coresponding part_id bits */</span></span><br><span class="line">data-&gt;pvr = cpuid&gt;&gt;<span class="number">4</span>&amp;<span class="number">0xFFF</span>;</span><br><span class="line"><span class="comment">/* parse the coresponding vendor_id bits */</span></span><br><span class="line">data-&gt;vendor_id = cpuid&gt;&gt;<span class="number">24</span>&amp;<span class="number">0xFF</span>;</span><br></pre></td></tr></table></figure>
+<p>这样就可以快速的获取CPUID相关的具体内容，在根据表格进行映射即可获得Vendor和Model信息；</p>
+<p>对于CPU Flags，由于牵扯到的寄存器众多，读者可以根据<a href="https://www.kernel.org/doc/Documentation/arm64/cpu-feature-registers.txt">ARM64 CPU Feature Registers</a>中的示例程序进行依次进行寄存器读取，再根据相应的映射关系进行解析，也可以使用下面将要介绍的可读性更高的另一种方法。</p>
+<p>Linux内核提供了<a href="http://man7.org/linux/man-pages/man3/getauxval.3.html"><strong>getauxval()</strong></a>方法，用于读取辅助向量(auxiliary vector, 一个从内核到用户空间的信息交流机制)，通过读取相应的辅助向量，我们就能获取相应的硬件信息；辅助向量有很多，感兴趣的读者可以查看上面的链接，对于我们读取CPU Flags来说，关心的是<strong>AT_HWCAP</strong>这个辅助向量，通过<code>getauxval()</code>读取这个向量的值，可以获得整合过的CPU Flags信息，其bit定位规则则在<a href="https://github.com/torvalds/linux/blob/master/arch/arm64/include/uapi/asm/hwcap.h">hwcap.h</a>，当然，每种架构下的对应关系不相同，需要根据需要进行查找。</p>
+<p>那么，我们就可以采用下面的方法进行解析：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/auxv.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* 通过移位Bit Mask来读取相应的标志位 */</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> BIT_SHIFTS(n)			(UL(1) &lt;&lt; (n))</span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span> </span>&#123;</span><br><span class="line">    <span class="keyword">unsigned</span> <span class="keyword">long</span> hwcaps = getauxval(AT_HWCAP);</span><br><span class="line">    <span class="keyword">int</span> i;</span><br><span class="line">    <span class="comment">/* 目前ARMv8架构只有32种CPU Flags */</span></span><br><span class="line">    <span class="keyword">char</span> *<span class="built_in">list</span>[<span class="number">32</span>] = &#123;<span class="string">"fp\n"</span>, <span class="string">"asimd\n"</span>, <span class="string">"evtstrm\n"</span>, <span class="string">"aes\n"</span>, <span class="string">"pmull\n"</span>, <span class="string">"sha1"</span>,</span><br><span class="line">                              <span class="string">"sha2\n"</span>, <span class="string">"crc32\n"</span>, <span class="string">"atomics\n"</span>, <span class="string">"fphp\n"</span>, <span class="string">"asimdhp\n"</span>,</span><br><span class="line">                              <span class="string">"cpuid\n"</span>, <span class="string">"asimdrdm\n"</span>,<span class="string">"jscvt\n"</span>, <span class="string">"fcma\n"</span>, <span class="string">"lrcpc\n"</span>,</span><br><span class="line">                              <span class="string">"dcpop\n"</span>, <span class="string">"sha3\n"</span>, <span class="string">"sm3\n"</span>, <span class="string">"sm4\n"</span>, <span class="string">"asimddp\n"</span> ,</span><br><span class="line">                              <span class="string">"sha512\n"</span>, <span class="string">"sve\n"</span>, <span class="string">"asimdfhm\n"</span>, <span class="string">"dit\n"</span>, <span class="string">"uscat\n"</span>,</span><br><span class="line">                              <span class="string">"ilrcpc\n"</span>, <span class="string">"flagm\n"</span>, <span class="string">"ssbs\n"</span>, <span class="string">"sb\n"</span>, <span class="string">"paca\n"</span>,<span class="string">"pacg\n"</span>,&#125;;</span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i&lt; <span class="number">32</span>; i++)&#123;</span><br><span class="line">	<span class="keyword">if</span> (hwcaps &amp; BIT_SHIFTS(i)) &#123;</span><br><span class="line">	    <span class="built_in">printf</span>(<span class="string">"%s\n"</span>,<span class="built_in">list</span>[i]);</span><br><span class="line">	&#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>或者，可以直接通过<code>hwcap.h</code>中预先定义好的宏来做bit mask:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;sys/auxv.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;asm/hwcap.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">()</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="keyword">long</span> hwcaps= getauxval(AT_HWCAP);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span>(hwcaps &amp; HWCAP_AES)&#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">"AES instructions are available\n"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(hwcaps &amp; HWCAP_CRC32)&#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">"CRC32 instructions are available\n"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(hwcaps &amp; HWCAP_PMULL)&#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">"PMULL/PMULL2 instructions that operate on 64-bit data are available\n"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(hwcaps &amp; HWCAP_SHA1)&#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">"SHA1 instructions are available\n"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span>(hwcaps &amp; HWCAP_SHA2)&#123;</span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">"SHA2 instructions are available\n"</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/" rel="tag">虚拟化</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/04/03/arm-cpu-vendor-ji-part-id-ying-she-guan-xi-chi-xu-geng-xin/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">ARM CPU Vendor 及 Part ID 映射关系（持续更新）</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/03/31/running-mysql-on-arm-does-it-work/">
+                <span class="level-item">Running MySQL on ARM. Does it work?</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 7,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="Linux下获取ARMv8-A CPU详情的3种方法" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

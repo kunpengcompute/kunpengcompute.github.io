@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>PG内建的pg_basebackup在ARM平台的表现 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: bzhaoopenstack PG内建的热备工具pg_basebackup在ARM上能用吗？看看便知。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PG内建的pg_basebackup在ARM平台的表现">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/11/26/pg-nei-jian-de-pg-basebackup-zai-arm-ping-tai-de-biao-xian/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: bzhaoopenstack PG内建的热备工具pg_basebackup在ARM上能用吗？看看便知。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-11-26T07:13:15.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="PG内建的pg_basebackup在ARM平台的表现" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="PG内建的pg_basebackup在ARM平台的表现" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-11-26T07:13:15.000Z">2020-11-26</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                PG内建的pg_basebackup在ARM平台的表现
+            
+        </h1>
+        <div class="content">
+            <p>作者: <a href="https://github.com/bzhaoopenstack">bzhaoopenstack</a></p>
+<p>PG内建的热备工具pg_basebackup在ARM上能用吗？看看便知。</p>
+<a id="more"></a>
+<h2 id="PG内建的pg-basebackup在ARM平台的表现"><a href="#PG内建的pg-basebackup在ARM平台的表现" class="headerlink" title="PG内建的pg_basebackup在ARM平台的表现"></a>PG内建的pg_basebackup在ARM平台的表现</h2><p>pg_basebackup是postgresql提供的一个方便基础备份的工具（9.1开始提供），这个工具会把整个数据库实例的数据都拷贝出来，而不只是把实例中的部分（如某个数据库或表）单独备份出来，该工具使用replication协议连接到数据库实例上，所以主数据库中的pg_hba.conf必须允许replication连接，类似如下：<br>host    replication      replica                               trust<br>在9.2之后支持级连复制，所以在之后的版本中，pg_basebackup也可以从另外一个standby库上做基础备份，都需注意如下几方面：<br>1、备份中没有备份历史文件；<br>2、不确保所有需要的WAL文件都备份了，如果想确保，需要加命令行参数 ”-x”;<br>3、如果在备份过程中standby被提升为主库，则备份会失败；<br>4、要求主库中打开了“full_page_writes”参数，WAL文件不能被类似pg_compresslog的工具去掉full_page_writes信息。</p>
+<p>对于这个工具，我们可以在<a href="https://postgresql.org/docs/10/app-pgbasebackup.html">官方文档</a>中查看工具的全部参数说明。</p>
+<ol>
+<li><h3 id="概念梳理"><a href="#概念梳理" class="headerlink" title="概念梳理"></a>概念梳理</h3><blockquote>
+<p>对于postgresql常见的备份方式：</p>
+<p>a. 文件系统级别的冷备份。</p>
+<p>​    该备份方式需要关闭主数据库，然后拷贝数据文件的完整目录导备机。恢复数据库时，只需将数据目录复制到原来的位置。该方式实际工作中很少使用。</p>
+<p>b.SQL转储</p>
+<p>​    对于PG中，常用的工具为pg_dump和pg_dumpall。</p>
+<p>​    这种方式可以在数据库正在使用的时候进行完整一致的备份，并不阻塞其它用户对数据库的访问。它会产生一个脚本文件，里面包含备份开始时，已创建的各种数据库对象的SQL语句和每个表中的数据。可以使用数据库提供的工具pg_dumpall和pg_dump来进行备份。pg_dump只备份数据库集群中的某个数据库的数据，它不会导出角色和表空间相关的信息，因为这些信息是整个数据库集群共用的，不属于某个单独的数据库。pg_dumpall，对集簇中的每个数据库调用pg_dump来完成该工作,还会还转储对所有数据库公用的全局对象（pg_dump不保存这些对象）。 目前这包括适数据库用户和组、表空间以及适合所有数据库的访问权限等属性。</p>
+<p>​        例如，使用如下命令对名为dbname的数据库进行备份：</p>
+<p>​        pg_dump  –h 127.0.0.1  -p  5432  -U  postgres -c  -C –f  dbname.sql  dbname</p>
+<p>​        使用如下命令可对全部pg数据库进行备份。</p>
+<p>​        pg_dumpall –h 127.0.0.1 –p 5432 -U postgres –c  -C –f db_bak.sql</p>
+<p>​        恢复方式很简单。执行恢复命令即可：</p>
+<p>​        psql –h 127.0.0.1 -p 5432 -U postgres –f db_bak.sql</p>
+<p>c.连续归档</p>
+<p>   这种方式的策略是把一个文件系统级别的全量备份和WAL(预写式日志)级别的增量备份结合起来。当需要恢复时，我们先恢复文件系统级别的备份，然后重放备份的WAL文件，把系统恢复到之前的某个状态。这种备份有显著的优点：</p>
+<ol>
+<li>不需要一个完美的一致的文件系统备份作为开始点。备份中的任何内部不一致性将通过日志重放来修正。</li>
+<li>可以结合一个无穷长的WAL文件序列用于重放，可以通过简单地归档WAL文件来达到连续备份。</li>
+<li>不需要重放WAL项一直到最后。可以在任何点停止重放，并使数据库恢复到当时的一致状态。</li>
+<li>可以连续地将一系列WAL文件输送给另一台已经载入了相同基础备份文件的机器，得到一个实时的热备份系统。</li>
+</ol>
+</blockquote>
+<p>好了，对于本文中pg_basebackup工具更倾向于第一种备份方式，但是又不完全是，因为pg_basebackup是用作热备份的，不需要停止主库服务，主库仍然能够接收请求。</p>
+</li>
+<li><h3 id="测试内容"><a href="#测试内容" class="headerlink" title="测试内容"></a>测试内容</h3></li>
+</ol>
+<p>本文中，我们会在ARM机器上测试pg_basebackup工具的可用性。</p>
+<p>环境信息如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">pg@pg-test:~&#x2F;postgres&#x2F;src&#x2F;bin&#x2F;pg_basebackup$ uname -a</span><br><span class="line">Linux pg-test 4.15.0-70-generic #79-Ubuntu SMP Tue Nov 12 10:36:10 UTC 2019 aarch64 aarch64 aarch64 GNU&#x2F;Linux</span><br><span class="line"></span><br><span class="line">OS: Ubuntu bionic</span><br><span class="line">ARCH: aarch64</span><br></pre></td></tr></table></figure>
+
+<p>首先，我们看看如何在ARM上执行pg_basebackup的in-tree tests。可以参照如下脚本来进行。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"># 构建perl环境，包括perlbrew版本管理，cpanm perl module安装工具</span><br><span class="line">echo &quot;yes&quot; | sudo cpan App::perlbrew ;</span><br><span class="line">perlbrew init ;</span><br><span class="line">source ~&#x2F;perl5&#x2F;perlbrew&#x2F;etc&#x2F;bashrc ;</span><br><span class="line">cat ~&#x2F;perl5&#x2F;perlbrew&#x2F;etc&#x2F;bashrc &gt;&gt; ~&#x2F;.bashrc ;</span><br><span class="line">perlbrew install-cpanm ;</span><br><span class="line"># 安装perl-local-lib命名空间</span><br><span class="line">cpanm --local-lib&#x3D;~&#x2F;perl5 local::lib &amp;&amp; eval $(perl -I ~&#x2F;perl5&#x2F;lib&#x2F;perl5&#x2F; -Mlocal::lib)</span><br><span class="line"># 安装测试依赖的perl IPR::Run模块</span><br><span class="line">cpanm IPC::Run -n</span><br><span class="line">export LD_LIBRARY_PATH&#x3D;$HOME&#x2F;perl5&#x2F;lib&#x2F;perl5&#x2F;</span><br><span class="line"># 安装 PG 在with-perl选项下依赖的libperl</span><br><span class="line">sudo apt install libperl-dev -y</span><br><span class="line"></span><br><span class="line"># 安装编译</span><br><span class="line">git clone https:&#x2F;&#x2F;github.com&#x2F;postgres&#x2F;postgres</span><br><span class="line">cd postgres</span><br><span class="line"># 因为pg_basebackup测试是tap tests,所以需要加上--enable-tap-tests 这个option</span><br><span class="line">.&#x2F;configure --prefix&#x3D;$HOME&#x2F;pgsql-install --enable-tap-tests --with-perl</span><br><span class="line">make -j</span><br><span class="line">make install</span><br><span class="line"></span><br><span class="line"># 安装测试依赖的test_decoding.so文件</span><br><span class="line">make -C contrib&#x2F;test_decoding&#x2F; install</span><br><span class="line"></span><br><span class="line"># 开始跑测试</span><br><span class="line">make -C src&#x2F;bin&#x2F;pg_basebackup installcheck</span><br><span class="line"></span><br><span class="line"># 当然你也可以单跑其中的某个测试，如</span><br><span class="line">TESTDIR&#x3D;&#39;&#x2F;home&#x2F;pg&#x2F;postgres&#x2F;src&#x2F;bin&#x2F;pg_basebackup&#39; PATH&#x3D;&quot;&#x2F;home&#x2F;pg&#x2F;pgsql-install&#x2F;bin:$PATH&quot; PGPORT&#x3D;&#39;65432&#39; top_builddir&#x3D;&#39;&#x2F;home&#x2F;pg&#x2F;postgres&#x2F;src&#x2F;bin&#x2F;pg_basebackup&#x2F;..&#x2F;..&#x2F;..&#39; PG_REGRESS&#x3D;&#39;&#x2F;home&#x2F;pg&#x2F;postgres&#x2F;src&#x2F;bin&#x2F;pg_basebackup&#x2F;..&#x2F;..&#x2F;..&#x2F;src&#x2F;test&#x2F;regress&#x2F;pg_regress&#39; REGRESS_SHLIB&#x3D;&#39;&#x2F;home&#x2F;pg&#x2F;postgres&#x2F;src&#x2F;test&#x2F;regress&#x2F;regress.so&#39; &#x2F;usr&#x2F;bin&#x2F;prove -I ..&#x2F;..&#x2F;..&#x2F;src&#x2F;test&#x2F;perl&#x2F; -I . t&#x2F;010_pg_basebackup.pl -v</span><br></pre></td></tr></table></figure>
+
+<p>在ARM上测试pg_basebackup目录下的in-tree testcase结果均为PASS。说明在ARM上基本功能是可用的。然而我们仍然需要更深入的测试。</p>
+<p>创建测试用的目录、用户、表空间，表和索引等</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"># 创建tablespace 真实路径</span><br><span class="line">mkdir ~&#x2F;tablespace</span><br><span class="line">mkdir ~&#x2F;tablespace&#x2F;testa_ts</span><br><span class="line">mkdir ~&#x2F;tablespace&#x2F;testb_ts</span><br><span class="line"></span><br><span class="line"># 创建用户</span><br><span class="line">psql -c &quot;create user testa with encrypted password &#39;pgonarm&#39;;&quot;</span><br><span class="line">psql -c &quot;create user testb with encrypted password &#39;pgonarm&#39;;&quot;</span><br><span class="line"></span><br><span class="line"># 创建对应用户的tablespace</span><br><span class="line">psql -c &quot;create tablespace testats owner testa location &#39;&#x2F;home&#x2F;pg&#x2F;tablespace&#x2F;testa_ts&#39;;&quot;</span><br><span class="line">psql -c &quot;create tablespace testbts owner testb location &#39;&#x2F;home&#x2F;pg&#x2F;tablespace&#x2F;testb_ts&#39;;&quot;</span><br><span class="line"></span><br><span class="line"># 在tablespace中创建db</span><br><span class="line">psql -c &quot;create database testadb with owner testa template template1 encoding &#39;UTF8&#39; tablespace&#x3D;testats;&quot;</span><br><span class="line">psql -c &quot;create database testbdb with owner testb template template1 encoding &#39;UTF8&#39; tablespace&#x3D;testbts;&quot;</span><br><span class="line"></span><br><span class="line"># 创建测试表及插入测试数据</span><br><span class="line">psql -U testa -d testadb -c &quot;create table test1(id numeric); insert into test1 values (1);&quot;</span><br><span class="line">psql -U testb -d testbdb -c &quot;create table test1(id numeric); insert into test1 values (1);&quot;</span><br><span class="line"></span><br><span class="line"># 在各自tablespace为双方设置权限</span><br><span class="line">psql -d testbdb -c &quot;grant create on tablespace testa_ts to testb; grant create on tablespace testb_ts to testa;&quot;</span><br><span class="line"></span><br><span class="line"># 创建索引</span><br><span class="line">psql -U testa -d testadb -c &quot;create index test1_index on test1(id) tablespace testb_ts;&quot;</span><br><span class="line">psql -U testb -d testbdb -c &quot;create index test1_index on test1(id) tablespace testa_ts;&quot;</span><br></pre></td></tr></table></figure>
+
+<p>OK，数据准备好后，需要在pg_hba.conf中设置replication访问权限，如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">host  replication   postgres    172.17.0.4&#x2F;32 trust</span><br></pre></td></tr></table></figure>
+
+<p>表示为replication connection, 允许流复制链接。后面的32位IP地址可以跟一个网段，或者任意IP地址(4个0)。对应的允许用户当前为postgres，也可以根据需要进行设置，比如创建一个rep user等等。</p>
+<p>好了，现在我们开始一步步测试。</p>
+<h3 id="TEST-1-本地备份"><a href="#TEST-1-本地备份" class="headerlink" title="TEST 1  本地备份"></a>TEST 1  本地备份</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pg_basebackup -D testbk -Ft -z -P</span><br></pre></td></tr></table></figure>
+
+<p>备份到本地testbk路径，-Ft选用的输出格式为tar. -z并启用gzip压缩，最后-P启用进度显示。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">pg@pg-test:~$ pg_basebackup -D testbk -Ft -z -P</span><br><span class="line">46955&#x2F;46955 kB (100%), 3&#x2F;3 tablespaces</span><br><span class="line">pg@pg-test:~$ ls testbk&#x2F;</span><br><span class="line">16389.tar.gz  16390.tar.gz  backup_manifest  base.tar.gz  pg_wal.tar.gz</span><br><span class="line">pg@pg-test:~$</span><br><span class="line">pg@pg-test:~$ psql</span><br><span class="line">psql (14devel)</span><br><span class="line">Type &quot;help&quot; for help.</span><br><span class="line"></span><br><span class="line">pg&#x3D;# select oid, spcname from pg_tablespace;</span><br><span class="line">  oid  |  spcname</span><br><span class="line">-------+------------</span><br><span class="line">  1663 | pg_default</span><br><span class="line">  1664 | pg_global</span><br><span class="line"> 16389 | testats</span><br><span class="line"> 16390 | testbts</span><br><span class="line">(4 rows)</span><br><span class="line"></span><br><span class="line">pg&#x3D;#</span><br></pre></td></tr></table></figure>
+
+<p>可以看到有3个表空间备份了，分别是16389 testats， 16390 testbts 还有 base pg_default三个表空间。</p>
+<h3 id="TEST-2-远程备份"><a href="#TEST-2-远程备份" class="headerlink" title="TEST 2 远程备份"></a>TEST 2 远程备份</h3><p>使用另一台机器执行</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pg_basebackup -h HOST_TARGET -D BACKUP_DIR -Ft -z -P</span><br></pre></td></tr></table></figure>
+
+<p>结果本地备份一致。</p>
+<h3 id="TEST-3-单tablespace本地数据库备份"><a href="#TEST-3-单tablespace本地数据库备份" class="headerlink" title="TEST 3 单tablespace本地数据库备份"></a>TEST 3 单tablespace本地数据库备份</h3><p>执行备份命令</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">pg@pg-test:~$ pg_basebackup -D --Ft -X fetch | bzip2 &gt; bac.tar.bz2</span><br><span class="line">pg_basebackup: error: directory &quot;&#x2F;home&#x2F;pg&#x2F;tablespace&#x2F;testb_ts&quot; exists but is not empty</span><br><span class="line">pg_basebackup: removing data directory &quot;--Ft&quot;</span><br><span class="line">pg@pg-test:~$</span><br></pre></td></tr></table></figure>
+
+<p>失败了，因为本地数据库中包含有多个tablespace，所以失败，通常pg_basebackup对于tablespace备份时是单对单的，这样才能成功。</p>
+<h3 id="TEST-4-tablespace重定向"><a href="#TEST-4-tablespace重定向" class="headerlink" title="TEST 4 tablespace重定向"></a>TEST 4 tablespace重定向</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">pg@pg-test:~$ pg_basebackup -D bacdata_test -T &#x2F;home&#x2F;pg&#x2F;tablespace&#x2F;testa_ts&#x3D;&#x2F;home&#x2F;pg&#x2F;tablespace2&#x2F;testa_new_ts -T &#x2F;home&#x2F;pg&#x2F;tablespace&#x2F;testb_ts&#x3D;&#x2F;home&#x2F;pg&#x2F;tablespace2&#x2F;testb_new_ts -Ft -P</span><br><span class="line">46955&#x2F;46955 kB (100%), 3&#x2F;3 tablespaces</span><br><span class="line">pg@pg-test:~$ ls bacdata_test</span><br><span class="line">16389.tar  16390.tar  backup_manifest  base.tar  pg_wal.tar</span><br></pre></td></tr></table></figure>
+
+<p>这种会将老的tablespace下的testa_ts、testb_ts重定向到tablespace2目录并且重命名。比如在新备机上，对存储路径有需求就可以这么玩。</p>
+<p>至此，所有的测试项目均完成，可以看到pg_basebackup工具是能够在ARM平台上正常工作的。所以我们要对这个硬件平台新成员有足够的信心。</p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/11/26/zai-arm64-ping-tai-shang-ce-shi-percona-toolkit/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">在arm64平台上测试Percona Toolkit</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/11/24/arm64-ping-tai-shang-du-you-na-xie-hao-yong-de-mariadb-ke-hu-duan-ruan-jian/">
+                <span class="level-item">Arm64平台上都有哪些好用的MariaDB客户端软件</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 58,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="PG内建的pg_basebackup在ARM平台的表现" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

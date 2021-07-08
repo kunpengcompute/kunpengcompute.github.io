@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>在arm64平台上对MariaDB进行备份恢复测试 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: zhaorenhai 本文计划测试下MariaDB的备份恢复功能在arm64平台上的运行情况，给有兴趣在arm64平台上部署MariaDB的小伙伴提供个参考。 测试平台选择华为云上8C16G的鲲鹏虚拟机，OS为Ubuntu18.04， MariaDB我们计划选择github上的最新版本来进行测试。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在arm64平台上对MariaDB进行备份恢复测试">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/11/04/zai-arm64-ping-tai-shang-dui-mariadb-jin-xing-bei-fen-hui-fu-ce-shi/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: zhaorenhai 本文计划测试下MariaDB的备份恢复功能在arm64平台上的运行情况，给有兴趣在arm64平台上部署MariaDB的小伙伴提供个参考。 测试平台选择华为云上8C16G的鲲鹏虚拟机，OS为Ubuntu18.04， MariaDB我们计划选择github上的最新版本来进行测试。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-11-04T02:48:57.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="在arm64平台上对MariaDB进行备份恢复测试" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="在arm64平台上对MariaDB进行备份恢复测试" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-11-04T02:48:57.000Z">2020-11-04</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                在arm64平台上对MariaDB进行备份恢复测试
+            
+        </h1>
+        <div class="content">
+            <p>作者: zhaorenhai</p>
+<p>本文计划测试下MariaDB的备份恢复功能在arm64平台上的运行情况，给有兴趣在arm64平台上部署MariaDB的小伙伴提供个参考。</p>
+<p>测试平台选择华为云上8C16G的鲲鹏虚拟机，OS为Ubuntu18.04， MariaDB我们计划选择github上的最新版本来进行测试。</p>
+<a id="more"></a>
+<p>首先从<a href="https://github.com:/MariaDB/server">https://github.com:/MariaDB/server</a> fork一份最新的代码到自己的仓库。</p>
+<p>然后登陆我们的虚拟机，创建一个用户：</p>
+<p><code>adduser mariadb</code><br>后续所有的工作都在这个用户下进行。</p>
+<p>切换到这个用户，并下载刚刚fork的代码，并进行编译.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">su - mariadb</span><br><span class="line">git clone https://github.com/zhaorenhai/server</span><br><span class="line">sudo apt-get install build-essential libncurses5-dev gnutls-dev bison zlib1g-dev ccache libnuma-dev libxml2-dev cmake</span><br><span class="line">mkdir build-mariadb-server</span><br><span class="line">cd build-mariadb-server</span><br><span class="line"><span class="meta">#</span><span class="bash">加入RelWithDebInfo选项，是为了后续如果需要进行对性能分析的话，可以用perf工具看到代码</span></span><br><span class="line">cmake ../server -DCMAKE_BUILD_TYPE=RelWithDebInfo</span><br><span class="line">cmake --build .</span><br></pre></td></tr></table></figure>
+
+<p>现在我们有了一个最新版本的数据库程序，下面我们继续创建数据库的配置文件，并将数据库运行起来</p>
+<p>创建一个数据库参数文件：<br><code>vi ~/mariadb.cnf</code></p>
+<p>设置如下参数</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[mariadb]</span><br><span class="line"><span class="meta">#</span><span class="bash">数据文件目录</span></span><br><span class="line">datadir = /home/mariadb/data/dir</span><br><span class="line"><span class="meta">#</span><span class="bash">path to <span class="built_in">source</span> dir + sql/share</span></span><br><span class="line">lc_messages_dir = /home/mariadb/server/sql/share</span><br><span class="line"><span class="meta">#</span><span class="bash">buffer pool，配置成8G，我们预留一部分内存给OS和其他工具</span></span><br><span class="line">innodb_buffer_pool_size = 8G</span><br><span class="line"><span class="meta">#</span><span class="bash">redo <span class="built_in">log</span> 配置成1G</span></span><br><span class="line">innodb_log_file_size = 1G</span><br><span class="line"><span class="meta">#</span><span class="bash">flush_method配置成o_direct,可以减少文件系统的cache占用内存</span></span><br><span class="line">innodb_flush_method = O_DIRECT</span><br><span class="line"><span class="meta">#</span><span class="bash">跳过root用户登陆权限验证</span></span><br><span class="line">skip-grant-tables</span><br><span class="line"><span class="meta">#</span><span class="bash">开启binlog</span></span><br><span class="line">log-bin</span><br></pre></td></tr></table></figure>
+
+<p>运行数据库</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /home/mariadb/data/dir</span><br><span class="line">./scripts/mysql_install_db --srcdir=../server --defaults-file=~/mariadb.cnf</span><br><span class="line">sql/mysqld --defaults-file=~/mariadb.cnf</span><br></pre></td></tr></table></figure>
+
+<p>现在一个数据库就运行起来了，我们本文的主要目的是测试备份和恢复功能，在此之前我们还要加载一些数据，我们尽量加载多一点数据。加载数据的工具我们用tpcc-mysql工具，只用他的数据加载功能。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">sudo apt install libmariadbclient-dev</span><br><span class="line">git clone https://github.com/Percona-Lab/tpcc-mysql</span><br><span class="line">cd tpcc-mysql/src</span><br><span class="line">make</span><br><span class="line">cd ..</span><br><span class="line">export PATH=~/build-mariadb-server/client:$PATH  </span><br><span class="line">mysqladmin create tpcc100</span><br><span class="line">mysql tpcc100 &lt; create_table.sql</span><br><span class="line">./tpcc_load -h127.0.0.1 -d tpcc100  -u root -p "" -w 100</span><br><span class="line">mysql tpcc100 &lt; add_fkey_idx.sql</span><br></pre></td></tr></table></figure>
+
+
+
+<p>下面开始测试数据库的备份功能。</p>
+<p>MariaDB数据库备份分为了逻辑备份和物理备份。</p>
+<p>逻辑备份的优点是备份的文件都是sql或者是格式化的文本文件，可以用于其他类型的数据库，也方便导入或者数据迁移，缺点就是备份的时候对数据库性能影响较大,而且恢复的时候比较慢。MariaDB用于逻辑备份的工具就是mysqldump。</p>
+<p>物理备份其实就是对于数据库物理文件的备份，因此对数据库影响相对较小，但是备份出的文件不能用于其他类型的数据库。仅能用于备份恢复使用。 MariaDB用于物理备份的工具是mariabackup。</p>
+<p>MariaDB的逻辑备份和物理备份都是对于某一个时间点数据库的备份，并不能做到完全的无损恢复，如果要做到无损恢复，还需要用到对于binlog日志的重放功能，MariaDB实现这个的工具主要是mysqlbinlog。</p>
+<p>下面我们逐个来测试下这三个工具。</p>
+<p>首先测试下逻辑备份。</p>
+<p><code>mysqldump --all-databases --master-data=2 --single-transaction &gt; all_databases.sql</code></p>
+<p>上面命令中的–master-data=2选项的意思是在备份文件中记录备份时的binlog位置，如果后续做无损恢复的话，可以给mysqlbinlog工具提供开始恢复的位置。–single-transaction的意思是备份在一个事务里执行，这样可以不影响其他会话的正常运行，也可以保证备份数据的一致性。</p>
+<p>我们的data目录一共8.6G，只花了3分钟就备份完毕，备份文件7.2个G，性能还是可以的。当然这和所用的磁盘也是有关系的。我们这里用的是华为云的SSD，速度会快一点。</p>
+<p>逻辑备份的恢复也很简单，直接执行导出的sql文件即可。我们这里只是测试，所以就直接在原库上执行了。</p>
+<p><code>mysql -u root &lt; all_databases.sql</code></p>
+<p>上面7.2G的sql大概执行了21分钟左右，性能也还可以，如果是在一个新的数据库上恢复，估计会更快一点。</p>
+<p>我们继续测试下物理备份。</p>
+<p>先创建一个备份文件存放的目录：</p>
+<p><code>mkdir -p /home/mariadb/data/backup</code></p>
+<p>然后备份的时候不能有skip-grant-tables选项，我们先将备份文件中的这个配置项删除，重启数据库，然后执行<code>mysql</code>进入数据库，修改root用户密码：</p>
+<p><code>alter user &#39;root&#39;@&#39;localhost&#39; identified by &#39;backuptest&#39;;</code></p>
+<p>我们编译出来的mariabackup在编译目录的extra目录下，我们进入到那个目录执行：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd ~/build-mariadb-server/extra/mariabackup</span><br><span class="line">./mariabackup --backup --target-dir=/home/mariadb/data/backup -uroot -pbackuptest </span><br><span class="line">./mariabackup --prepare --target-dir=/home/mariadb/data/backup</span><br></pre></td></tr></table></figure>
+
+<p>整个备份两分钟左右就完成了，速度还是比较快的。</p>
+<p>我们继续测试一下恢复：</p>
+<p>恢复的时候要停止数据库。</p>
+<p>然后我们将原数据目录备份一下，创建一个新目录，因为恢复的时候数据文件目录必须是空的</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd /home/mariadb/data</span><br><span class="line">mv dir dirbak</span><br><span class="line">mkdir dir</span><br></pre></td></tr></table></figure>
+
+<p>然后开始恢复：</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd ~/build-mariadb-server/extra/mariabackup</span><br><span class="line">./mariabackup --copy-back --target-dir=/home/mariadb/data/backup --datadir=/home/mariadb/data/dir/</span><br></pre></td></tr></table></figure>
+
+<p>恢复只用了一分半钟</p>
+<p>下面我继续测试下无损恢复。</p>
+<p>假设如下场景：做了数据库备份以后，又新建了一些表，插入了一些数据，但是还没有来得及备份，这个时候数据库数据全被人删除了，但是备份文件和binlog还在。我们试试用备份文件和binlog来将数据库完全恢复出来。</p>
+<p>我们先和之前一样，用mariabackup工具先备份一下数据库，然后再执行如下sql先创建一些表，插入一些数据</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">create</span> <span class="keyword">database</span> <span class="keyword">test</span>;</span><br><span class="line"><span class="keyword">use</span> <span class="keyword">test</span>;</span><br><span class="line"><span class="keyword">create</span> <span class="keyword">table</span> binlogtest(<span class="keyword">id</span> <span class="built_in">int</span>, descs <span class="built_in">varchar</span>(<span class="number">10</span>));</span><br><span class="line"><span class="keyword">insert</span> <span class="keyword">into</span> binlogtest <span class="keyword">values</span>(<span class="number">1</span>, <span class="string">'test1'</span>);</span><br><span class="line"><span class="keyword">insert</span> <span class="keyword">into</span> binlogtest <span class="keyword">values</span>(<span class="number">2</span>, <span class="string">'test2'</span>);</span><br><span class="line"><span class="keyword">commit</span>;</span><br></pre></td></tr></table></figure>
+
+<p>然后执行如下命令，模拟数据文件全被人清除。我们这里用了mv，主要也是为了保留binlog文件，毕竟我们测试环境，binlog没有做多份复制。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">cd /home/mariadb/data</span><br><span class="line">mv dir dirbak2</span><br><span class="line">mkdir dir</span><br></pre></td></tr></table></figure>
+
+<p>现在数据文件全被清除了，我们先用mariadbbackup恢复备份时的文件，先把数据库停掉，然后执行如下命令</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd ~/build-mariadb-server/extra/mariabackup</span><br><span class="line">./mariabackup --copy-back --target-dir=/home/mariadb/data/backup --datadir=/home/mariadb/data/dir/</span><br></pre></td></tr></table></figure>
+
+<p>然后将数据库启动，登陆数据库</p>
+<p>用如下sql去查询</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">select</span> * <span class="keyword">from</span> test.binlogtest;</span><br></pre></td></tr></table></figure>
+
+<p>会得到错误提示，表不存在。</p>
+<p>下面我们尝试用binlog来恢复</p>
+<p>首先查看备份文件的xtrabackup_binlog_info文件，找到开始恢复的pos点</p>
+<p><code>cat xtrabackup_binlog_info</code></p>
+<p>结果如下</p>
+<p><code>mariadb-arm-perf-test-bin.000012        358     0-1-7541</code></p>
+<p>说明开始恢复的pos点应该是358</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">cd /home/mariadb/data/dirbak2</span><br><span class="line">mysqlbinlog mariadb-arm-perf-test-bin.000001 --start-position=344| mysql -uroot -pbackuptest</span><br></pre></td></tr></table></figure>
+
+<p>然后再次登陆数据库查询之前的binlogtest表，就会发现数据已经恢复。 </p>
+<p>至此经过测试，我们可以发现MariaDB的各项备份恢复功能在arm64平台上都能完美运行，而且性能也不错。</p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/11/09/zai-arm64-ping-tai-shang-chuang-jian-mariadb-de-docker-jing-xiang-bing-zai-k8s-huan-jing-shang-bu-shu/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">在arm64平台上创建MariaDB的Docker镜像并在K8S环境上部署</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/10/31/arm64-ban-ben-de-proxysql-gong-neng-ce-shi/">
+                <span class="level-item">Arm64版本的ProxySQL功能测试</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 52,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="在arm64平台上对MariaDB进行备份恢复测试" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

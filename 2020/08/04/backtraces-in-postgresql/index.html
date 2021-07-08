@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>Backtraces in PostgreSQL - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2020&#x2F;07&#x2F;backtraces-in-postgresql.html PGSQL 13引入了Backtraces特性，方便客户和管理者定位疑难问题，来看社区大牛Amit带你玩转它！">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Backtraces in PostgreSQL">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/08/04/backtraces-in-postgresql/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2020&#x2F;07&#x2F;backtraces-in-postgresql.html PGSQL 13引入了Backtraces特性，方便客户和管理者定位疑难问题，来看社区大牛Amit带你玩转它！">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-08-04T06:09:25.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="Backtraces in PostgreSQL" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="Backtraces in PostgreSQL" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-08-04T06:09:25.000Z">2020-08-04</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                Backtraces in PostgreSQL
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Amit Dattatray Khandekar<br>原文链接: <a href="https://amitdkhan-pg.blogspot.com/2020/07/backtraces-in-postgresql.html">https://amitdkhan-pg.blogspot.com/2020/07/backtraces-in-postgresql.html</a></p>
+<p>PGSQL 13引入了Backtraces特性，方便客户和管理者定位疑难问题，来看社区大牛Amit带你玩转它！</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<p>PostgreSQL 13引入了一个简单但非常有用的功能，在发生错误时将堆栈跟踪记录到服务器日志中。让我们看看细节</p>
+<p>有一个 GUC 可以启用 生成 stacktrace: backtrace_functions. 设置为逗号隔开的function名字。</p>
+<p>SET backtrace_functions TO ‘func1,func2’;</p>
+<p>如果从这些函数之一抛出错误，将生成回溯跟踪并记录到服务器日志中。</p>
+<p>注意只有超级用户可以设置该GUC。可以在本地会话中设置，也可以在postgresql.conf文件中全局设置。</p>
+<p>在客户报告错误消息的情况下，很容易看出它是如何起作用的。我们可以在源代码中通过 grep 找到它的来源。但除此之外，就只能靠猜测了。现在不是了，随着这个功能的出现，现在，您可以要求客户将 backtrace_functions设置为所有发出此错误消息的函数，并获取堆栈跟踪。在大多数情况下，错误的根本原因并不是发生错误的函数; 它位于堆栈中间的某个位置; 因此堆栈跟踪是关键的</p>
+<p> 这个功能已经在其他数据库中使用，比如 MySQL，Greenplum，Oracle。</p>
+<p>但在 PostgreSQL 中仍然缺少的东西——这个问题也存在于大多数其他数据库中——是能够在服务器后端由于内存区段错误或其他类似意外信号崩溃时生成堆栈跟踪，或者当服务器由于某种原因而宕机时生成堆栈跟踪。这种能力会带来更大的不同。我们将摆脱生成核心文件的解释步骤。更重要的是，这在崩溃只是随机发生的情况下有所帮助。即使发生了单个意外的崩溃，客户也总是准备好了回溯。我希望这能在 PostgreSQL 的下一个主要版本中实现</p>
+<p>让我们看看 PostgreSQL 堆栈跟踪日志是什么样的。我们将尝试使用一个不存在的类型来创建表。假设我们知道“ type does not exist”错误来自源代码中的 typenameType ()。所以我们这样做:</p>
+<p>postgres=# set backtrace_functions TO ‘typenameType’;<br>postgres=# create table tab (id invalidtype);<br>ERROR: type “invalidtype” does not exist<br>LINE 1: create table tab (id invalidtype);</p>
+<p> 以下是服务器日志中的一个片段: :<br>2020-07-28 20:17:01.482 CST [22454] ERROR: type “invalidtype” does not exist at character 22<br>2020-07-28 20:17:01.482 CST [22454] BACKTRACE:<br>  postgres: amit postgres [local] CREATE TABLE(typenameType+0xa4) [0xaaaaafcd2ac4]<br>  postgres: amit postgres [local] CREATE TABLE(+0x20f550) [0xaaaaafcd4550]<br>  postgres: amit postgres [local] CREATE TABLE(transformCreateStmt+0x53c) [0xaaaaafcd7a10]<br>  postgres: amit postgres [local] CREATE TABLE(+0x44df20) [0xaaaaaff12f20]<br>  postgres: amit postgres [local] CREATE TABLE(standard_ProcessUtility+0x16c) [0xaaaaaff1225c]<br>  postgres: amit postgres [local] CREATE TABLE(+0x44a4e4) [0xaaaaaff0f4e4]<br>  postgres: amit postgres [local] CREATE TABLE(+0x44af88) [0xaaaaaff0ff88]<br>  postgres: amit postgres [local] CREATE TABLE(PortalRun+0x198) [0xaaaaaff10ed8]<br>  postgres: amit postgres [local] CREATE TABLE(+0x44764c) [0xaaaaaff0c64c]<br>  postgres: amit postgres [local] CREATE TABLE(PostgresMain+0x970) [0xaaaaaff0d3d4]<br>  postgres: amit postgres [local] CREATE TABLE(+0x3b3be4) [0xaaaaafe78be4]<br>  postgres: amit postgres [local] CREATE TABLE(PostmasterMain+0xdc0) [0xaaaaafe79b70]<br>  postgres: amit postgres [local] CREATE TABLE(main+0x480) [0xaaaaafb82510]<br>  /lib/aarch64-linux-gnu/libc.so.6(__libc_start_main+0xe0) [0xffffaac956e0]<br>  postgres: amit postgres [local] CREATE TABLE(+0xbd5d8) [0xaaaaafb825d8]<br>2020-07-29 18:01:02.726 CST [28776] STATEMENT: create table tab (id invalidtype);  </p>
+<p> 回溯的每一行都有函数名、该函数的偏移量和该帧的返回地址</p>
+<p>对于某些堆栈帧，函数名不存在; 相反，函数地址存在。这些都是静态函数。对于这样的函数，函数名不会公开。但是我们可以通过 addr2line 命令行工具从他们的地址中获取他们的名字:</p>
+<p>$ addr2line 0x20f550 0x44df20 -a -f -e <code>which postgres</code><br>0x000000000020f550<br>transformColumnDefinition<br>:?<br>0x000000000044df20<br>ProcessUtilitySlow.constprop.0<br>:?</p>
+<p>如果是调试版本，甚至会打印文件名和偏移量</p>
+<p>现在让我们看看这个简单的特性是如何实现的</p>
+<p>在包括 PostgreSQL、 Greenplum、 MySQL 在内的大多数 RDBMS 中，这个特性都是通过一个简单的函数 backtrace ()来生成 stacktrace:</p>
+<p>int backtrace(void **buffer, int size);</p>
+<p>这个函数只返回帧的所有返回地址。因此，接下来应该调用 backtrace_symbols () ，该函数将 backtrace ()返回的地址转换成字符串，如果可用的话，使用函数名来描述地址:</p>
+<p>char **backtrace_symbols(void *const *buffer, int size);</p>
+<p>这些函数的所有细节都在其man手册页中得到了很好的描述。这些功能在大多数平台上都是可用的.</p>
+<p>注意以下几点:</p>
+<p>\1. 要使函数名可用于 backtrace_symbols () ，必须使用链接器选项构建可执行文件，这些链接器选项允许将所有这些符号添加到“动态符号表”中。这些选项可以通过以下方式之一给出(这些是 gcc 编译器选项) :<br>gcc -rdynamic<br>gcc -Wl,-E</p>
+<p>\2. 当使用 gcc -O2或更高的优化级别编译时，有时可能会丢失特定的堆栈帧。例如，检查这个示例程序<a href="https://drive.google.com/file/d/1UYvT3POmZFmtSa17PcuNvyo9iva8XOS7/view?usp=sharing">backtrace.c 反向追踪</a> 从backtrace() man手册页.</p>
+<p>不使用 -O2来进行编译 :<br>amit:pg:error$ gcc -rdynamic -o backtrace backtrace.c<br>I get the full stack :<br>amit:pg:error$ ./backtrace 6<br>backtrace() returned 11 addresses<br>./backtrace(myfunc3+0x2c) [0xaaaad6b2edc0]<br>./backtrace(+0xe84) [0xaaaad6b2ee84]<br>./backtrace(myfunc+0x2c) [0xaaaad6b2eebc]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(main+0x60) [0xaaaad6b2ef28]<br>/lib/aarch64-linux-gnu/libc.so.6(__libc_start_main+0xe0) [0xffff8c5ba6e0]<br>./backtrace(+0xcc4) [0xaaaad6b2ecc4]</p>
+<p>使用 -O2来进行编译  :<br>amit:pg:error$ gcc -O2 -rdynamic -o backtrace backtrace.c<br>amit:pg:error$ ./backtrace 6<br>backtrace() returned 4 addresses<br>./backtrace(myfunc3+0x38) [0xaaaac7183e40]<br>./backtrace(main+0x4c) [0xaaaac7183cfc]<br>/lib/aarch64-linux-gnu/libc.so.6(__libc_start_main+0xe0) [0xffffb91286e0]<br>./backtrace(+0xd38) [0xaaaac7183d38]</p>
+<p>myfunc2()和 myfunc ()没有框架。一种可能性是编译器用尾端调用 myfunc3()替换了 myfunc ()和 myfunc2()的递归调用，这被称为尾端调用优化.</p>
+<p>重点是: 我们需要意识到在一些情况下这种缺失的框架</p>
+</div>
+<div id="English" class="tab-content">
+
+<p>PostgreSQL 13 has introduced a simple but extremely useful capability to log a stack trace into the server logs when an error is reported. Let’s see the details.</p>
+<p>There is a GUC to enable stacktrace generation : backtrace_functions. Set it to a comma-separated function names.</p>
+<p>SET backtrace_functions TO ‘func1,func2’;</p>
+<p>If the error is thrown from one of these functions, a backtrace will be generated and logged into the server log.</p>
+<p>Note that only superusers can set the backtrace_functions GUC. It can be set locally in a session, or can be included in postgresql.conf file to globally set it.</p>
+<p>It’s easy to see how it would help in a situation where a customer reports an error message. We can find from where it came from by grep’ing for it in the source code. But beyond that, it was all guess work. Not anymore. Now, you can ask the customer to set backtrace_functions to all such functions which are emitting this error message, and get the stack trace. In most cases, the root cause of the error is not in the function which emits the error; its located somewhere in the middle of the stack; hence the stack trace is critical.</p>
+<p>This capability is already available in many other databases like MySQL, Greenplum, Oracle.</p>
+<p>What’s still missing in PostgreSQL - and is present in most of these other databases - is being able to generate stack trace when a server backend crashes with a segmentation fault or other such unexpected signals, or when the server PANICs due to some reason. This capability would make a much bigger difference. We will get rid of having to explain steps to generate core file. More importantly, this helps in situations where the crash happens only randomly. Even with a single unexpected crash, the customer would always be ready with a backtrace. I am hopeful this would be implemented in the next major release of PostgreSQL.</p>
+<p>Let’s see how a PostgreSQL stack trace log looks like. We will try to use a non-existent type to create a table. Supposing we know that the “type does not exist” error comes from typenameType() in the source code. So we do this :</p>
+<p>postgres=# set backtrace_functions TO ‘typenameType’;<br>postgres=# create table tab (id invalidtype);<br>ERROR:  type “invalidtype” does not exist<br>LINE 1: create table tab (id invalidtype);</p>
+<p>Here’s a snippet from the server log :<br>2020-07-28 20:17:01.482 CST [22454] ERROR:  type “invalidtype” does not exist at character 22<br>2020-07-28 20:17:01.482 CST [22454] BACKTRACE:<br>    postgres: amit postgres [local] CREATE TABLE(typenameType+0xa4) [0xaaaaafcd2ac4]<br>    postgres: amit postgres [local] CREATE TABLE(+0x20f550) [0xaaaaafcd4550]<br>    postgres: amit postgres [local] CREATE TABLE(transformCreateStmt+0x53c) [0xaaaaafcd7a10]<br>    postgres: amit postgres [local] CREATE TABLE(+0x44df20) [0xaaaaaff12f20]<br>    postgres: amit postgres [local] CREATE TABLE(standard_ProcessUtility+0x16c) [0xaaaaaff1225c]<br>    postgres: amit postgres [local] CREATE TABLE(+0x44a4e4) [0xaaaaaff0f4e4]<br>    postgres: amit postgres [local] CREATE TABLE(+0x44af88) [0xaaaaaff0ff88]<br>    postgres: amit postgres [local] CREATE TABLE(PortalRun+0x198) [0xaaaaaff10ed8]<br>    postgres: amit postgres [local] CREATE TABLE(+0x44764c) [0xaaaaaff0c64c]<br>    postgres: amit postgres [local] CREATE TABLE(PostgresMain+0x970) [0xaaaaaff0d3d4]<br>    postgres: amit postgres [local] CREATE TABLE(+0x3b3be4) [0xaaaaafe78be4]<br>    postgres: amit postgres [local] CREATE TABLE(PostmasterMain+0xdc0) [0xaaaaafe79b70]<br>    postgres: amit postgres [local] CREATE TABLE(main+0x480) [0xaaaaafb82510]<br>    /lib/aarch64-linux-gnu/libc.so.6(__libc_start_main+0xe0) [0xffffaac956e0]<br>    postgres: amit postgres [local] CREATE TABLE(+0xbd5d8) [0xaaaaafb825d8]<br>2020-07-29 18:01:02.726 CST [28776] STATEMENT:  create table tab (id invalidtype);    </p>
+<p>Each line of the backtrace has the function name, an offset into that function, and the return address of that frame.</p>
+<p>For some stack frames, the function name is not present; instead, the function address is present. These are static functions. For such functions, the function names are not exposed. But we may be able to get their names from their addresses, with the help of addr2line command-line tool :</p>
+<p>$ addr2line  0x20f550 0x44df20 -a -f -e <code>which postgres</code><br>0x000000000020f550<br>transformColumnDefinition<br>:?<br>0x000000000044df20<br>ProcessUtilitySlow.constprop.0<br>:?</p>
+<p>If it’s a debug build, even the file name and offset is printed.</p>
+<p>Now let’s see how this simple feature is implemented.</p>
+<p>In most of the RDBMS’s including PostgreSQL, Greenplum, MySQL, the feature is implemented using a simple function backtrace() to generate the stacktrace:</p>
+<p>int backtrace(void **buffer, int size);</p>
+<p>This function only returns all the return addresses of the frames.  So it should be followed by a call to backtrace_symbols() that converts the addresses returned by backtrace() into strings that describe the addresses using the function names if available :</p>
+<p>char **backtrace_symbols(void *const *buffer, int size);</p>
+<p>All the details of these functions are nicely described in their man pages. These functions are available in most of the platforms.</p>
+<p>Note a couple of points :</p>
+<ol>
+<li><p>For the function names to be available for backtrace_symbols(), the executable has to be built using linker options that allow adding all these symbols into a “dynamic symbol table”. These options can be given with one of the following ways (these are gcc compiler options) :<br>gcc -rdynamic<br>gcc -Wl,-E</p>
+</li>
+<li><p>Sometimes particular stack frames might be missing, when compiled with gcc -O2 or higher optimization level. E.g. check this sample program backtrace.c from the backtrace() man pages.</p>
+</li>
+</ol>
+<p>I compile it without -O2 :<br>amit:pg:error$ gcc -rdynamic -o backtrace backtrace.c<br>I get the full stack :<br>amit:pg:error$ ./backtrace 6<br>backtrace() returned 11 addresses<br>./backtrace(myfunc3+0x2c) [0xaaaad6b2edc0]<br>./backtrace(+0xe84) [0xaaaad6b2ee84]<br>./backtrace(myfunc+0x2c) [0xaaaad6b2eebc]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(myfunc+0x24) [0xaaaad6b2eeb4]<br>./backtrace(main+0x60) [0xaaaad6b2ef28]<br>/lib/aarch64-linux-gnu/libc.so.6(__libc_start_main+0xe0) [0xffff8c5ba6e0]<br>./backtrace(+0xcc4) [0xaaaad6b2ecc4]</p>
+<p>Now I compile it with -O2 :<br>amit:pg:error$ gcc -O2 -rdynamic -o backtrace backtrace.c<br>amit:pg:error$ ./backtrace 6<br>backtrace() returned 4 addresses<br>./backtrace(myfunc3+0x38) [0xaaaac7183e40]<br>./backtrace(main+0x4c) [0xaaaac7183cfc]<br>/lib/aarch64-linux-gnu/libc.so.6(__libc_start_main+0xe0) [0xffffb91286e0]<br>./backtrace(+0xd38) [0xaaaac7183d38]</p>
+<p>There is no frame for myfunc2() and myfunc(). One possibility is that the compiler has replaced the recursive calls of myfunc() and also myfunc2() call with the tail end call myfunc3(), which is called tail call optimization.</p>
+<p>The point being: we need to be aware of such missing frames in a few scenarios.</p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/08/04/arm-s-lse-for-atomics-and-mysql/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">ARM&#39;s LSE (for atomics) and MySQL</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/07/14/haproxy-x86-vs-arm64-xing-neng-bi-pin/">
+                <span class="level-item">HAproxy X86 vs ARM64性能比拼</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 39,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="Backtraces in PostgreSQL" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

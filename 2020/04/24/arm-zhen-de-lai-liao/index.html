@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>ARM, 真的来了！ - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者：bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Why-ARM&#x2F;">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ARM, 真的来了！">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/04/24/arm-zhen-de-lai-liao/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者：bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;Why-ARM&#x2F;">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-04-24T09:10:49.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="ARM, 真的来了！" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="ARM, 真的来了！" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-04-24T09:10:49.000Z">2020-04-24</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                ARM, 真的来了！
+            
+        </h1>
+        <div class="content">
+            <p>译者：bzhaoopenstack<br>作者: Krunal Bauskar<br>原文链接: <a href="https://mysqlonarm.github.io/Why-ARM/">https://mysqlonarm.github.io/Why-ARM/</a></p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<p>ARM处理器无处不在。 很有可能你们中的一些人在阅读这篇博客时，使用的是 基于ARM 驱动的设备。 电话，物联网设备，家用电器，医疗设备，都是由 ARM 处理器驱动的。 ARM处理器以节能著称，因此大多数需要较长充电周期且处理器能力较低的设备一直在使用ARM芯片。</p>
+<p>但在过去的几年里，这种情况已经发生了变化。 越来越多的 ARM 处理器被用于数据库服务器、 web 服务器、应用服务器、大数据场景等高端应用。 它们已经作为服务器芯片进入了数据中心。 在云上运行应用程序时，ARM芯片被视为一种具有成本效益的最佳选择。</p>
+<h2 id="ARM-生态之进化"><a href="#ARM-生态之进化" class="headerlink" title="ARM 生态之进化"></a>ARM 生态之进化</h2><p>几年前，很难想象 ARM 会被用于运行在一些高端的服务器级的应用程序。 我可以想出两个主要原因:</p>
+<ul>
+<li>Arm 最适合小型手持设备</li>
+<li>Arm 生态受到它所支持的特定产品的限制</li>
+</ul>
+<p>一些主要的操作系统提供商对 ARM 生态系统提供了支持，包括 RedHat (CentOS)、 Ubuntu、 Debian 和 Windows。 这使得主流软件可以轻松地移植到 ARM。 社区推动ARM以确保大多数主流软件都可以在 ARM架构上使用。 例如IDE、 DB-server、 Hadoop 及其衍生软件，包括 Apache 基金会、 CI/CD软件、容器、虚拟化软件等等。 .</p>
+<p>授权其他厂商和开发自己的 ARM 处理器的 ARM 商业模式进一步推动了其受欢迎的程度，吸引了更多的芯片设计师参与其中，相互合作和创新优化。</p>
+<p>随着亚马逊等主要云供应商开始提供基于 ARM 处理器的 EC2实例(目前只允许邀请) ，这意味着现在每个人都可以启动一个 ARM 实例，并开始在 ARM 上开发 / 移植他们想要的软件。 这非常有助于ARM生态的进一步发展。</p>
+<h2 id="那…还缺什么"><a href="#那…还缺什么" class="headerlink" title="那…还缺什么?"></a>那…还缺什么?</h2><p>虽然大部分主流软件已经移植到 ARM 上，但它们还没有针对 ARM 进行优化。 Arm 具有弱内存模型，可以在更小的空间内安置更多的内核，底层指令的不同(软件会用这些指令)等等。 </p>
+<p>这是 ARM 生态第二阶段的开始，社区 / 开发人员 / 用户开始从“在 ARM 上运行软件”导向“在 ARM 上优化软件”。 我认为当用户开始认真思考 ARM 并开始在 ARM 上优化他们的软件时，这是 ARM 社区乃至ARM生态的一个重大胜利(大大的里程碑)。</p>
+<p>这(尤其是优化)是一个永无止境的过程，我看的第一个目标是至少与 x86的部分性能相当。 我故意说“ 部分性能” ，因为每个架构都有自己的 USP，所以如果你将一个企业级应用程序移植到 ARM，并且你可以以 50% 的成本(运营成本 + 初始投资)外加x86芯片的75% 性能的ARM芯片提供给客户 ，我认为这对大多数客户来说仍然是极具吸引力的(特尤其是应用程序为可伸缩的场景)。 当然，这并不意味着所有的应用程序在 ARM 上运行的速度都比较低下，事实上，有些应用程序在 ARM 上运行的速度会比 x86快，而且由于ARM生态的优化阶段在未来几年才逐步开始，经过各个玩家的努力，可以推断许多应用程序在 ARM 上运行的速度将比其他架构更快、更猛。</p>
+<h2 id="ARM节能环保-！"><a href="#ARM节能环保-！" class="headerlink" title="ARM节能环保 ！"></a>ARM节能环保 ！</h2><p>ARM无处不在，尤其是数据中心运营商(无论大小)最关心的问题。 与其他架构相比，ARM 可以节省大约50% 的电力。 这有助于支持绿色环保倡议。</p>
+<h2 id="ARM是下一代处理器！"><a href="#ARM是下一代处理器！" class="headerlink" title="ARM是下一代处理器！"></a>ARM是下一代处理器！</h2><p>有趣的是，我为什么这样称呼ARM。 下一代的芯片正在积极地使用 Andrino、 Raspberry Pi、 Odroid、 Banana Pi、 Asus tinker board 等工具包来构建下一代系统。 这些芯片将定义下一代计算机。 你看到它们正在使用 ARM，并且已经围绕着 ARM 成长起来，变得更加通用，在未来的几年里，将会有一大批 ARM 用户 / 开发者簇拥在一起，共建ARM生态。</p>
+<p>一旦大量的ARM用户/开发者的支持到位，现阶段围绕 ARM正在紧锣密鼓进行的所有基础工作和有助于用户的事物将会迎来新的面貌。</p>
+<h2 id="ARM上台式机-笔记本！"><a href="#ARM上台式机-笔记本！" class="headerlink" title="ARM上台式机 / 笔记本！"></a>ARM上台式机 / 笔记本！</h2><p>如果我们开始看到基于 ARM 的办公桌面 / PC工作站 / 笔记本电脑(已经有了！)被大家普遍使用时，ARM挤占台式机/笔记本市场也就不足为奇了。</p>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>Arm 生态系统看起来非常迷人，其中充满了新的挑战和机遇。 畅想一下近十年，从微型可穿戴设备到高端电影体验，从自动驾驶助力车 / 汽车到大型喷气式飞机 / 太空飞行器，都会被基于 ARM 的处理器主宰，它将无处不在。 现阶段据估计，每人有35个基于 ARM的设备。 这就是机会的海洋，不是吗?!</p>
+<p><em>如果您有想法，请随时发送邮件交流</em></p>
+</div>
+<div id="English" class="tab-content">
+
+<p>ARM processors are everywhere. It is quite likely some of you may be reading this blog from an ARM powered device. Phone, IoT devices, consumer and home appliances, health-care devices, all are powered by ARM processors. ARM processors are known to be power efficient and so most of these devices that demands a long recharge cycle but less processing power started using them.</p>
+<p>But this has changed in the past few years. More and more ARM processors are being used for high-end applications like database server, web server, application server, big data use-cases. They have already made their way to the data-centers as a server class machines. They are being looked upon as a cost effective option while running applications in cloud.</p>
+<h2 id="ARM-ecosystem-evolution"><a href="#ARM-ecosystem-evolution" class="headerlink" title="ARM ecosystem evolution"></a><span style="color:#4885ed">ARM ecosystem evolution</span></h2><p>Few years back it was difficult to imagine that ARM would be used for running some high-end server class applications. There were 2 major reasons that I could think off:</p>
+<ul>
+<li>ARM were best suited for small handheld devices.</li>
+<li>ARM ecosystem was limited around the specific product it supported.</li>
+</ul>
+<p>ARM ecosystem has really picked up well after some major OS providers added support for it including RedHat (CentOS), Ubuntu, Debian, Windows. This eased out porting of the major softwares to ARM. ARM community gave it a push to make sure most of the standard softwares are available on ARM viz. IDE, DB-server, Hadoop and all its variants from Apache Foundation, CI/CD software, Container, Virtualization, etc…</p>
+<p>The ARM model that allows other vendors to license and develop their own ARM processors further helped fueled its popularity with more chip designers joining, collaborating and innovating.</p>
+<p>Break-through came with major cloud providers like Amazon started providing ec2 instances (currently invitation only) based on ARM processors this means now everyone can boot an ARM instance and start developing/porting their software on ARM. This helped further grow the ecosystem.</p>
+<h2 id="What-was-missing"><a href="#What-was-missing" class="headerlink" title="What was missing?"></a><span style="color:#4885ed">What was missing?</span></h2><p>Though most of these software have been ported to ARM they were not yet optimized for ARM. ARM has a weak memory model, can fit more cores in smaller space, difference in low-level instruction (for software that uses them), etc..</p>
+<p>This was the start of the 2nd phase of ARM where the community/developer/user started moving from “running software on arm” -&gt; “optimizing software on arm”. I think this was a major win for the arm community when users started to think ARM seriously and started spending efforts on optimizing their software on ARM.</p>
+<p>This (especially optimization) is a never ending process but I see first goal is to at-least be on par with x86. I purposely say “onpar” because each of architecture has its own USP so say if you port an enterprise class application to ARM and you can offer it to customer @ 50% of the cost (operating cost + initial investment) for 75% of the performance of x86 I think that would be still be attractive fit for most of the customers (especially given application are horizontally scalable). Of-course that doesn’t mean all applications run on ARM at reduced speed, in fact there are applications that run on ARM faster than x86 and since the optimization phase has just started in next few years a lot of applications would be running on ARM faster than other architectures.</p>
+<h2 id="Go-Green"><a href="#Go-Green" class="headerlink" title="Go Green"></a><span style="color:#4885ed">Go Green</span></h2><p>It is everywhere and especially a matter of major concern for data-center operators (small or big). ARM being power efficient can save approximately 50% of the power compared to other architecture. This makes it help support Go-Green initiative.</p>
+<h2 id="ARM-is-Next-Gen-processor"><a href="#ARM-is-Next-Gen-processor" class="headerlink" title="ARM is Next-Gen processor"></a><span style="color:#4885ed">ARM is Next-Gen processor</span></h2><p>It is interesting why I referred to it this way. Next generation kids are actively using kits like Andrino, Raspberry Pi, Odroid, Banana Pi, Asus tinker board, etc…. to build some of the next-gen system. These kids will be defining the next generation of computing. Given they started with ARM their social community has grown around ARM in the next few years there would be an army of ARM users/developers with a very active community.</p>
+<p>All the groundwork and good things that are being built at this stage around ARM will be pushed to the next level once this workforce becomes active.</p>
+<h2 id="ARM-in-Desktop-Laptop"><a href="#ARM-in-Desktop-Laptop" class="headerlink" title="ARM in Desktop/Laptop"></a><span style="color:#4885ed">ARM in Desktop/Laptop</span></h2><p>This is catching up fast and no wonder if we start seeing ARM based Desktop/PC workstation/Laptop (there are already few) commonly being used.</p>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a><span style="color:#4885ed">Conclusion</span></h2><p>The ARM Ecosystem looks a lot more fascinating and full of new challenges and opportunities. Current decade will be ruled by ARM based processors and it will be everywhere from tiny wearable devices to high-end movie experience, from auto-driving cycle/car to jumbo jet/space-craft. It is estimated that there would be 35 active ARM power devices per person. That’s Ocean of Opportunity.</p>
+<p><em>If you have any comments feel free to drop an email (check about section)</em></p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/04/28/pao-benchmark-dang-xin-ni-de-xin/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">跑benchmark？当心你的芯</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/04/24/arm-xu-yao-liao-jie-de-bei-jing-he-wen-ti/">
+                <span class="level-item">ARM: 需要了解的背景和问题</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 24,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="ARM, 真的来了！" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

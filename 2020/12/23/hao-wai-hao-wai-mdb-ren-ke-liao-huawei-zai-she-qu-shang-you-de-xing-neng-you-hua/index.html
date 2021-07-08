@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>号外号外，MDB认可了Huawei在社区上游的性能优化 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: bzhaoopenstack 2020年是非常令人难忘的一年，2020年是我们包含的无数个首次，居家隔离，在家办公，千辛万苦从老家赶往单位上班，从艰难的上班路程一直到现在越来越趋于正常的环境。回想这一整年，我们从今年年后开始组建团队在社区上游进行鲲鹏优化相关的工作，一开始我们只有两个人，到现在的初具规模，伙伴们从一个ARM优化小白成长到能够独挡一面的先驱者，这一年的经历相信会在我们的人生当">
+<meta property="og:type" content="article">
+<meta property="og:title" content="号外号外，MDB认可了Huawei在社区上游的性能优化">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/12/23/hao-wai-hao-wai-mdb-ren-ke-liao-huawei-zai-she-qu-shang-you-de-xing-neng-you-hua/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: bzhaoopenstack 2020年是非常令人难忘的一年，2020年是我们包含的无数个首次，居家隔离，在家办公，千辛万苦从老家赶往单位上班，从艰难的上班路程一直到现在越来越趋于正常的环境。回想这一整年，我们从今年年后开始组建团队在社区上游进行鲲鹏优化相关的工作，一开始我们只有两个人，到现在的初具规模，伙伴们从一个ARM优化小白成长到能够独挡一面的先驱者，这一年的经历相信会在我们的人生当">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-12-23T12:12:17.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="号外号外，MDB认可了Huawei在社区上游的性能优化" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="号外号外，MDB认可了Huawei在社区上游的性能优化" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-12-23T12:12:17.000Z">2020-12-23</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                号外号外，MDB认可了Huawei在社区上游的性能优化
+            
+        </h1>
+        <div class="content">
+            <p>作者: bzhaoopenstack</p>
+<p>2020年是非常令人难忘的一年，2020年是我们包含的无数个首次，居家隔离，在家办公，千辛万苦从老家赶往单位上班，从艰难的上班路程一直到现在越来越趋于正常的环境。回想这一整年，我们从今年年后开始组建团队在社区上游进行鲲鹏优化相关的工作，一开始我们只有两个人，到现在的初具规模，伙伴们从一个ARM优化小白成长到能够独挡一面的先驱者，这一年的经历相信会在我们的人生当中留下浓重的一笔。</p>
+<a id="more"></a>
+
+<hr>
+<p>就在昨天，通过组内的不懈努力，我们在MariaDB开源社区上游获得社区官方的认可，团队中的大佬<a href="https://github.com/MariaDB/server/pulls?q=is%3Apr+author%3Amysqlonarm+">Krunal Bauskar</a>榜上有名，同时还有来自ARM公司的<a href="https://github.com/MariaDB/server/pulls?q=is%3Apr+author%3Aguyuqi">Gu Yuqi</a>和AWS的<a href="https://github.com/MariaDB/server/pulls?q=is%3Apr+author%3Atsahee">Tsahi Zidenberg</a>。这是社区对我们的承认，感谢社区，期望我们今后能够为越来越多的幕后英雄鼓掌。</p>
+<p>我们浏览一下来自MariaDB Foundation的<a href="https://mariadb.org/author/vicentiu/">Vicențiu Ciorbaru</a>在<a href="https://mariadb.org/arm-improvements-in-2020/">信中</a>描述的，原文参见<a href="https://mariadb.org/arm-improvements-in-2020/">这里</a>:</p>
+<p>在2020年， 各行各业有很多ARM架构的声音。对于MariaDB来说，情况也是一样的。首先，在今年，我们已经扩展了<a href="https://buildbot.mariadb.org/">测试基础架构</a>，用以在ARM上的覆盖更多Linux发行版（Debian,Ubuntu,Fedora,CentOS,RedHat），我们正在为所有这些Linux发行版构建MariaDB软件包。除了现有的RPM和DEB包之外，下一个MariaDB发行版的tar包还将包括可在ARM上运行的二进制文件。</p>
+<p>所有的这些都离不开<a href="https://buildbot.mariadb.org/#/sponsor">华为</a>的帮助，华为已经给我们捐赠几台ARM构建机器用于扩展测试基础架构来满足这项工作的需求。我们坚信，只有通过在尽可能多平台上进行测试，使用尽可能多的编译器，我们才能保证MariaDB的高性能和稳定性。旁注，社区仍然缺少SPARC硬件，如果您碰巧有可用的硬件，请告诉我们。</p>
+<p>此外，我们还要感谢<a href="https://github.com/MariaDB/server/pulls?q=is%3Apr+author%3Amysqlonarm+">Krunal Bauskar</a>, <a href="https://github.com/MariaDB/server/pulls?q=is%3Apr+author%3Aguyuqi">Gu Yuqi</a> 和<a href="https://github.com/MariaDB/server/pulls?q=is%3Apr+author%3Atsahee">Tsahi Zidenberg</a>为我们增强了ARM的性能和相关错误的修复。</p>
+<p>为了获得最佳性能，编写代码时应考虑到底层硬件。这就是为什么性能关键代码尽可能使用本机指令的原因。这种情况就是计算crc32c校验和，由Gu Yuqi通过<a href="https://github.com/MariaDB/server/pull/772">PR 772</a>贡献。Krunal在此工作上引入了<a href="https://github.com/MariaDB/server/pull/1558">PR 1558</a>，其中统一了crc32库，并尽可能使用SIMD（单指令，多数据）包装器来确保运行高效。此外，某些任务，如检测代码或计时相关的函数调用，需要非常精确的计时器。通过添加本机ARM代码，my_timer_cycles()引入了精确的硬件计时器。这是通过<a href="https://github.com/MariaDB/server/pull/1620">PR 1620</a>实现的，与此同时还能通过编译器标志来改进原子操作性能。</p>
+<p>我们感谢社区参与确保MariaDB利用所有可用的硬件功能，我们期待获得更多！</p>
+<p>谢谢！</p>
+<p>相当振奋啊，不过我们的文风不应该是纯粹的吹捧，干货还是要的。下面我们分析一下，信中提及的MariaDB在ARM上的硬件优化。</p>
+<p><a href="https://github.com/MariaDB/server/pull/772">PR 772</a>这个PR比较好的阐释了如何将一个底层硬件功能开放到上层软件，代码结构非常清晰。从crc32.cmake自适应底层架构进行分支选择，使用ARM v8加密指令优化crc32c计算密集型任务，放弃使用原本的线性crc指令，提升CPU的稳定性。引入了新的extension, 位置在<a href="https://github.com/MariaDB/server/pull/772/files#diff-ce0e7ad79f5f94a9900f6c5e712e3e53c5ed5aaafee265057bce1fbac0bc453d">extra/crc32_armv8_neon/crc32_armv8.c</a>，都是底层汇编的适配。x86使用的是crc32b和crc32q汇编指令完成CRC32C校验值计算功能，而Arm64平台使用crc32cb、crc32ch、crc32cw、crc32cx 4个汇编指令完成CRC32C校验值计算功能。</p>
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>输入数据位宽（bit）</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>crc32cb</td>
+<td>8</td>
+<td>适用输入数据位宽为8bit，可用于替换x86的crc32b汇编指令。</td>
+</tr>
+<tr>
+<td>crc32ch</td>
+<td>16</td>
+<td>适用输入数据位宽为16bit。</td>
+</tr>
+<tr>
+<td>crc32cw</td>
+<td>32</td>
+<td>适用输入数据位宽为32bit。</td>
+</tr>
+<tr>
+<td>crc32cx</td>
+<td>64</td>
+<td>适用输入数据位宽为64bit，可用于替换x86的crc32q汇编指令。</td>
+</tr>
+</tbody></table>
+<p>更多的请参考官方文档，或者<a href="https://support.huaweicloud.com/pinsrcase-kunpengprocs/kunpengprocessor_18_0006.html">这里</a></p>
+<p><a href="https://github.com/MariaDB/server/pull/1558">PR 1558</a>这个PR是基于<a href="https://github.com/MariaDB/server/pull/772">PR 772</a>进行的改进，引入位于<a href="https://github.com/MariaDB/server/pull/1557/files#diff-649660bc396e7e68dd1f03cfc276d2ef6604e5e5b32f9d389e5c1683414d1eed">mysys/checksum.c</a>的上层接口，用于计算表和binlog校验和。并对powerpc，X86和ARM平台都进行了优化，X86使用的是PCLMUL指令，ARM使用ACLE调用底层指令替代了默认的zlib-crc32。同时对相关checksum使用的调用进行了规整，梳理出了对应所有硬件平台的内部上层接口，包含x86, ARM, POWERPC等等硬件平台，使其尽量使用底层硬件加速，避免回退到zlib crc32软实现。回看这里，对于ARM，亮点不但是使用了底层加速，还是基于SIMD思想的。那么，</p>
+<p>What is SIMD？</p>
+<p>通常我们进行多媒体处理的时候,很多的数据都是16位或者8位的,如果这些程序运行在32位的机器上,那么计算机有一部分的计算单元是没有工作的.所以这是一种浪费.为了更好的使用那些被浪费的资源.SIMD就应运而生了.SIMD这种技术就是使用一条指令，但对多个相同类型和尺寸的数据进行并行处理.就像我们现实生活中的好几个人都在做同一件事情那样,这样就可以将速度提升很多倍.</p>
+<p>这个PR干了啥？看<a href="https://github.com/MariaDB/server/pull/1557/files#diff-ce0e7ad79f5f94a9900f6c5e712e3e53c5ed5aaafee265057bce1fbac0bc453d">extra/crc32_armv8_neon/crc32_armv8.c</a></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;* There are multiple approaches to calculate crc.</span><br><span class="line">Approach-1: Process 8 bytes then 4 bytes then 2 bytes and then 1 bytes</span><br><span class="line">Approach-2: Process 8 bytes and remaining workload using 1 bytes</span><br><span class="line">Apporach-3: Process 64 bytes at once by issuing 8 crc call and remaining</span><br><span class="line">            using 8&#x2F;1 combination.</span><br><span class="line">Based on micro-benchmark testing we found that Approach-2 works best especially</span><br><span class="line">given small chunk of variable data. *&#x2F;</span><br></pre></td></tr></table></figure>
+
+<p>充分测试后，上述第二种的性能最高，特别是在小块数据的场景中，好底层啊，算法和原理参考<a href="http://www.baiheee.com/Documents/090107/090107122214.htm">这里</a>，同时测出来的数据就是这么表现的。看着其实就是运算时合理利用闲置的硬件资源，尽量保证使用更多的硬件，ARM的有效性体现的淋漓尽致，估计后面的优化工作会有大量相关的代码优化。</p>
+<p>然后，我抱着试试看的态度，将这两个PR进行了测试，结果还是比较喜人的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">without patch</span><br><span class="line">mysql&gt; checksum table test.sbtest1;</span><br><span class="line">+--------------+------------+</span><br><span class="line">| Table | Checksum |</span><br><span class="line">+--------------+------------+</span><br><span class="line">| test.sbtest1 | 3664919850 |</span><br><span class="line">+--------------+------------+</span><br><span class="line">1 row in set (15.06 sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; checksum table test.sbtest2;</span><br><span class="line">+--------------+------------+</span><br><span class="line">| Table | Checksum |</span><br><span class="line">+--------------+------------+</span><br><span class="line">| test.sbtest2 | 2870489758 |</span><br><span class="line">+--------------+------------+</span><br><span class="line">1 row in set (15.07 sec)</span><br><span class="line"></span><br><span class="line">with patch</span><br><span class="line">-----------------</span><br><span class="line">mysql&gt; checksum table test.sbtest1;</span><br><span class="line">+--------------+------------+</span><br><span class="line">| Table | Checksum |</span><br><span class="line">+--------------+------------+</span><br><span class="line">| test.sbtest1 | 3664919850 |</span><br><span class="line">+--------------+------------+</span><br><span class="line">1 row in set (7.35 sec)</span><br><span class="line"></span><br><span class="line">mysql&gt; checksum table test.sbtest2;</span><br><span class="line">+--------------+------------+</span><br><span class="line">| Table | Checksum |</span><br><span class="line">+--------------+------------+</span><br><span class="line">| test.sbtest2 | 2870489758 |</span><br><span class="line">+--------------+------------+</span><br><span class="line">1 row in set (7.41 sec)</span><br></pre></td></tr></table></figure>
+
+<p>你发现了什么？我们发现了合入后checksum时间由15秒降到了7.4秒，近50%性能提升！</p>
+<p><a href="https://github.com/MariaDB/server/pull/1620">PR 1620</a>引入了两个东西，一个是引入了gcc <code>-moutline-atomics</code>能让应用自定义原子操作，另外将硬件时钟引入到mysql/innodb自己的时钟周期，这样，让程序代码执行时间的衡量可以精确到CPU Cycle级别，是不是有种合二为一的感觉。其实这类具体的做法比较早的就有人发出来了，可以参考<a href="https://ilinuxkernel.com/?p=1755">这里</a>,这一点说明软件可以更贴近硬件来做优化。</p>
+<p>总的来说，硬件适配及底层硬件功能应用在ARM上也才刚刚起步，尤其是在开源社区上游，我们要做的工作还有很多，但是目前来看，ARM的潮流已经来了，苹果的M1，以及最近微软宣称自己也要开始研发自己的ARM芯片，这说明ARM的圈子慢慢变大，从最开始的ARM，到ARM + 华为 + AWS，到现在广大的群体。其实作为云厂商的AWS给我们上了非常重要的一课，排老大到底是有原因的，作为未来厂商的发展，一定是软硬结合的这种结构，所以软件生态牵引硬件这种模式应该会持续很久。</p>
+<p>好了，ARM是否能独闯一片天地，现在的趋势说明了一切，对于鲲鹏来说，我觉得是非常好的势头，让我们拭目以待吧。</p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2021/07/07/need-for-external-compression-methods-in-postgresql/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">Need for external compression methods in PostgreSQL</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/12/15/test-mariadb-connect-storage-engine-on-arm64-platform/">
+                <span class="level-item">Test MariaDB CONNECT storage engine on arm64 platform</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 73,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="号外号外，MDB认可了Huawei在社区上游的性能优化" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>Building Linux packages for different CPU architectures with Docker and QEMU - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: Martin Grigorov 原文链接: https:&#x2F;&#x2F;medium.com&#x2F;@martin.grigorov&#x2F;building-linux-packages-for-different-cpu-architectures-with-docker-and-qemu-d29e4ebc9fa5 Many Linux open source projects provide only sou">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Building Linux packages for different CPU architectures with Docker and QEMU">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/04/23/building-linux-packages-for-different-cpu-architectures-with-docker-and-qemu/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: Martin Grigorov 原文链接: https:&#x2F;&#x2F;medium.com&#x2F;@martin.grigorov&#x2F;building-linux-packages-for-different-cpu-architectures-with-docker-and-qemu-d29e4ebc9fa5 Many Linux open source projects provide only sou">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-04-23T03:00:37.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="虚拟化">
+<meta property="article:tag" content="Packaging">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="Building Linux packages for different CPU architectures with Docker and QEMU" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="Building Linux packages for different CPU architectures with Docker and QEMU" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-04-23T03:00:37.000Z">2020-04-23</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">虚拟化</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                Building Linux packages for different CPU architectures with Docker and QEMU
+            
+        </h1>
+        <div class="content">
+            <p>作者: Martin Grigorov</p>
+<p>原文链接: <a href="https://medium.com/@martin.grigorov/building-linux-packages-for-different-cpu-architectures-with-docker-and-qemu-d29e4ebc9fa5">https://medium.com/@martin.grigorov/building-linux-packages-for-different-cpu-architectures-with-docker-and-qemu-d29e4ebc9fa5</a></p>
+<p>Many Linux open source projects provide only source code releases. To be able to use them the users need to download the source code and to build it, usually by executing steps like: <code>./configure</code>,<code>make</code> and <code>make install</code>.</p>
+<p>Some users prefer this way because they have the chance to configure the software by passing specific arguments to the <code>./configure</code> script. It is also the preferred way from security point of view — the person responsible for managing the system is certain that this is the original version of the source code and no one added anything on top.</p>
+<a id="more"></a>
+
+<p>Still many users prefer to download a binary package and install it, or to use the package management software of their favorite Linux distribution, e.g. yum for RedHat/CentOS/Fedora or apt for Debian/Ubuntu flavors. Here the benefit is that the dependencies are installed automatically for you.</p>
+<p>Some of the open source projects provide binary packages for download themselves. Others delegate the packaging task to their community or to the Linux distributions to package the software following the best practices for the specific package type. They do this for different reasons but most often because:</p>
+<p>1) it is an extra burden — the software developers do not want to deal with “bureaucracy” different their domain of expertise</p>
+<p>2) there are many Linux distributions with their specific packaging types, e.g. .deb, .rpm, .apk, etc. One needs to read a lot of documentation to understand each of them</p>
+<p>3) another reason is because one may need specific hardware to be able to build a package for not so common CPU architectures. Usually developers work on Intel or AMD based computers known as x86_64 CPU architecture. But if your software needs to run on mobile phones or tables and Internet of Things (IoT) devices then you need to produce a binary for ARM architecture, also known as AARCH. ARMv7 and before is 32-bit. ARMv8, also known as aarch64, is 64-bit. Lately even more and more cloud providers recommend ARM64 CPUs because they have similar performance to the x86_64 ones but consume less electricity, so they are cheaper to rent and environment friendlier.</p>
+<p>In the rest of this article I’m going to show you how to build and package your software for ARM on x86_64 computer by using Docker and QEMU.</p>
+<h2 id="What-is-Docker"><a href="#What-is-Docker" class="headerlink" title="What is Docker ?"></a>What is Docker ?</h2><p>From Wikipedia: Docker is a set of platform as a service (PaaS) products that uses OS-level virtualization to deliver software in packages called containers. Containers are isolated from one another and bundle their own software, libraries and configuration files; they can communicate with each other through well-defined channels. All containers are run by a single operating system kernel and therefore use fewer resources than virtual machines.</p>
+<h2 id="What-is-QEMU"><a href="#What-is-QEMU" class="headerlink" title="What is QEMU ?"></a>What is QEMU ?</h2><p>From Wikipedia: QEMU (short for Quick EMUlator) is a free and open-source emulator that performs hardware virtualization. QEMU is a hosted virtual machine monitor: it emulates the machine’s processor through dynamic binary translation and provides a set of different hardware and device models for the machine, enabling it to run a variety of guest operating systems. It also can be used with KVM to run virtual machines at near-native speed (by taking advantage of hardware extensions such as Intel VT-x). QEMU can also do emulation for user-level processes, allowing applications compiled for one architecture to run on another.</p>
+<p>Most of the cloud based Continuous Integration (CI) providers (e.g. TravisCI, CircleCI, DroneCI, Github Actions, and more) use Docker to provide you with a throw-away Docker container (a Linux instance) which you can modify the way you need, for example by installing required dependencies of your software or by even changing kernel settings, and then to build/test/package your software. Once your CI job finishes the docker container is discarded and the resources freed for the new CI job. The jobs are fully isolated from each other and this makes your build reproducible because they always start from the same state and there is nothing left from a previous job.</p>
+<h2 id="Building"><a href="#Building" class="headerlink" title="Building"></a>Building</h2><p>The process of building your software consists of two main steps:</p>
+<h3 id="1-register-QEMU-binfmt"><a href="#1-register-QEMU-binfmt" class="headerlink" title="1) register QEMU/binfmt"></a>1) register QEMU/binfmt</h3><p>If you try to run a Docker container that is built for a different CPU architecture than the host’s it will fail with this error:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ docker run -it — rm arm64v8&#x2F;centos:8 uname -m</span><br><span class="line">standard_init_linux.go:211: exec user process caused “exec format error”</span><br></pre></td></tr></table></figure>
+<p>To be able to run such foreign architectures one may use QEMU! Someone made the installation step as simple as executing:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ docker run -it — rm — privileged multiarch&#x2F;qemu-user-static — credential yes — persistent yes</span><br></pre></td></tr></table></figure>
+
+<p>What this does is:</p>
+<p> 1.2) run a Docker container that modifies the host. If it is executed inside a Docker container then it will modify the outer container.<br> 1.3) The — privileged argument gives permissions to the Docker container to modify the host. In case it is run in a CI server then the host is the outer Docker container, the one allocated for our CI job.<br> 1.4) The — credential yes argument is needed only if you need to use sudo later in step 2).<br> 1.5) The — persistent yes argument tells it to load the interpreter when binfmt is configured and remains in memory. All future uses clone the interpreter from memory.</p>
+<p>If the execution of the command above is successful you should see output similar to the following:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-alpha-static as binfmt interpreter for alpha</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-arm-static as binfmt interpreter for arm</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-armeb-static as binfmt interpreter for armeb</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-sparc-static as binfmt interpreter for sparc</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-sparc32plus-static as binfmt interpreter for sparc32plus</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-sparc64-static as binfmt interpreter for sparc64</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-ppc-static as binfmt interpreter for ppc</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-ppc64-static as binfmt interpreter for ppc64</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-ppc64le-static as binfmt interpreter for ppc64le</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-m68k-static as binfmt interpreter for m68k</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-mips-static as binfmt interpreter for mips</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-mipsel-static as binfmt interpreter for mipsel</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-mipsn32-static as binfmt interpreter for mipsn32</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-mipsn32el-static as binfmt interpreter for mipsn32el</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-mips64-static as binfmt interpreter for mips64</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-mips64el-static as binfmt interpreter for mips64el</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-sh4-static as binfmt interpreter for sh4</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-sh4eb-static as binfmt interpreter for sh4eb</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-s390x-static as binfmt interpreter for s390x</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-aarch64-static as binfmt interpreter for aarch64</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-aarch64_be-static as binfmt interpreter for aarch64_be</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-hppa-static as binfmt interpreter for hppa</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-riscv32-static as binfmt interpreter for riscv32</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-riscv64-static as binfmt interpreter for riscv64</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-xtensa-static as binfmt interpreter for xtensa</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-xtensaeb-static as binfmt interpreter for xtensaeb</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-microblaze-static as binfmt interpreter for microblaze</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-microblazeel-static as binfmt interpreter for microblazeel</span><br><span class="line">Setting &#x2F;usr&#x2F;bin&#x2F;qemu-or1k-static as binfmt interpreter for or1k</span><br></pre></td></tr></table></figure>
+<p>Now if we try to run the foreign Docker image it will succeed:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ docker run -it — rm arm64v8&#x2F;centos:8 uname -m</span><br><span class="line">aarch64</span><br></pre></td></tr></table></figure>
+<p>The above tells us that uname -m executed inside arm64v8/centos:8 container returns that the CPU architecture is aarch64!</p>
+<p>If you want to understand how QEMU/binfmt works you can read its documentation but it is not required to know more for the purpose of this article.</p>
+<h3 id="2-Build-your-software"><a href="#2-Build-your-software" class="headerlink" title="2) Build your software"></a>2) Build your software</h3><p>All we need to do now is to run the usual build steps (e.g. ./configure, make, make test, etc.) inside the foreign Docker container.</p>
+<p>2.1) Create a Dockerfile that uses as a base image any image with foreign architecture, like arm64v8/centos:8 above.<br>2.2) run the scripts</p>
+<p>One can use Docker’s RUN commands, e.g.</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">RUN make</span><br><span class="line">RUN make test</span><br></pre></td></tr></table></figure>
+<p>but this may get wild if you need to execute many steps!</p>
+<p>I prefer to put all these commands in a Shell script, copy it to the custom Docker image and finally execute it.</p>
+<p>The script may look like this:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">#!&#x2F;usr&#x2F;bin&#x2F;env bash</span><br><span class="line">apt install -y dependency1 dependency2 dependencyN</span><br><span class="line">.&#x2F;configure</span><br><span class="line">make</span><br><span class="line">make test</span><br></pre></td></tr></table></figure>
+
+<p>The Dockerfile will look something like:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">FROM arm64v8&#x2F;centos:8</span><br><span class="line">ADD build-test-and-package.sh &#x2F;usr&#x2F;bin</span><br><span class="line">CMD [“build-test-and-package.sh”]</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-Build-the-custom-image"><a href="#2-3-Build-the-custom-image" class="headerlink" title="2.3) Build the custom image"></a>2.3) Build the custom image</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ docker build -t my-arm-centos:8 .</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-4-Run-it"><a href="#2-4-Run-it" class="headerlink" title="2.4) Run it"></a>2.4) Run it</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ docker run — rm -it -v $(pwd):&#x2F;my-software my-arm-centos:8</span><br></pre></td></tr></table></figure>
+
+<p>Here we mount the current folder into /my-software folder inside the Docker container. build-test-and-package.sh needs to know this location to cd into it!</p>
+<p>Any result files, like the binary packages, could be saved in this folder or another mounted folder so that they can be consumed at the end of the CI workflow, e.g. to store them as artifacts of the build and copy them to AWS S3 or elsewhere.</p>
+<h2 id="In-action"><a href="#In-action" class="headerlink" title="In action"></a>In action</h2><p>You can see all this in action at Varnish Cache GitHub repository.</p>
+<p>It is a Pull Request suggesting to build, test and package Varnish Cache for CentOS 7 &amp; 8, Ubuntu 16.04 &amp; 18.04, Debian 8, 9 &amp; 10, and Alpine 3, for both x86_64 and aarch64.</p>
+<p>Expending it for more distros, versions or CPU architectures is as easy as adding an additional CircleCI job with the proper parameters.</p>
+<p>The build graph looks like:<br><img src="https://user-images.githubusercontent.com/1736354/80073339-33377c00-857a-11ea-869e-4abbc3949086.png" alt="graph"></p>
+<p>The dist and tar_pkg_tools jobs run first in parallel. The dist job packages the source distribution and tar_pkg_tools gets the packaging recipes for RPM, DEB and APK from here. Those are stored in CircleCI’s workflow workspace and made available for any following jobs.</p>
+<p>Once both of them finish the next jobs that run in parallel are the distcheck and the package jobs. distcheck jobs build Varnish Cache on different distros and the package jobs build the respective binary packages for each arch/distro/version triple.</p>
+<p>If everything is successful finally the collect_packages job exports all binary packages as CircleCI artifacts which are later copied to Package Cloud.</p>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>Using stable tools like Docker and QEMU makes it easier to build and test our software for different CPU architectures.</p>
+<p>There are few drawbacks though:</p>
+<p>1) it is an emulation of the foreign CPU architecture, so it is slower than doing it on a real hardware<br><strong>Note:</strong> Some cloud CI services like TravisCI and DroneIO provide support for ARM/ARM64. I have experience only with TravisCI and it is not faster than QEMU. I’ve had some small issues with it but it was easy to work them around. Hopefully it will become even better in the near future!</p>
+<p>2) you need to find a good base Docker image for the CPU architecture you need to support. There are many images at DockerHub but depending on how exotic your needs are it may be harder to find one.</p>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/Packaging/" rel="tag">Packaging</a>, <a class="has-link-grey -link" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/" rel="tag">虚拟化</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/04/24/arm-vs-x86-hadoop-xing-neng-da-bi-pin/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">ARM vs X86 Hadoop 性能大比拼</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/04/22/arm-shang-pao-mysql-neng-xing-ma/">
+                <span class="level-item">ARM上跑Mysql, 能行吗？</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 19,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="Building Linux packages for different CPU architectures with Docker and QEMU" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

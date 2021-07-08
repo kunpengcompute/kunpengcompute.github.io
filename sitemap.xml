@@ -1,0 +1,554 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/03/30/why-arm/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/03/30/rang-da-shu-ju-sheng-tai-zai-arm-jia-gou-xia-geng-shun-hua/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/03/31/running-mysql-on-arm-does-it-work/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/03/arm-cpu-vendor-ji-part-id-ying-she-guan-xi-chi-xu-geng-xin/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/24/arm-points-to-be-noted/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/08/04/arm-s-lse-for-atomics-and-mysql/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/24/arm-vs-x86-hadoop-xing-neng-da-bi-pin/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/22/arm-vs-x86-mysql-xing-neng-da-bi-pin/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/24/arm-zhen-de-lai-liao/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/24/arm-xu-yao-liao-jie-de-bei-jing-he-wen-ti/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/22/arm-shang-pao-mysql-neng-xing-ma/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/08/arm-you-hua-he-java-math-ku-you-guan-de-na-xie-keng/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/08/04/arm-shi-neng-landscape/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/05/13/apache-tomcat-x86-vs-arm64-xing-neng-bi-pin/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/08/04/backtraces-in-postgresql/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/23/building-linux-packages-for-different-cpu-architectures-with-docker-and-qemu/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/07/14/haproxy-x86-vs-arm64-xing-neng-bi-pin/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/03/linux-xia-huo-qu-armv8-a-cpu-xiang-qing-de-3-chong-fang-fa/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/05/20/memcached-x86-64-vs-arm64-xing-neng-dui-bi/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/08/mysql-on-x86-vs-arm/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/05/13/mysql-she-qu-arm-you-hua-hui-zong/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/05/28/numa-zhi-neng-quan-ju-ji-shu-qi-lai-zi-mysql-de-ling-gan/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/05/22/postgresql-arm-he-x86-xing-neng-bi-pin/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/14/understanding-innodb-rw-lock-stats/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/10/web-kai-yuan-fu-wu-zhi-arm64-xian-zhuang/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/06/24/li-yong-simd-vectorization-you-hua-postgresql/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/07/03/zhi-ding-numa-jie-dian-yun-xing-mysql/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/17/yuan-yu-kun-peng-hui-gui-she-qu-gnu-glibc-de-arm-you-hua-xiao-ji/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/15/li-jie-innodb-rw-lock-de-tong-ji-shu-ju/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/07/09/yong-mysql-eventmutex-lai-li-jie-nei-cun-ping-zhang-na-xie-shi-er/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/15/rang-github-action-zai-ni-de-arm-ji-qi-shang-pao-qi-lai/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/05/20/rang-ya-suo-ku-zstd-zai-aarch64-geng-shun-hua/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/04/28/pao-benchmark-dang-xin-ni-de-xin/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2021/07/08/a-quick-sanity-testing-of-postgresql-parallel-query-on-arm64/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/10/22/arm64-ban-ben-de-ubuntu-shang-an-zhuang-perf/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/08/29/aarch64-fu-wu-qi-ying-yong-ruan-jian-kai-fa-xu-yao-tian-jia-de-bian-yi-can-shu/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/11/24/arm64-ping-tai-shang-du-you-na-xie-hao-yong-de-mariadb-ke-hu-duan-ruan-jian/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/10/31/arm64-ban-ben-de-proxysql-gong-neng-ce-shi/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/08/backup-and-recovery-test-of-mariadb-on-arm64-platform/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/08/how-do-top-programming-languages-connect-to-mariadb-database-on-arm64-platform/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/08/hybrid-deployment-of-mariadb-cluster-on-x86-and-arm64/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/15/mariadb-de-connect-cun-chu-yin-qing-zai-arm64-ping-tai-shang-de-biao-xian/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/04/mariadb-de-s3-cun-chu-yin-qing-zai-arm64-ping-tai-shang-de-biao-xian/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/10/26/mariadb-ji-qun-zai-x86-he-arm64-shang-de-hun-he-bu-shu/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/08/monitor-mariadb-database-on-the-arm64-platform/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/11/11/mysql-innodb-cluster-on-arm64-gai-shu/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2021/07/07/need-for-external-compression-methods-in-postgresql/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/11/26/pg-nei-jian-de-pg-basebackup-zai-arm-ping-tai-de-biao-xian/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/08/31/postgresql-dui-wai-bu-ya-suo-fang-fa-de-su-qiu/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/15/test-mariadb-connect-storage-engine-on-arm64-platform/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/04/test-mariadb-s-s3-storage-engine-on-arm64-platform/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/11/14/zhu-liu-kai-fa-yu-yan-ru-he-zai-arm64-ping-tai-shang-lian-jie-mariadb-shu-ju-ku/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/09/20/guan-yu-yuan-zi-cao-zuo-he-ruo-nei-cun-xu/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/23/hao-wai-hao-wai-mdb-ren-ke-liao-huawei-zai-she-qu-shang-you-de-xing-neng-you-hua/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/11/27/zai-arm-ping-tai-shang-wan-zhuan-perl/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/11/09/zai-arm64-ping-tai-shang-chuang-jian-mariadb-de-docker-jing-xiang-bing-zai-k8s-huan-jing-shang-bu-shu/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/11/04/zai-arm64-ping-tai-shang-dui-mariadb-jin-xing-bei-fen-hui-fu-ce-shi/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/11/26/zai-arm64-ping-tai-shang-ce-shi-percona-toolkit/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/11/20/zai-arm64-ping-tai-shang-jian-kong-mariadb-shu-ju-ku-de-xing-neng-he-yun-xing-qing-kuang/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/10/26/ji-yu-bucardo-jian-li-postgresql-zhu-zhu-hun-he-ji-qun-x86-arm-bu-shu/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/2020/12/07/zi-xuan-suo-de-yuan-li-yu-you-hua/</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/projects/index.html</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/about/index.html</loc>
+    
+    <lastmod>2021-07-08</lastmod>
+    
+  </url>
+  
+
+  <url>
+    <loc>https://kunpengcompute.github.io/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/tags/Java/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/tags/Web/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/tags/Packaging/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/tags/%E4%BC%9A%E8%AE%AE/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
+    <loc>https://kunpengcompute.github.io/categories/Web/</loc>
+    <lastmod>2021-07-08</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+</urlset>

@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>NUMA 智能全局计数器 -- 来自MySQL的灵感 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;NUMA-Smart-Global-Counter&#x2F; 通过之前在X86, ARM虚机上的调研，与遇到的跨NUMA问题，结合自身在运行benchmark测试中的经验，让应用程序在针对特定的全局数据结构中更好的应用底层硬件，达到极致性能体验。下面来用数据说话。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NUMA 智能全局计数器 -- 来自MySQL的灵感">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/05/28/numa-zhi-neng-quan-ju-ji-shu-qi-lai-zi-mysql-de-ling-gan/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Krunal Bauskar原文链接: https:&#x2F;&#x2F;mysqlonarm.github.io&#x2F;NUMA-Smart-Global-Counter&#x2F; 通过之前在X86, ARM虚机上的调研，与遇到的跨NUMA问题，结合自身在运行benchmark测试中的经验，让应用程序在针对特定的全局数据结构中更好的应用底层硬件，达到极致性能体验。下面来用数据说话。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-05-28T06:49:20.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:41.492Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="NUMA 智能全局计数器 -- 来自MySQL的灵感" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="NUMA 智能全局计数器 -- 来自MySQL的灵感" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-05-28T06:49:20.000Z">2020-05-28</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                NUMA 智能全局计数器 -- 来自MySQL的灵感
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Krunal Bauskar<br>原文链接: <a href="https://mysqlonarm.github.io/NUMA-Smart-Global-Counter/">https://mysqlonarm.github.io/NUMA-Smart-Global-Counter/</a></p>
+<p>通过之前在X86, ARM虚机上的调研，与遇到的跨NUMA问题，结合自身在运行benchmark测试中的经验，让应用程序在针对特定的全局数据结构中更好的应用底层硬件，达到极致性能体验。下面来用数据说话。</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<p>在多线程系统中管理全局计数器一直是一项挑战。 它们是限制软件可扩展性的一大难题。NUMA 的引入只是增加了复杂性。 幸运的是，在硬件平台提供的支持下发现了多种选择，以帮助解决 / 缓解其中的一些问题。 在本博客中，我们将讨论如何使全局计数器感知NUMA，做到智能选择NUMA，并且看看每种方法对性能有什么影响。</p>
+<p>注意: 很多这方面的工作都是受 MySQL 代码库的启发，是由于MySQL 代码库不断发展中会尝试解决这个问题。</p>
+<h2 id="全局计数器"><a href="#全局计数器" class="headerlink" title="全局计数器"></a>全局计数器</h2><p>大部分软件(例如: 数据库、web-server等等)都需要维持全局计数器。 由于是全局的，这些计数器只有一个副本，有多个工作线程试图更新它。 当然，这复杂的更新需要进行精细的协调，单从这一点，在性能上它就成为可伸缩性的热点分析对象。</p>
+<p>另一种方式是松散地维护这些计数器（不加任何协调工作），但这意味着它们将表示一个近似的数字（特别是在竞争激烈的系统上）。这样不会对性能有过多影响，有一定的益处。</p>
+<p>让我们看看当前生态系统提供了哪些方法来帮助解决这个问题。</p>
+<h3 id="配置说明"><a href="#配置说明" class="headerlink" title="配置说明"></a>配置说明</h3><p>为了评估不同的方法，我们将考虑一个通用的设置。In order to evaluate different approaches we will consider a common setup.</p>
+<ul>
+<li>试想一些counter-block，它们位于全局级别，因此所有线程都会时不时地更新它们</li>
+<li>试想一些data-block(实际工作负载发生的地方) ，data-block的一部分操作会更新本地全局计数器。 每个数据块都有自己的本地计数器。 只要访问data-block，就会更新这些本地计数器。 这两个data-block是交错的。 请参阅以下的分布图</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog7/numa-counter-mem-allocation.png" alt="img"></p>
+<ul>
+<li>让我们通过一些简单的数值例子来理解这个结构。<ul>
+<li>假设我们有100个全局counter-block，每个data-block有10个counter。</li>
+<li>假设我们有1000个全局data-block，它们与counter-block互相交织在一起。</li>
+<li>这意味着，1-counter-block 计数器块之后是10个数据块，这样组合重复100次。</li>
+<li>这样可以确保在 NUMA 节点上分布完整的内存块，并且在访问计数器和data-block时可以看到对NUMA 产生的影响。</li>
+</ul>
+</li>
+<li>Workload (one-round):<ul>
+<li>将访问 n 个data-block(至少足以使 L2缓存失效)。</li>
+<li>作为data-block访问的一部分，还更新与data-block相关联的本地计数器。 data-block是使用 rand ()函数随机选择的，以确保扩散分布。</li>
+<li>接下来是从counter-block访问和更新全局计数器。 随机选择counter-block，并从中随机选择一个计数器(inc 操作)。 重复 M次。</li>
+</ul>
+</li>
+<li>Workload 循环 K 次(rounds).<ul>
+<li>每个线程执行上述Workload循环(K 次) ，从1-256 / 2048开始使用不同的可伸缩性进行基准测试。</li>
+</ul>
+</li>
+</ul>
+<p>注意: 计数器只是简单的uint64_t 值(目前只使用 inc 操作)。</p>
+<p>如果您有兴趣了解更多关于这方面的信息，您可以随时查看<a href="https://github.com/mysqlonarm/benchmark-suites/tree/master/numa/global-counters">这里</a>的详细代码。</p>
+<h3 id="使用的硬件描述"><a href="#使用的硬件描述" class="headerlink" title="使用的硬件描述"></a>使用的硬件描述</h3><ul>
+<li>x86-vm: 24 vCPU (12 cores with HT), 48 GB memory, 2 NUMA nodes, Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz (Ubuntu-18.04)</li>
+<li>arm-vm: 24 vCPU (24 cores), 48 GB memory, 2 NUMA nodes, Kunpeng 920 2.60 GHz (Ubuntu-18.04)</li>
+</ul>
+<p><strong>用于1-2048伸缩性测试的机器</strong></p>
+<ul>
+<li>arm-bms: 128 physical cores, 1 TB of memory, 4 NUMA nodes, Kunpeng 920 2.60 GHz (CentOS-7.8)</li>
+</ul>
+<p>我们的意图不是比较 x86和 ARM，而是比较 NUMA 对全局计数器的影响。</p>
+<h2 id="测试方案"><a href="#测试方案" class="headerlink" title="测试方案"></a>测试方案</h2><p>作为实验的一部分，我们评估了从基础到高级的多种方法。</p>
+<ul>
+<li><strong>pthread-mutex based:</strong> 保护计数器操作的简单 pthread mutexes</li>
+</ul>
+<ul>
+<li><strong>std::mutex:</strong> C++11 支持的 std::mutexes，和pthread mutexes很像，但是更容易使用。</li>
+</ul>
+<ul>
+<li><strong>std::atomic:</strong> C++11 原子变量。</li>
+</ul>
+<ul>
+<li><strong>fuzzy-counter (来自mysql):</strong> 有 n 个 cacheline 对齐的插槽。 随机选择要更新的一个插槽。 若要计算计数器的总值，需要从所有槽中添加值。 没有用于保护槽操作的互斥对象 / 原子对象。 这意味着数值是近似的，但是当需要想之前计算总是时效果最好。 我们将在结果部分看到一个方差系数。[ref: ib_counter_t. N 通常是核心的数量]</li>
+</ul>
+<ul>
+<li><strong>shard-atomic-counter (来自mysql):</strong> 计数器被分割成 N个分片(如上面的 slot)。 每个处理流程都需要知道更新哪个分片。 为了高效的访问，分片都做了cacheline对齐。 [ ref: Counter: : Shard ]</li>
+</ul>
+<ul>
+<li><strong>shard-atomic-counter (thread-id based):</strong> 计数器被分割成 N 个分片(如上面的槽)。 根据执行线程的线程 id 选择要更新的分片。 为了高效的访问，分片都做了cacheline对齐。[这里 N是活动核心的数量]</li>
+</ul>
+<ul>
+<li><p><strong>shard-atomic-counter (cpu-id based):</strong> 计数器被分割成 N个分片。 根据执行核心的 core-id 选择要更新的分片。 为了高效的访问，分片都做了cacheline对齐。[这里N是活动核心的数量。使用sched_getcpu获得cpu-id]</p>
+</li>
+<li><p><strong>shard-atomic-counter (numa-id based):</strong> 计数器被分成 N 个分片。 根据执行核心的 numa-node-id 选择要更新的碎片。 为了高效的访问，分片都做了cacheline对齐。 [这里 N 是活动节点数。 N比较小，在2 / 4 / 8范围内，不是32 / 64 / 128 /等]</p>
+</li>
+</ul>
+<p><em>值得一提的是Mysql 内部还有另一个计数器结构 ut_lock_free_cnt_t()。 它尝试为各自 NUMA 上的每个计数器(值)分配内存，但是在每个numa_alloc_onnode种，即使是8个字节的小块也会按照系统页面大小的分配( Linux 4KB)。 这是大大的空间浪费。 我尝试过这种方法，但由于超负荷的巨大内存，最终没能成功分配内存。</em></p>
+<p>让我们找出哪种方法在 NUMA 环境中最有效。</p>
+<h3 id="Benchmarking"><a href="#Benchmarking" class="headerlink" title="Benchmarking"></a>Benchmarking</h3><p>使用上面解释的结构和workflow进行基准测试。 每次运行分配好内存后，然后为每个可伸缩性测试运行 K 轮Workflow。 下面的Timing 包括处理数据和计数器的时间，但大部分时间来自计数器争用(通过压制data-block处理已确认)。</p>
+<ul>
+<li><strong>x86-vm [x轴: threads(1-256), y轴: time秒. 越低越好]</strong></li>
+</ul>
+<p><em>数据集:</em> 100 个global counter-block, 每个block中10个counter, 1m data-blocks (每个block一个本地counter), 循环10K次</p>
+<p><img src="https://mysqlonarm.github.io/images/blog7/x86.vm.1-256.png" alt="img"></p>
+<h4 id="点评"><a href="#点评" class="headerlink" title="点评"></a>点评</h4><ul>
+<li>正如预期的那样，<strong>带有 cpu-id</strong> 的 shard-atomic-counter 性能最好。</li>
+<li>值得注意的是，简单的原子操作也是最佳的，并且节省了大量的空间。(没有cacheline对齐)。可能是 VM 影响的</li>
+<li>另一个无法解释的行为: fuzzy counter被认为是最快的，但是测试中它不是最快的(我运行了3次同样的benchmark测试证实了这个现象。 在 ARM 上，它表现如预期的那样，因此不像是在基准测试代码出错导致的，需要再分析一下)。</li>
+</ul>
+<p><em>直线非常接近 / 重叠，因此为了确切的表述，共享一下具体数据。</em></p>
+<table>
+<thead>
+<tr>
+<th align="left">threads</th>
+<th align="left">p-mutex</th>
+<th align="left">std-mutex</th>
+<th align="left">atomic</th>
+<th align="left">fuzzy</th>
+<th align="left">shard-rand</th>
+<th align="left">shard-tid</th>
+<th align="left">shard-cpuid</th>
+<th align="left">shard-numaid</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">128</td>
+<td align="left">305.89</td>
+<td align="left">312.78</td>
+<td align="left">275.21</td>
+<td align="left">306.62</td>
+<td align="left">273.52</td>
+<td align="left">278.14</td>
+<td align="left">263.5</td>
+<td align="left">352.45</td>
+</tr>
+<tr>
+<td align="left">256</td>
+<td align="left">608.21</td>
+<td align="left">625.37</td>
+<td align="left">549.15</td>
+<td align="left">611.97</td>
+<td align="left">546.04</td>
+<td align="left">560.18</td>
+<td align="left">521.25</td>
+<td align="left">705.17</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li><strong>arm-vm [x轴: threads(1-256), y轴: time秒.  越低越好]</strong></li>
+</ul>
+<p><em>数据集:</em> 100 个global counter-block, 每个block中10个counter, 1m data-blocks (每个block一个本地counter), 循环10K次</p>
+<p><img src="https://mysqlonarm.github.io/images/blog7/arm.vm.1-256.png" alt="img"></p>
+<h4 id="点评-1"><a href="#点评-1" class="headerlink" title="点评"></a>点评</h4><ul>
+<li>同样，shard-atomic-counter (这次<strong>使用 thread-id</strong>)的得分高于其他方法。 (原因之一可能是在ARM上消耗巨大的sched_getcpu)。 [对于thread-id，线程开始时，在线程本地存储中缓存该线程的唯一标识符]</li>
+<li>FuzzyCounter正在帮助建立基线(假设没有争用的情况下)。</li>
+<li>老旧的 pthread-mutex 似乎也得到了优化</li>
+<li>令人感兴趣的是，随着可伸缩性的增加，ARM 似乎显示出较低的争用(可能是由于 NUMA 的互连性更好)。</li>
+</ul>
+<p><em>直线线条非常接近，在某些情况下也会重叠，因此为了更好的表述，数据如下。</em></p>
+<table>
+<thead>
+<tr>
+<th align="left">threads</th>
+<th align="left">p-mutex</th>
+<th align="left">std-mutex</th>
+<th align="left">atomic</th>
+<th align="left">fuzzy</th>
+<th align="left">shard-rand</th>
+<th align="left">shard-tid</th>
+<th align="left">shard-cpuid</th>
+<th align="left">shard-numaid</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">128</td>
+<td align="left">265.05</td>
+<td align="left">271.53</td>
+<td align="left">272.06</td>
+<td align="left">241.26</td>
+<td align="left">287.1</td>
+<td align="left">258.9</td>
+<td align="left">337.2</td>
+<td align="left">396.88</td>
+</tr>
+<tr>
+<td align="left">256</td>
+<td align="left">529.74</td>
+<td align="left">546.74</td>
+<td align="left">544.07</td>
+<td align="left">481.71</td>
+<td align="left">574.05</td>
+<td align="left">520</td>
+<td align="left">671.63</td>
+<td align="left">795.92</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li><strong>arm-bms [x轴: threads(1-2048), y轴: time秒. 越低越好]</strong></li>
+</ul>
+<p><em>数据集:</em> 100 个global counter-block, 每个block中10个counter, 1m data-blocks (每个block一个本地counter), 循环1K次</p>
+<p><img src="https://mysqlonarm.github.io/images/blog7/arm.bms.1-2048.png" alt="img"></p>
+<h4 id="点评-2"><a href="#点评-2" class="headerlink" title="点评"></a>点评</h4><ul>
+<li>Fuzzy-Counter 帮助设置基线，但是这次我们看到 shard-atomic-counter (<strong>带有thread-id</strong>)几乎与 Fuzzy-Counter (无争用情况)相当。 似乎这就是预期的最佳数字。</li>
+</ul>
+<p><em>直线非常接近，在某些情况下也会重叠，因此为了更好的表述，参看下列具体数据。 以防你没有注意到测试循环次数已经减少到了1K。 由于跨NUMA访问和增加的可伸缩性，保持循环10K次可能会造成更多的时间消耗，也会有更多的噪音。 (注意: 我们现在裸机有4个 NUMA节点)。</em></p>
+<table>
+<thead>
+<tr>
+<th align="left">threads</th>
+<th align="left">p-mutex</th>
+<th align="left">std-mutex</th>
+<th align="left">atomic</th>
+<th align="left">fuzzy</th>
+<th align="left">shard-rand</th>
+<th align="left">shard-tid</th>
+<th align="left">shard-cpuid</th>
+<th align="left">shard-numaid</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">128</td>
+<td align="left">62.81</td>
+<td align="left">63.9</td>
+<td align="left">66.24</td>
+<td align="left">57.37</td>
+<td align="left">64.24</td>
+<td align="left">54.09</td>
+<td align="left">57.67</td>
+<td align="left">72.08</td>
+</tr>
+<tr>
+<td align="left">256</td>
+<td align="left">115.39</td>
+<td align="left">119.53</td>
+<td align="left">126.52</td>
+<td align="left">102.68</td>
+<td align="left">119.01</td>
+<td align="left">102.13</td>
+<td align="left">106.3</td>
+<td align="left">140.83</td>
+</tr>
+<tr>
+<td align="left">512</td>
+<td align="left">228.2</td>
+<td align="left">234.5</td>
+<td align="left">252</td>
+<td align="left">199.71</td>
+<td align="left">241.69</td>
+<td align="left">205.66</td>
+<td align="left">211.29</td>
+<td align="left">279.81</td>
+</tr>
+<tr>
+<td align="left">1024</td>
+<td align="left">456.53</td>
+<td align="left">470.55</td>
+<td align="left">503.73</td>
+<td align="left">398.61</td>
+<td align="left">484.82</td>
+<td align="left">412.43</td>
+<td align="left">427.52</td>
+<td align="left">559.21</td>
+</tr>
+<tr>
+<td align="left">2048</td>
+<td align="left">913.58</td>
+<td align="left">953.56</td>
+<td align="left">1007.94</td>
+<td align="left">805.35</td>
+<td align="left">960.53</td>
+<td align="left">817.45</td>
+<td align="left">862.94</td>
+<td align="left">1132.56</td>
+</tr>
+</tbody></table>
+<hr>
+<p>让我们看看fuzzy-counter的近似因子，区别不是很大。</p>
+<table>
+<thead>
+<tr>
+<th align="left">threads</th>
+<th align="left">global-counter (expected)</th>
+<th align="left">global-counter (actual)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">128</td>
+<td align="left">20480000</td>
+<td align="left">20479994</td>
+</tr>
+<tr>
+<td align="left">256</td>
+<td align="left">40960000</td>
+<td align="left">40959987</td>
+</tr>
+<tr>
+<td align="left">512</td>
+<td align="left">81920000</td>
+<td align="left">81919969</td>
+</tr>
+<tr>
+<td align="left">1024</td>
+<td align="left">163840000</td>
+<td align="left">163839945</td>
+</tr>
+<tr>
+<td align="left">2048</td>
+<td align="left">327680000</td>
+<td align="left">327679875</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>Benchmark测试证明了，对全局计数器使用 CPU/thread 亲和性的性能最好。 当然，x86和 ARM 有不同的优化点，因此可以相应地调整 MySQL。 Fuzzy counter替换为atomic (或shard-atomic)，可以更好的节省空间和提高精度(在 x86平台上)。</p>
+<p><em>如果你有问题 / 疑问，请联系我。</em></p>
+</div>
+<div id="English" class="tab-content">
+
+<p>Managing global counters in a multi-threaded system has always been challenging. They pose serious scalability challenges. Introduction of NUMA just increased the complexity. Fortunately multiple options have been discovered with hardware lending support to help solve/ease some of these issues. In this blog we will go over how we can make Global Counter NUMA SMART and also see what performance impact each of this approach has.</p>
+<p>Note: a lot of this work is inspired from MySQL codebase that is continuously trying to evolve to solve this issue.</p>
+<h2 id="Global-Counters"><a href="#Global-Counters" class="headerlink" title="Global Counters"></a>Global Counters</h2><p>Most of the software (for example: database, web-server, etc…) needs to maintain some global counters. Being global, there is one copy of these counters and multiple worker threads try to update it. Of-course this invites a need of coordination while updating these copies and in turn it becomes scalability hotspots.</p>
+<p>Alternative is to loosely maintain these counters (w/o any coordination) but that means they will represent an approximate number (especially on a heavily contended system). But they have their own benefits.</p>
+<p>Let’s see what all approaches the current ecosystem provides to help solve this problem.</p>
+<h3 id="Setup"><a href="#Setup" class="headerlink" title="Setup"></a>Setup</h3><p>In order to evaluate different approaches we will consider a common setup.</p>
+<ul>
+<li>Let’s consider some global counters that are at global level so all threads update them once in a while.</li>
+<li>Let’s consider some data-blocks (where the real workload happens) and as part of this action global counters are updated. Each data-block has its own local counter(s). These local counters are updated whenever data-block is accessed. Both of these blocks are interleaved. Check the arrangement below.</li>
+</ul>
+<p><img src="https://mysqlonarm.github.io/images/blog7/numa-counter-mem-allocation.png" alt="img"></p>
+<ul>
+<li>Let’s try to understand this structure with some simple numeric examples.<ul>
+<li>Say we have 100 global counter-blocks and each data-block has 10 counters.</li>
+<li>Say we have 1000 global data-blocks that are equally interleaved with each counter block.</li>
+<li>That means, 1-counter-block is followed by 10-data-blocks and this combination repeats 100 times.</li>
+<li>This ensures complete memory blocks are distributed across NUMA nodes and we get to see the effect of NUMA while accessing the counters and data-blocks too.</li>
+</ul>
+</li>
+<li>Workload (one-round):<ul>
+<li>Flow will access N data-blocks (at-least enough to invalidate L2 cache).</li>
+<li>As part of the data-block access, local counter(s) associated with the data-block are also updated. Data blocks are randomly selected using rand() function to ensure spread-across distribution.</li>
+<li>This is followed with the access and update of global counters from the counter-block. Random counter-block is selected and a random counter from the selected counter block is updated (inc operation). This operation is repeated M times.</li>
+</ul>
+</li>
+<li>Workload loop is repeated K times (rounds).<ul>
+<li>Each thread executes the said workload loop (K times). Benchmarking is done with different scalability starting from 1-256/2048.</li>
+</ul>
+</li>
+</ul>
+<p>Note: Counter is simply uint64_t value (currently using inc operation only).</p>
+<p>If you are interested in understanding more about this you can always check out the detailed code <a href="https://github.com/mysqlonarm/benchmark-suites/tree/master/numa/global-counters">here</a>.</p>
+<h3 id="Hardware-used"><a href="#Hardware-used" class="headerlink" title="Hardware used"></a>Hardware used</h3><p><strong>For scaling from 1-256</strong></p>
+<ul>
+<li>x86-vm: 24 vCPU (12 cores with HT), 48 GB memory, 2 NUMA nodes, Intel(R) Xeon(R) Gold 6266C CPU @ 3.00GHz (Ubuntu-18.04)</li>
+<li>arm-vm: 24 vCPU (24 cores), 48 GB memory, 2 NUMA nodes, Kunpeng 920 2.60 GHz (Ubuntu-18.04)</li>
+</ul>
+<p><strong>For scaling from 1-2048</strong></p>
+<ul>
+<li>arm-bms: 128 physical cores, 1 TB of memory, 4 NUMA nodes, Kunpeng 920 2.60 GHz (CentOS-7.8)</li>
+</ul>
+<p>Idea is not to compare x86 vs ARM but the idea is to compare the effect of NUMA on the global counter.</p>
+<h2 id="Approches"><a href="#Approches" class="headerlink" title="Approches"></a>Approches</h2><p>As part of the experiment we evaluated different approaches right from basic to advanced.</p>
+<ul>
+<li><strong>pthread-mutex based:</strong> Simple pthread mutexes that protects operation on counter</li>
+</ul>
+<ul>
+<li><strong>std::mutex:</strong> C++11 enabled std::mutexes just like pthread mutexes but more easier to use with inherent C++11 support.</li>
+</ul>
+<ul>
+<li><strong>std::atomic:</strong> C++11 atomic variable.</li>
+</ul>
+<ul>
+<li><strong>fuzzy-counter (from mysql):</strong> There are N cacheline aligned slots. Flow randomly selects one of the slots to update. To find out the total value of the counter, add value from all the slots. There are no mutexes/atomic that protect the slot operations. This means value is approximate but works best when the flow needs likely count. We will see a variance factor below in result section. [ref: ib_counter_t. N is typically = number of cores].</li>
+</ul>
+<ul>
+<li><strong>shard-atomic-counter (from mysql):</strong> Counter is split into N shards (like slot above). Each flow tells which shard to update. Shards are cache lines aligned for better access. [ref: Counter::Shard]</li>
+</ul>
+<ul>
+<li><strong>shard-atomic-counter (thread-id based):</strong> Counter is split into N shards (like slot above). Shard to update is selected based on thread-id of executing thread. Shards are cache lines aligned for better access. [here N is number-of-active-cores]</li>
+</ul>
+<ul>
+<li><strong>shard-atomic-counter (cpu-id based):</strong> Counter is split into N shards. Shard to update is selected based on core-id of executing core. Shards are cache lines aligned for better access. [here N is number-of-active-cores. cpu-id obtained using sched_getcpu].</li>
+</ul>
+<ul>
+<li><strong>shard-atomic-counter (numa-id based):</strong> Counter is split into N shards. Shard to update is selected based on numa-node-id of the executing core. Shards are cache lines aligned for better access. [here N is number-of-active-numa-nodes. N is small here in the range of 2/4/8 not like 32/64/128/etc…]</li>
+</ul>
+<p><em>There is another counter structure inside MySQL that is worth mentioning ut_lock_free_cnt_t(). It tries to allocate memory for each counter (value) on respective NUMA but as per the numa_alloc_onnode even a smaller chunk of 8 bytes will cause allocation of system-page size (for Linux 4KB). That is too much space wastage. I tried this approach but eventually failed to allocate memory due to enormous memory over-head.</em></p>
+<p>Idea is to find out which approach works best in the NUMA environment.</p>
+<h3 id="Benchmarking-1"><a href="#Benchmarking-1" class="headerlink" title="Benchmarking"></a>Benchmarking</h3><p>Benchmarking is done using the structure and workload explained above. Each run allocates memory and then K rounds of workload loop per scalability. Timing below includes time to process data and counter but majority of it is coming from counter contention (confirmed by supressing data-block processing).</p>
+<ul>
+<li><strong>x86-vm [x-axis: threads(1-256), y-axis: time in seconds. Lesser is best]</strong></li>
+</ul>
+<p><em>Data-set:</em> 100 global counter blocks, 10 counters per block, 1m data-blocks (with a local counter per block), 10K rounds</p>
+<p><img src="https://mysqlonarm.github.io/images/blog7/x86.vm.1-256.png" alt="img"></p>
+<h4 id="Comments"><a href="#Comments" class="headerlink" title="Comments"></a>Comments</h4><ul>
+<li>As expected, shard-atomic-counter <strong>with cpu-id</strong> performs best. (cpu-id = sched_getcpu).</li>
+<li>Suprisingly, simple atomic is optimal too with significant space saved. (No cacheline alignment). May be VM effect.</li>
+<li>Another unexplained behavior: fuzzy counter which is expected to be fastest is not showing up to be fastest (I re-confirmed this behavior with 3 different runs. On ARM, it performing as expected so less likely something going wrong in the benchmarking code. More analysis to be done).</li>
+</ul>
+<p><em>Lines are pretty close/overlapping, so sharing the numeric numbers for higher-sclalability.</em></p>
+<table>
+<thead>
+<tr>
+<th align="left">threads</th>
+<th align="left">p-mutex</th>
+<th align="left">std-mutex</th>
+<th align="left">atomic</th>
+<th align="left">fuzzy</th>
+<th align="left">shard-rand</th>
+<th align="left">shard-tid</th>
+<th align="left">shard-cpuid</th>
+<th align="left">shard-numaid</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">128</td>
+<td align="left">305.89</td>
+<td align="left">312.78</td>
+<td align="left">275.21</td>
+<td align="left">306.62</td>
+<td align="left">273.52</td>
+<td align="left">278.14</td>
+<td align="left">263.5</td>
+<td align="left">352.45</td>
+</tr>
+<tr>
+<td align="left">256</td>
+<td align="left">608.21</td>
+<td align="left">625.37</td>
+<td align="left">549.15</td>
+<td align="left">611.97</td>
+<td align="left">546.04</td>
+<td align="left">560.18</td>
+<td align="left">521.25</td>
+<td align="left">705.17</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li><strong>arm-vm [x-axis: threads(1-256), y-axis: time in seconds. Lesser is best]</strong></li>
+</ul>
+<p><em>Data-set:</em> 100 global counter blocks, 10 counters per block, 1m data-blocks (with a local counter per block), 10K rounds</p>
+<p><img src="https://mysqlonarm.github.io/images/blog7/arm.vm.1-256.png" alt="img"></p>
+<h4 id="Comments-1"><a href="#Comments-1" class="headerlink" title="Comments"></a>Comments</h4><ul>
+<li>Again, shard-atomic-counter (this time <strong>with thread-id</strong>) scored better than other alternatives. (one of the reason could be sched_getcpu is costly on ARM). [For thread-id, flow cached thread unique identifier during creation, in thread-local storage].</li>
+<li>FuzzyCounter is helping establish baseline (given there is no-contention).</li>
+<li>Good old pthread-mutex seems to be optimized too.</li>
+<li>Intererstingly, ARM seems to be showing lower contention with increase scalability (may be due to better NUMA interconnect).</li>
+</ul>
+<p><em>Lines are pretty close and in some cases overlapping too, so sharing the numeric numbers for higher-sclalability.</em></p>
+<table>
+<thead>
+<tr>
+<th align="left">threads</th>
+<th align="left">p-mutex</th>
+<th align="left">std-mutex</th>
+<th align="left">atomic</th>
+<th align="left">fuzzy</th>
+<th align="left">shard-rand</th>
+<th align="left">shard-tid</th>
+<th align="left">shard-cpuid</th>
+<th align="left">shard-numaid</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">128</td>
+<td align="left">265.05</td>
+<td align="left">271.53</td>
+<td align="left">272.06</td>
+<td align="left">241.26</td>
+<td align="left">287.1</td>
+<td align="left">258.9</td>
+<td align="left">337.2</td>
+<td align="left">396.88</td>
+</tr>
+<tr>
+<td align="left">256</td>
+<td align="left">529.74</td>
+<td align="left">546.74</td>
+<td align="left">544.07</td>
+<td align="left">481.71</td>
+<td align="left">574.05</td>
+<td align="left">520</td>
+<td align="left">671.63</td>
+<td align="left">795.92</td>
+</tr>
+</tbody></table>
+<hr>
+<ul>
+<li><strong>arm-bms [x-axis: threads(1-2048), y-axis: time in seconds. Lesser is best]</strong></li>
+</ul>
+<p><em>Data-set:</em> 100 global counter blocks, 10 counters per block, 1m data-blocks (with a local counter per block), 1K rounds</p>
+<p><img src="https://mysqlonarm.github.io/images/blog7/arm.bms.1-2048.png" alt="img"></p>
+<h4 id="Comments-2"><a href="#Comments-2" class="headerlink" title="Comments"></a>Comments</h4><ul>
+<li>Fuzzy-Counter help set the baseline but this time we see shard-atomic-counter (<strong>with thread-id</strong>) is almost on-par with Fuzzy-Counter (non-contention use-case). That is like optimal number to expect.</li>
+</ul>
+<p><em>Lines are pretty close and in some cases overlapping too, so sharing the numeric numbers for higher-sclalability. Just incase you have not noticed the rounds has been reduced by 1K. Keeping it 10K increases timing like anything due to cross-numa access and increased scalability. (note: we are now on operating machine with 4 numa nodes).</em></p>
+<table>
+<thead>
+<tr>
+<th align="left">threads</th>
+<th align="left">p-mutex</th>
+<th align="left">std-mutex</th>
+<th align="left">atomic</th>
+<th align="left">fuzzy</th>
+<th align="left">shard-rand</th>
+<th align="left">shard-tid</th>
+<th align="left">shard-cpuid</th>
+<th align="left">shard-numaid</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">128</td>
+<td align="left">62.81</td>
+<td align="left">63.9</td>
+<td align="left">66.24</td>
+<td align="left">57.37</td>
+<td align="left">64.24</td>
+<td align="left">54.09</td>
+<td align="left">57.67</td>
+<td align="left">72.08</td>
+</tr>
+<tr>
+<td align="left">256</td>
+<td align="left">115.39</td>
+<td align="left">119.53</td>
+<td align="left">126.52</td>
+<td align="left">102.68</td>
+<td align="left">119.01</td>
+<td align="left">102.13</td>
+<td align="left">106.3</td>
+<td align="left">140.83</td>
+</tr>
+<tr>
+<td align="left">512</td>
+<td align="left">228.2</td>
+<td align="left">234.5</td>
+<td align="left">252</td>
+<td align="left">199.71</td>
+<td align="left">241.69</td>
+<td align="left">205.66</td>
+<td align="left">211.29</td>
+<td align="left">279.81</td>
+</tr>
+<tr>
+<td align="left">1024</td>
+<td align="left">456.53</td>
+<td align="left">470.55</td>
+<td align="left">503.73</td>
+<td align="left">398.61</td>
+<td align="left">484.82</td>
+<td align="left">412.43</td>
+<td align="left">427.52</td>
+<td align="left">559.21</td>
+</tr>
+<tr>
+<td align="left">2048</td>
+<td align="left">913.58</td>
+<td align="left">953.56</td>
+<td align="left">1007.94</td>
+<td align="left">805.35</td>
+<td align="left">960.53</td>
+<td align="left">817.45</td>
+<td align="left">862.94</td>
+<td align="left">1132.56</td>
+</tr>
+</tbody></table>
+<hr>
+<p>Let’s see approximation factor for fuzzy-counter. Not that major difference.</p>
+<table>
+<thead>
+<tr>
+<th align="left">threads</th>
+<th align="left">global-counter (expected)</th>
+<th align="left">global-counter (actual)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">128</td>
+<td align="left">20480000</td>
+<td align="left">20479994</td>
+</tr>
+<tr>
+<td align="left">256</td>
+<td align="left">40960000</td>
+<td align="left">40959987</td>
+</tr>
+<tr>
+<td align="left">512</td>
+<td align="left">81920000</td>
+<td align="left">81919969</td>
+</tr>
+<tr>
+<td align="left">1024</td>
+<td align="left">163840000</td>
+<td align="left">163839945</td>
+</tr>
+<tr>
+<td align="left">2048</td>
+<td align="left">327680000</td>
+<td align="left">327679875</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="Conclusion"><a href="#Conclusion" class="headerlink" title="Conclusion"></a>Conclusion</h2><p>Benchmark study has proved that using CPU/thread affinity for global counters works best. Of-course x86 and ARM has different optimization point so MySQL could be tuned accordingly. Fuzzy counter could be better replaced with atomic (or shard-atomic) given space saved and improved accurancy (on x86).</p>
+<p><em>If you have more questions/queries do let me know. Will try to answer them.</em></p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/06/24/li-yong-simd-vectorization-you-hua-postgresql/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">利用SIMD Vectorization优化PostgreSQL</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/05/22/postgresql-arm-he-x86-xing-neng-bi-pin/">
+                <span class="level-item">PostgreSQL ARM和X86性能比拼</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 33,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="NUMA 智能全局计数器 -- 来自MySQL的灵感" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

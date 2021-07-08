@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>A quick sanity testing of PostgreSQL parallel query on Arm64 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2021&#x2F;04&#x2F;a-quick-sanity-testing-of-parallel.html PG在很久之前就已经支持并行查询，但是对于Arm64平台它是否有完备性是需要考究的。有很大的可能是还没有人真正完备的测试过，下面我们">
+<meta property="og:type" content="article">
+<meta property="og:title" content="A quick sanity testing of PostgreSQL parallel query on Arm64">
+<meta property="og:url" content="https://kunpengcompute.github.io/2021/07/08/a-quick-sanity-testing-of-postgresql-parallel-query-on-arm64/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="译者: bzhaoopenstack作者: Amit Dattatray Khandekar原文链接: https:&#x2F;&#x2F;amitdkhan-pg.blogspot.com&#x2F;2021&#x2F;04&#x2F;a-quick-sanity-testing-of-parallel.html PG在很久之前就已经支持并行查询，但是对于Arm64平台它是否有完备性是需要考究的。有很大的可能是还没有人真正完备的测试过，下面我们">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2021-07-08T02:52:38.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="A quick sanity testing of PostgreSQL parallel query on Arm64" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="A quick sanity testing of PostgreSQL parallel query on Arm64" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2021-07-08T02:52:38.000Z">2021-07-08</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                A quick sanity testing of PostgreSQL parallel query on Arm64
+            
+        </h1>
+        <div class="content">
+            <p>译者: bzhaoopenstack<br>作者: Amit Dattatray Khandekar<br>原文链接: <a href="https://amitdkhan-pg.blogspot.com/2021/04/a-quick-sanity-testing-of-parallel.html">https://amitdkhan-pg.blogspot.com/2021/04/a-quick-sanity-testing-of-parallel.html</a></p>
+<p>PG在很久之前就已经支持并行查询，但是对于Arm64平台它是否有完备性是需要考究的。有很大的可能是还没有人真正完备的测试过，下面我们通过测试结果来看看它在ARM上的表现，同时理解并行查询的真正含义。</p>
+<a id="more"></a>
+
+<div class="tabs is-toggle"><ul>
+<li class="is-active"><a onclick="onTabClick(event)">
+<span>中文</span>
+</a></li>
+<li><a onclick="onTabClick(event)">
+<span>English</span>
+</a></li>
+</ul></div>
+
+<div id="中文" class="tab-content" style="display: block;">
+
+<h1 id="A-quick-sanity-testing-of-PostgreSQL-parallel-query-on-Arm64"><a href="#A-quick-sanity-testing-of-PostgreSQL-parallel-query-on-Arm64" class="headerlink" title="A quick sanity testing of PostgreSQL parallel query on Arm64"></a>A quick sanity testing of PostgreSQL parallel query on Arm64</h1><p>PostgreSQL已经支持查询并行很长时间了。PG社区中的人们称之为“Parallel query”，但现在它不仅限于SELECT查询。包括索引构建会均分到多个物理核心；甚至像VACUUM这样实用的程序现在也利用了并行技术。此外，社区正在努力并行化复制和插入操作。</p>
+<p>我乐于在ARM64平台上对此功能进行“健全性”检查。让我们一起看看进展如何。同时，我们将了解如何解释计划输出的并行化部分。本文不涉及子查询和分区；我会在另一个博客中介绍。<br>为了运行查询，我使用脚本<a href="https://github.com/tvondra/pg_tpch.git">https://github.com/tvondra/pg_tpch.git</a> 生成了一个scale-5 TPC-H基准模型.测试机器是一个8 CPU虚拟机，15GB内存，Ubuntu 18.04，运行在“鲲鹏920”2.6 GHz主机上。PostgreSQL构建使用的是git master分支，因此您可以在PostgreSQL 13和14之间的某个节点来进行分析。所有测试都是在max_parallel_workers_per_gather = 4的情况下运行的。这些表是预热的，所以我将seq_page_cost和random_page_Cost降低到0.1。                                                                     </p>
+<p>查询计划中省略了EXPLAIN输出中与JIT相关的部分，以保证关注的重点在主查询计划上。此外，为了使计划输出紧凑，我们也省略了执行估计成本。                                                      </p>
+<h3 id="并行顺序扫描"><a href="#并行顺序扫描" class="headerlink" title="并行顺序扫描"></a>并行顺序扫描</h3><p>这是最简单的一个，也是PostgreSQL 9.6中引入查询并行性功能的其中一个。</p>
+<p>仅仅一个简单的“select * from lineitem”不会执行并行扫描，因为所有元组都需要从workers传输到master后端。只有当这个元组传输成本足够小时，并行扫描才是有益的。因此，减少选定的行数：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">tpch&#x3D;# explain (analyze, costs off)</span><br><span class="line">tpch-# select l_orderkey from lineitem  where l_shipmode &#x3D; &#39;AIR&#39; and l_shipinstruct &#x3D; &#39;TAKE BACK RETURN&#39;;</span><br><span class="line"></span><br><span class="line">                                            QUERY PLAN</span><br><span class="line">--------------------------------------------------------------------------------------------------</span><br><span class="line"> Gather (actual time&#x3D;6.264..1776.956 rows&#x3D;1070891 loops&#x3D;1)</span><br><span class="line">   Workers Planned: 4</span><br><span class="line">   Workers Launched: 4</span><br><span class="line">   -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;6.959..1640.647 rows&#x3D;214178 loops&#x3D;5)</span><br><span class="line">         Filter: ((l_shipmode &#x3D; &#39;AIR&#39;::bpchar) AND (l_shipinstruct &#x3D; &#39;TAKE BACK RETURN&#39;::bpchar))</span><br><span class="line">         Rows Removed by Filter: 5785781</span><br><span class="line"> Planning Time: 0.205 ms</span><br><span class="line"> Execution Time: 1823.987 ms</span><br><span class="line"></span><br><span class="line">So parallel sequential scan took 1824 ms to execute. Let&#39;s compare this with sequential scan :</span><br><span class="line"></span><br><span class="line">tpch&#x3D;# set max_parallel_workers_per_gather TO  0; -- Disable parallelism</span><br><span class="line"></span><br><span class="line">                                         QUERY PLAN</span><br><span class="line">--------------------------------------------------------------------------------------------</span><br><span class="line"> Seq Scan on lineitem (actual time&#x3D;117.795..5077.520 rows&#x3D;1070891 loops&#x3D;1)</span><br><span class="line">   Filter: ((l_shipmode &#x3D; &#39;AIR&#39;::bpchar) AND (l_shipinstruct &#x3D; &#39;TAKE BACK RETURN&#39;::bpchar))</span><br><span class="line">   Rows Removed by Filter: 28928904</span><br><span class="line"> Planning Time: 0.101 ms</span><br><span class="line"> Execution Time: 5123.774 ms</span><br></pre></td></tr></table></figure>
+
+<p>并行顺序扫描会有2.5倍速率提升。</p>
+<p>在进行其他查询之前，介绍一下我们需要了解的背景…并行性是通过将表的块数据分配给workers来实现的，然后并行的workers将从分给它们的块数据中读取和处理元组。但是，如何确保没有两个workers扫描同一个块呢？毕竟，它们是并行运行的，因此应该确保每个块只由一个特定的worker扫描，否则结果将返回重复的行。为了实现这一目标，workers之间要进行协调。所有的worker都需要<em>意识到</em>它们都是并行运行的，因此workers保留了一个共享的“下一个要读取的块”指针，每个worker在选择自己的下一个块后更新这个指针。将这种类型的并行计划节点称为“并行感知”；它在EXPLAIN输出中的计划名称之前有一个前缀“并行”段。处于这种并行感知的查询计划节点可能正在并行工作，但它自己可能不关心，而实际上，它只并行处理部分行集，因为并行顺序扫描正在处理其它的表块集。为了便于命名，这样的计划可以被称为“平行遗忘”(parallel-oblivious)计划。当我们讨论并行join和聚合操作时再介绍更多相关内容。</p>
+<p>另一个经验是：聚集节点是伞形并行节点，在该节点下，子树中的所有节点都由workers来并行运行。聚集节点的工作是收集每个工作节点返回的元组，并将其传递到上层节点。聚集节点上面的所有节点通常都在其父节点后运行。不能有嵌套的聚集节点。</p>
+<h3 id="索引扫描"><a href="#索引扫描" class="headerlink" title="索引扫描"></a>索引扫描</h3><p>以下查询没有触发并行索引扫描:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">tpch&#x3D;# explain (analyze, costs off)</span><br><span class="line">select l_partkey from lineitem    where l_partkey &lt; 100000;</span><br><span class="line">                                                 QUERY PLAN</span><br><span class="line">------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Index Only Scan using idx_lineitem_part_supp on lineitem (actual time&#x3D;0.078..895.358 rows&#x3D;2999506 loops&#x3D;1)</span><br><span class="line">   Index Cond: (l_partkey &lt; 100000)</span><br><span class="line">   Heap Fetches: 0</span><br><span class="line"> Planning Time: 0.129 ms</span><br><span class="line"> Execution Time: 1012.693 ms</span><br></pre></td></tr></table></figure>
+
+<p>因此，尝试降低parallel_tuple_cost，以便再现并行索引扫描：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">tpch&#x3D;# set parallel_tuple_cost TO 0.0001;                                       </span><br><span class="line">tpch&#x3D;# explain (analyze, costs off) select l_partkey from lineitem    where l_partkey &lt; 100000;</span><br><span class="line">                                                        QUERY PLAN                                                        </span><br><span class="line">--------------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Gather (actual time&#x3D;0.390..387.086 rows&#x3D;2999506 loops&#x3D;1)</span><br><span class="line">   Workers Planned: 4</span><br><span class="line">   Workers Launched: 4</span><br><span class="line">   -&gt;  Parallel Index Only Scan using idx_lineitem_part_supp on lineitem (actual time&#x3D;0.098..262.780 rows&#x3D;599901 loops&#x3D;5)</span><br><span class="line">         Index Cond: (l_partkey &lt; 100000)</span><br><span class="line">         Heap Fetches: 0</span><br><span class="line"> Planning Time: 0.802 ms</span><br><span class="line"> Execution Time: 509.306 ms</span><br></pre></td></tr></table></figure>
+
+<p>注意：</p>
+<p>parallel_tuple_cost是将元组从workers传输到leader后端的成本。注意，这里人为的设置.0001只是为了再现并行索引扫描。虽然设置它为加速索引扫描的执行时间，但不建议在没有系统的结论性统计数据的情况下更改这些成本计算参数。</p>
+<p>Index-only扫描是一种特殊的索引扫描，因为索引已经具有select查询所需的数据，因此避免了单一次的堆扫描；仅仅扫描索引。完全的索引扫描或位图堆扫描也支持并行；我们将在聚合或表join示例中看到更多，是常见的操作。</p>
+<p>与非并行索引扫描不同，并行索引扫描不会产生有序结果。多个workers并行读取索引块。因此，尽管每个worker返回自己排序的元组，但由于是并行无序读取索引块，结果集并不会排序。</p>
+<p>并行索引扫描支持btree索引的扫描。</p>
+<h3 id="并行聚合"><a href="#并行聚合" class="headerlink" title="并行聚合"></a>并行聚合</h3><p>与表行数相比，查询中的聚合表达式返回的行数通常要少得多，因为这些值是从行集返回的聚合值。因此，涉及的worker-leader元组传输成本非常低，聚合查询几乎总是由于并行性而受益。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">tpch&#x3D;# -- Check out sequential aggregate plan</span><br><span class="line">tpch&#x3D;# set max_parallel_workers_per_gather TO  0;</span><br><span class="line">tpch&#x3D;# explain (analyze, costs off) select max(l_tax) from lineitem;;</span><br><span class="line">                                   QUERY PLAN</span><br><span class="line">--------------------------------------------------------------------------------</span><br><span class="line"> Aggregate (actual time&#x3D;11230.951..11230.951 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Seq Scan on lineitem (actual time&#x3D;0.009..2767.802 rows&#x3D;29999795 loops&#x3D;1)</span><br><span class="line"> Planning Time: 0.105 ms</span><br><span class="line"> Execution Time: 11231.739 ms</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">tpch&#x3D;# -- Check out parallel aggregate plan</span><br><span class="line">tpch&#x3D;# set max_parallel_workers_per_gather TO  4;</span><br><span class="line">tpch&#x3D;# explain (analyze, costs off) select max(l_tax) from lineitem;;</span><br><span class="line">                                            QUERY PLAN</span><br><span class="line">---------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;2150.383..2190.898 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;2150.241..2190.883 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;2137.664..2137.665 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;0.016..563.268 rows&#x3D;5999959 loops&#x3D;5)</span><br><span class="line"> Planning Time: 0.896 ms</span><br><span class="line"> Execution Time: 2202.304 ms</span><br></pre></td></tr></table></figure>
+
+<p>速率提升5倍.</p>
+<p>上面，我们可以看到，通常的Aggregate计划节点分为两种。聚集节点下面的一个是局部Aggregate节点，顾名思义，该节点仅对其自己的worker返回的值进行聚合。这意味着它还没有运行最终函数。最终的Aggregate组合了所有workers通过聚集节点返回的局部Aggregate。</p>
+<h3 id="Joins"><a href="#Joins" class="headerlink" title="Joins"></a>Joins</h3><p>我们使用相同的查询来分析三种不同的join:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">select avg(l_discount) from orders, lineitem</span><br><span class="line">where</span><br><span class="line">    l_orderkey &#x3D; o_orderkey</span><br><span class="line">    and o_orderdate &lt; date &#39;1995-03-09&#39;</span><br><span class="line">    and l_shipdate &gt; date &#39;1995-03-09&#39;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Merge-Join"><a href="#Merge-Join" class="headerlink" title="Merge Join"></a>Merge Join</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">                                                                QUERY PLAN</span><br><span class="line">------------------------------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;5030.051..5241.390 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;5029.991..5241.370 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;5015.939..5015.940 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Merge Join (actual time&#x3D;199.287..4987.159 rows&#x3D;149782 loops&#x3D;5)</span><br><span class="line">                     Merge Cond: (lineitem.l_orderkey &#x3D; orders.o_orderkey)</span><br><span class="line">                     -&gt;  Parallel Index Scan using idx_lineitem_orderkey on lineitem (actual time&#x3D;198.962..2095.747 rows&#x3D;3248732 loops&#x3D;5)</span><br><span class="line">                           Filter: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 2751227</span><br><span class="line">                     -&gt;  Index Scan using orders_pkey on orders (actual time&#x3D;0.057..2343.402 rows&#x3D;3625756 loops&#x3D;5)</span><br><span class="line">                           Filter: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 3874054</span><br><span class="line"> Planning Time: 0.290 ms</span><br><span class="line"> Execution Time: 5243.194 ms</span><br></pre></td></tr></table></figure>
+
+<p>如上文所示，Merge Join位于聚集节点下。这意味着，Merge Join加入正在并行worker中执行。Merge Join是否正在与其他workers协调来执行？或者，换句话说，Merge Join是并行感知的吗？否。如上，Merge Join没有“并行”前缀。Merge Join需要对从外部和内部的输入进行排序，因此我们在内部和外部都进行索引扫描。现在，当在worker中执行Merge Join时，外部表的子集将与完整的内部表join。这是有可能的，因为外部是执行并行索引扫描的，而内部是正常的索引扫描，这意味着每个worker都会对内部进行完整的索引扫描。实际上，Merge Join的数据是被分割的，这是由于被并行索引扫描分割的数据，Merge Join甚至不知道它是正在并行运行！需要注意的是，每个worker必须对内侧进行冗余扫描，然后如果需要再进行排序。在我们的例子中，由于索引的原因，排序操作是不必要的。</p>
+<p>通过适当的将两个表分区排序，并行执行分区数据集的Merge Join，使Merge Join并行感知，有一个改进点。但讨论这个问题需要另一篇博客。</p>
+<h3 id="并行感知的-Hash-Join"><a href="#并行感知的-Hash-Join" class="headerlink" title="并行感知的 Hash Join"></a>并行感知的 Hash Join</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">                                                 QUERY PLAN                                                  </span><br><span class="line">-------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;3054.189..3099.784 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;3022.810..3099.755 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;3007.931..3007.934 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Parallel Hash Join (actual time&#x3D;643.552..2980.305 rows&#x3D;149782 loops&#x3D;5)</span><br><span class="line">                     Hash Cond: (lineitem.l_orderkey &#x3D; orders.o_orderkey)</span><br><span class="line">                     -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;0.030..1685.258 rows&#x3D;3248732 loops&#x3D;5)</span><br><span class="line">                           Filter: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 2751227</span><br><span class="line">                     -&gt;  Parallel Hash (actual time&#x3D;639.508..639.508 rows&#x3D;725169 loops&#x3D;5)</span><br><span class="line">                           Buckets: 4194304  Batches: 1  Memory Usage: 174688kB</span><br><span class="line">                           -&gt;  Parallel Seq Scan on orders (actual time&#x3D;14.083..384.196 rows&#x3D;725169 loops&#x3D;5)</span><br><span class="line">                                 Filter: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                                 Rows Removed by Filter: 774831</span><br><span class="line"> Planning Time: 0.300 ms</span><br><span class="line"> Execution Time: 3101.937 ms</span><br></pre></td></tr></table></figure>
+
+<p>Hash Join内包含一个“并行哈希”节点。计划通过协调并行workers划分构建单一worker并共享哈希表。与顺序Hash Join一样，外层会等待哈希表的构建。当其构建后，相同的workers开始扫描外层表，并使用共享的哈希表执行join。外部扫描本质上是部分扫描，因为每个worker并行执行。所以在我们的例子中，这是一个并行顺序扫描。</p>
+<h3 id="并行遗忘的-Hash-Join"><a href="#并行遗忘的-Hash-Join" class="headerlink" title="并行遗忘的 Hash Join"></a>并行遗忘的 Hash Join</h3><p>如果内部只是一个哈希节点，而不是一个“并行哈希”节点，那么这意味着：每个worker节点将构建一个单独完整的哈希表，而不是一个共享哈希表，由于没有划分哈希构建工作，这显然比并行哈希更昂贵：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">                                                            QUERY PLAN</span><br><span class="line">-----------------------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;5908.032..5971.214 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;5852.417..5971.167 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;5850.930..5850.933 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Hash Join (actual time&#x3D;2309.307..5826.753 rows&#x3D;149782 loops&#x3D;5)</span><br><span class="line">                     Hash Cond: (lineitem.l_orderkey &#x3D; orders.o_orderkey)</span><br><span class="line">                     -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;12.631..1712.443 rows&#x3D;3248732 loops&#x3D;5)</span><br><span class="line">                           Filter: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 2751227</span><br><span class="line">                     -&gt;  Hash (actual time&#x3D;2290.063..2290.065 rows&#x3D;3625845 loops&#x3D;5)</span><br><span class="line">                           Buckets: 2097152  Batches: 4  Memory Usage: 48222kB</span><br><span class="line">                           -&gt;  Bitmap Heap Scan on orders (actual time&#x3D;502.264..1512.424 rows&#x3D;3625845 loops&#x3D;5)</span><br><span class="line">                                 Recheck Cond: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                                 Heap Blocks: exact&#x3D;138113</span><br><span class="line">                                 -&gt;  Bitmap Index Scan on idx_orders_orderdate (actual time&#x3D;451.552..451.552 rows&#x3D;3625845 loops&#x3D;5)</span><br><span class="line">                                       Index Cond: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line"> Planning Time: 0.291 ms</span><br><span class="line"> Execution Time: 5977.966 ms</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="嵌套循环-Join"><a href="#嵌套循环-Join" class="headerlink" title="嵌套循环 Join"></a>嵌套循环 Join</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">                                                      QUERY PLAN</span><br><span class="line">-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;7211.122..7258.289 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;7193.150..7258.259 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;7129.209..7129.210 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Nested Loop (actual time&#x3D;13.924..7100.095 rows&#x3D;149782 loops&#x3D;5)</span><br><span class="line">                     -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;13.621..1919.712 rows&#x3D;3248732 loops&#x3D;5)</span><br><span class="line">                           Filter: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 2751227</span><br><span class="line">                     -&gt;  Result Cache (actual time&#x3D;0.001..0.001 rows&#x3D;0 loops&#x3D;16243662)</span><br><span class="line">                           Cache Key: lineitem.l_orderkey</span><br><span class="line">                           Hits: 2450631  Misses: 844081  Evictions: 0  Overflows: 0  Memory Usage: 61379kB</span><br><span class="line">                           Worker 0:  Hits: 2443189  Misses: 841050  Evictions: 0  Overflows: 0  Memory Usage: 61158kB</span><br><span class="line">                           Worker 1:  Hits: 2350093  Misses: 808929  Evictions: 0  Overflows: 0  Memory Usage: 58824kB</span><br><span class="line">                           Worker 2:  Hits: 2424018  Misses: 833681  Evictions: 0  Overflows: 0  Memory Usage: 60615kB</span><br><span class="line">                           Worker 3:  Hits: 2417114  Misses: 830876  Evictions: 0  Overflows: 0  Memory Usage: 60407kB</span><br><span class="line">                           -&gt;  Index Scan using orders_pkey on orders (actual time&#x3D;0.004..0.004 rows&#x3D;0 loops&#x3D;4158617)</span><br><span class="line">                                 Index Cond: (o_orderkey &#x3D; lineitem.l_orderkey)</span><br><span class="line">                                 Filter: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                                 Rows Removed by Filter: 1</span><br><span class="line"> Planning Time: 0.294 ms</span><br><span class="line"> Execution Time: 7268.857 ms</span><br></pre></td></tr></table></figure>
+
+
+<p>从本质上讲，嵌套循环join必须为每个外部元组扫描整个内层。因此，我们可以在workers之间划分外部扫描，并由每个worker进行完整的内部表扫描，这将为我们提供一个并行遗忘的嵌套循环join。没有必要使它具有并行意识。</p>
+<h3 id="顺序-Join"><a href="#顺序-Join" class="headerlink" title="顺序 Join"></a>顺序 Join</h3><p>If we disable parallelism, we can see a sequential hash join. Note that all of the above parallel joins are reasonably fater than the below sequential join …<br>如果我们禁用并行功能，将会是顺序哈希join。注意，上面所有的并行Join都比下面的顺序join树状结构要胖。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">tpch&#x3D;# set max_parallel_workers_per_gather TO  0;</span><br><span class="line"></span><br><span class="line">                                                       QUERY PLAN</span><br><span class="line">-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Aggregate (actual time&#x3D;15714.776..15714.779 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Hash Join (actual time&#x3D;5134.219..15603.861 rows&#x3D;748912 loops&#x3D;1)</span><br><span class="line">         Hash Cond: (lineitem.l_orderkey &#x3D; orders.o_orderkey)</span><br><span class="line">         -&gt;  Bitmap Heap Scan on lineitem (actual time&#x3D;2837.938..7162.214 rows&#x3D;16243662 loops&#x3D;1)</span><br><span class="line">               Recheck Cond: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">               Heap Blocks: exact&#x3D;607593</span><br><span class="line">               -&gt;  Bitmap Index Scan on idx_lineitem_shipdate (actual time&#x3D;2556.845..2556.845 rows&#x3D;16243662 loops&#x3D;1)</span><br><span class="line">                     Index Cond: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">         -&gt;  Hash (actual time&#x3D;2290.201..2290.202 rows&#x3D;3625845 loops&#x3D;1)</span><br><span class="line">               Buckets: 2097152  Batches: 4  Memory Usage: 48222kB</span><br><span class="line">               -&gt;  Bitmap Heap Scan on orders (actual time&#x3D;563.536..1548.176 rows&#x3D;3625845 loops&#x3D;1)</span><br><span class="line">                     Recheck Cond: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                     Heap Blocks: exact&#x3D;138113</span><br><span class="line">                     -&gt;  Bitmap Index Scan on idx_orders_orderdate (actual time&#x3D;333.284..333.285 rows&#x3D;3625845 loops&#x3D;1)</span><br><span class="line">                           Index Cond: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line"> Planning Time: 0.267 ms</span><br><span class="line"> Execution Time: 15727.275 ms</span><br></pre></td></tr></table></figure>
+
+
+
+
+<h3 id="Gather-Merge"><a href="#Gather-Merge" class="headerlink" title="Gather Merge"></a>Gather Merge</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">tpch&#x3D;# explain (analyze, costs off)</span><br><span class="line">select  l_orderkey from lineitem where l_suppkey &gt; 10000 order by l_suppkey ;</span><br><span class="line">                                          QUERY PLAN</span><br><span class="line">----------------------------------------------------------------------------------------------</span><br><span class="line"> Gather Merge (actual time&#x3D;3351.705..8310.367 rows&#x3D;23998124 loops&#x3D;1)</span><br><span class="line">   Workers Planned: 4</span><br><span class="line">   Workers Launched: 4</span><br><span class="line">   -&gt;  Sort (actual time&#x3D;3181.446..3896.115 rows&#x3D;4799625 loops&#x3D;5)</span><br><span class="line">         Sort Key: l_suppkey</span><br><span class="line">         Sort Method: external merge  Disk: 136216kB</span><br><span class="line">         Worker 0:  Sort Method: external merge  Disk: 120208kB</span><br><span class="line">         Worker 1:  Sort Method: external merge  Disk: 116392kB</span><br><span class="line">         Worker 2:  Sort Method: external merge  Disk: 123520kB</span><br><span class="line">         Worker 3:  Sort Method: external merge  Disk: 114264kB</span><br><span class="line">         -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;55.688..915.160 rows&#x3D;4799625 loops&#x3D;5)</span><br><span class="line">               Filter: (l_suppkey &gt; 10000)</span><br><span class="line">               Rows Removed by Filter: 1200334</span><br><span class="line"> Planning Time: 0.102 ms</span><br><span class="line"> Execution Time: 9654.078 ms</span><br></pre></td></tr></table></figure>
+
+
+<p>Gather Merge是聚集计划的改进版。它基本上将排序并行了。因此，聚集从worker中获取排序输出，然后合并它们并返回排序后的输出。</p>
+<p>顺序排序几乎花了两倍的时间:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">                                   QUERY PLAN                                    </span><br><span class="line">---------------------------------------------------------------------------------</span><br><span class="line"> Sort (actual time&#x3D;14399.200..18068.514 rows&#x3D;23998124 loops&#x3D;1)</span><br><span class="line">   Sort Key: l_suppkey</span><br><span class="line">   Sort Method: external merge  Disk: 610560kB</span><br><span class="line">   -&gt;  Seq Scan on lineitem (actual time&#x3D;16.346..4320.823 rows&#x3D;23998124 loops&#x3D;1)</span><br><span class="line">         Filter: (l_suppkey &gt; 10000)</span><br><span class="line">         Rows Removed by Filter: 6001671</span><br><span class="line"> Planning Time: 0.086 ms</span><br><span class="line"> Execution Time: 20015.980 ms</span><br></pre></td></tr></table></figure>
+
+
+
+<p>还有很多其他的场景可以观察到并行性，但我可能会在后面的博客中讨论它。</p>
+</div>
+<div id="English" class="tab-content">
+
+<p>Query parallelism is supported in PostgreSQL since quite a while now. People in the PG community call it “Parallel query”, but by now it is not limited to just SELECT queries. Index build leverages multiple cores; and even utilities like VACUUM now make use of parallelism. Furthermore, community is working on parallelizing COPY and INSERTs.</p>
+<p>I was interested to do kind-of “sanity” check of this capability specifically on ARM64 platform. Let’s see how it goes. And also at the same time, we will try to understand little bit of how to interpret the parallelism part of the plan output. Subqueries and partitions are not covered in this blog; probably I will add it in another blog.</p>
+<p>For running the queries I generated a scale-5 TPC-H benchmark schema with the help of scripts taken from <a href="https://github.com/tvondra/pg_tpch.git">https://github.com/tvondra/pg_tpch.git</a>. My machine is an 8 CPU VM with 15GB memory and Ubuntu 18.04, running on a “Kunpeng 920” 2.6 GHz host. The PostgreSQL build was using git master branch,  so you can treat it somewhere between PostgreSQL 13 and 14. All the tests were run with max_parallel_workers_per_gather = 4. The tables were pre-warmed, so I reduced seq_page_cost and random_page_cost to as low as 0.1.</p>
+<p>The JIT-related part of the EXPLAIN output is omitted from the plans to keep the focus on the main query plan. Also, estimated costs are omitted in order to make the plan output compact.</p>
+<h3 id="Parallel-sequential-scan"><a href="#Parallel-sequential-scan" class="headerlink" title="Parallel sequential scan"></a>Parallel sequential scan</h3><p>This is the simplest one, and the one with which query parallelism got introduced in PostgreSQL 9.6.</p>
+<p>Just a plain “select * from lineitem” won’t give us a parallel scan, because all the tuples need to be transferred from workers to the leader backend. Parallel scan is beneficial only when this tuple transfer cost is small enough. So let’s reduce the number of rows selected :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">tpch&#x3D;# explain (analyze, costs off)</span><br><span class="line">tpch-# select l_orderkey from lineitem  where l_shipmode &#x3D; &#39;AIR&#39; and l_shipinstruct &#x3D; &#39;TAKE BACK RETURN&#39;;</span><br><span class="line"></span><br><span class="line">                                            QUERY PLAN</span><br><span class="line">--------------------------------------------------------------------------------------------------</span><br><span class="line"> Gather (actual time&#x3D;6.264..1776.956 rows&#x3D;1070891 loops&#x3D;1)</span><br><span class="line">   Workers Planned: 4</span><br><span class="line">   Workers Launched: 4</span><br><span class="line">   -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;6.959..1640.647 rows&#x3D;214178 loops&#x3D;5)</span><br><span class="line">         Filter: ((l_shipmode &#x3D; &#39;AIR&#39;::bpchar) AND (l_shipinstruct &#x3D; &#39;TAKE BACK RETURN&#39;::bpchar))</span><br><span class="line">         Rows Removed by Filter: 5785781</span><br><span class="line"> Planning Time: 0.205 ms</span><br><span class="line"> Execution Time: 1823.987 ms</span><br><span class="line"></span><br><span class="line">So parallel sequential scan took 1824 ms to execute. Let&#39;s compare this with sequential scan :</span><br><span class="line"></span><br><span class="line">tpch&#x3D;# set max_parallel_workers_per_gather TO  0; -- Disable parallelism</span><br><span class="line"></span><br><span class="line">                                         QUERY PLAN</span><br><span class="line">--------------------------------------------------------------------------------------------</span><br><span class="line"> Seq Scan on lineitem (actual time&#x3D;117.795..5077.520 rows&#x3D;1070891 loops&#x3D;1)</span><br><span class="line">   Filter: ((l_shipmode &#x3D; &#39;AIR&#39;::bpchar) AND (l_shipinstruct &#x3D; &#39;TAKE BACK RETURN&#39;::bpchar))</span><br><span class="line">   Rows Removed by Filter: 28928904</span><br><span class="line"> Planning Time: 0.101 ms</span><br><span class="line"> Execution Time: 5123.774 ms</span><br></pre></td></tr></table></figure>
+
+<p>So parallel seqscan was around 2.5 times faster.</p>
+<p>Just a background before we go for other queries … Parallelism is achieved by distributing  the table blocks to the workers, and the parallel workers would then do their job of reading and processing tuples from the blocks they read. But how is it made sure that no two workers scan the same block ? After all, they are running in parallel, so they should make sure that each block should be scanned only by one particular worker, otherwise duplicate rows would be returned. To make this happen, there is a coordination between the workers. They all are <em>aware</em> that they are all running in parallel, so they keep a shared “next block to read” pointer, which each worker updates once it chooses it’s own next block. This type of parallel plan node is called “parallel-aware”; it has a prefix “Parallel” before the plan name in the EXPLAIN output. A plan node sitting on top of such parallel-aware node might itself be running in a parallel worker, but it may not be aware of it, while actually it is processing only a partial set of rows in parallel since the underlying parallel-seq scan is processing its own set of table blocks. Such plan can be called as “parallel-oblivious” plan, for the sake of naming it. We will talk about this more when we discuss parallel joins and aggregates.</p>
+<p>Another thumb-rule is : A Gather node is the umbrella parallel node, under which all the nodes in the subtree are run in parallel by workers. A Gather node’s job is to gather the tuples returned by each worker, and pass it on to the upper node. All the nodes above Gather run in the usual parent backend. There cannot be nested Gather nodes.</p>
+<h3 id="Index-Scan"><a href="#Index-Scan" class="headerlink" title="Index Scan"></a>Index Scan</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">The following query didn&#39;t produce a parallel index scan :                      </span><br><span class="line"></span><br><span class="line">tpch&#x3D;# explain (analyze, costs off)</span><br><span class="line">select l_partkey from lineitem    where l_partkey &lt; 100000;</span><br><span class="line">                                                 QUERY PLAN</span><br><span class="line">------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Index Only Scan using idx_lineitem_part_supp on lineitem (actual time&#x3D;0.078..895.358 rows&#x3D;2999506 loops&#x3D;1)</span><br><span class="line">   Index Cond: (l_partkey &lt; 100000)</span><br><span class="line">   Heap Fetches: 0</span><br><span class="line"> Planning Time: 0.129 ms</span><br><span class="line"> Execution Time: 1012.693 ms</span><br><span class="line"></span><br><span class="line">So let&#39;s try reducing parallel_tuple_cost, for the sake of reproducing a parallel index scan :</span><br><span class="line">tpch&#x3D;# set parallel_tuple_cost TO 0.0001;                                       </span><br><span class="line">tpch&#x3D;# explain (analyze, costs off) select l_partkey from lineitem    where l_partkey &lt; 100000;</span><br><span class="line">                                                        QUERY PLAN                                                        </span><br><span class="line">--------------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Gather (actual time&#x3D;0.390..387.086 rows&#x3D;2999506 loops&#x3D;1)</span><br><span class="line">   Workers Planned: 4</span><br><span class="line">   Workers Launched: 4</span><br><span class="line">   -&gt;  Parallel Index Only Scan using idx_lineitem_part_supp on lineitem (actual time&#x3D;0.098..262.780 rows&#x3D;599901 loops&#x3D;5)</span><br><span class="line">         Index Cond: (l_partkey &lt; 100000)</span><br><span class="line">         Heap Fetches: 0</span><br><span class="line"> Planning Time: 0.802 ms</span><br><span class="line"> Execution Time: 509.306 ms</span><br></pre></td></tr></table></figure>
+
+<p>Notes:</p>
+<p>parallel_tuple_cost is the cost of transferring tuples from workers to leader backend. Note that I used a contrived value of .0001 just for the sake of reproducing a parallel index scan. Although setting it is giving us an index scan with faster execution time, it is not recommended to change these costing parameters without obtaining conclusive statistics on your system.</p>
+<p>Index-only scan is a special kind of Index Scan, in that the index already has the data required by the select query, so a separate heap scan is avoided; only index is scanned. A plain index scan or a bitmap heap scan also supports parallelism; we will see more of these in aggregate or table join examples where they are more commonly seen.</p>
+<p>A parallel index scan does not produce ordered results, unlike a non-parallel index scan. Multiple workers read index blocks in parallel. So although each worker returns its own tuples sorted, together the result set is not sorted due to parallel index block reads.</p>
+<p>Parellel index scan is only supported for a btree index.</p>
+<h3 id="Parallel-Aggregate"><a href="#Parallel-Aggregate" class="headerlink" title="Parallel Aggregate"></a>Parallel Aggregate</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">An aggregate expression in a query typically has drastically less number of rows returned, compared to the number of table rows, inheritently since the values are aggregate values returned from over a row set. So there is very less worker-leader tuple transfer cost involved, so aggregate query almost always gets benefited due to parallelism.</span><br><span class="line"></span><br><span class="line">tpch&#x3D;# -- Check out sequential aggregate plan</span><br><span class="line">tpch&#x3D;# set max_parallel_workers_per_gather TO  0;</span><br><span class="line">tpch&#x3D;# explain (analyze, costs off) select max(l_tax) from lineitem;;</span><br><span class="line">                                   QUERY PLAN</span><br><span class="line">--------------------------------------------------------------------------------</span><br><span class="line"> Aggregate (actual time&#x3D;11230.951..11230.951 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Seq Scan on lineitem (actual time&#x3D;0.009..2767.802 rows&#x3D;29999795 loops&#x3D;1)</span><br><span class="line"> Planning Time: 0.105 ms</span><br><span class="line"> Execution Time: 11231.739 ms</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">tpch&#x3D;# -- Check out parallel aggregate plan</span><br><span class="line">tpch&#x3D;# set max_parallel_workers_per_gather TO  4;</span><br><span class="line">tpch&#x3D;# explain (analyze, costs off) select max(l_tax) from lineitem;;</span><br><span class="line">                                            QUERY PLAN</span><br><span class="line">---------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;2150.383..2190.898 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;2150.241..2190.883 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;2137.664..2137.665 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;0.016..563.268 rows&#x3D;5999959 loops&#x3D;5)</span><br><span class="line"> Planning Time: 0.896 ms</span><br><span class="line"> Execution Time: 2202.304 ms</span><br></pre></td></tr></table></figure>
+<p>So it’s 5 times faster; pretty neat.</p>
+<p>Above, we can see that the usual Aggregate plan node is divided into two kinds of Aggregate plan nodes. The one below Gather node is the Partial Aggregate node, which, as it name implies, does an aggregate of only the values returned by its own worker. It means that it has not run the finalize function yet. That is the task of the Finalize Aggregate, which combines the partial aggregates returned by all the workers through the Gather node.</p>
+<h3 id="Joins-1"><a href="#Joins-1" class="headerlink" title="Joins"></a>Joins</h3><p>We will analyze the three different joins using this query :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">select avg(l_discount) from orders, lineitem</span><br><span class="line">where</span><br><span class="line">    l_orderkey &#x3D; o_orderkey</span><br><span class="line">    and o_orderdate &lt; date &#39;1995-03-09&#39;</span><br><span class="line">    and l_shipdate &gt; date &#39;1995-03-09&#39;;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Merge-Join-1"><a href="#Merge-Join-1" class="headerlink" title="Merge Join"></a>Merge Join</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">                                                                QUERY PLAN</span><br><span class="line">------------------------------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;5030.051..5241.390 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;5029.991..5241.370 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;5015.939..5015.940 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Merge Join (actual time&#x3D;199.287..4987.159 rows&#x3D;149782 loops&#x3D;5)</span><br><span class="line">                     Merge Cond: (lineitem.l_orderkey &#x3D; orders.o_orderkey)</span><br><span class="line">                     -&gt;  Parallel Index Scan using idx_lineitem_orderkey on lineitem (actual time&#x3D;198.962..2095.747 rows&#x3D;3248732 loops&#x3D;5)</span><br><span class="line">                           Filter: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 2751227</span><br><span class="line">                     -&gt;  Index Scan using orders_pkey on orders (actual time&#x3D;0.057..2343.402 rows&#x3D;3625756 loops&#x3D;5)</span><br><span class="line">                           Filter: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 3874054</span><br><span class="line"> Planning Time: 0.290 ms</span><br><span class="line"> Execution Time: 5243.194 ms</span><br></pre></td></tr></table></figure>
+
+<p>As you can see above, Merge Join is under a Gather node. That means, Merge Join is being executed in a parallel worker. Is the merge join being executed using some coordination with other workers ? Or, in other words, is Merge Join parallel-aware ? No. As you can see, the Merge Join does not have a “Parallel” prefix. Merge Join needs sorted input from both outer side and inner side, hence we have index scans both at inner side and outer side. Now, when a Merge Join is executed in a worker, a subset of outer side table is joined with full inner side. This is possible because the outer side is scanned using parallel Index Scan, and the inner side is a normal Index scan which means each worker does a full Index Scan of inner side. Effectively, the Merge join data is divided, thanks to the data that got divided by underlying Parallel Index Scan, and the Merge join does not even know that it is being run in parallel ! The caveat is that the inner side has to be redundantly scanned fully by each worker, followed by a sort if required. In our case the sort operation was not necessary becaues of the index.</p>
+<p>There is a scope for improvement to make the Merge Join parallel-aware, by appropriately partitioning sorted data of both tables and do Merge Join of the pairs of partitioned data sets in parallel. But that discussion would need a separate blog.</p>
+<h3 id="Parallel-aware-Hash-Join"><a href="#Parallel-aware-Hash-Join" class="headerlink" title="Parallel-aware Hash Join"></a>Parallel-aware Hash Join</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">                                                 QUERY PLAN                                                  </span><br><span class="line">-------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;3054.189..3099.784 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;3022.810..3099.755 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;3007.931..3007.934 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Parallel Hash Join (actual time&#x3D;643.552..2980.305 rows&#x3D;149782 loops&#x3D;5)</span><br><span class="line">                     Hash Cond: (lineitem.l_orderkey &#x3D; orders.o_orderkey)</span><br><span class="line">                     -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;0.030..1685.258 rows&#x3D;3248732 loops&#x3D;5)</span><br><span class="line">                           Filter: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 2751227</span><br><span class="line">                     -&gt;  Parallel Hash (actual time&#x3D;639.508..639.508 rows&#x3D;725169 loops&#x3D;5)</span><br><span class="line">                           Buckets: 4194304  Batches: 1  Memory Usage: 174688kB</span><br><span class="line">                           -&gt;  Parallel Seq Scan on orders (actual time&#x3D;14.083..384.196 rows&#x3D;725169 loops&#x3D;5)</span><br><span class="line">                                 Filter: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                                 Rows Removed by Filter: 774831</span><br><span class="line"> Planning Time: 0.300 ms</span><br><span class="line"> Execution Time: 3101.937 ms</span><br></pre></td></tr></table></figure>
+
+<p>The inner side of Hash Join is a “Parallel Hash” node. This plan builds a shared hash table by dividing the work among parallel coordinating workers. As with a sequential Hash Join, the outer side waits until the hash table is built. Once it is built, the same workers now start scanning the outer table and doing the join using the shared hash table. The outer scan is essentially a partial scan because each worker does it in parallel. So in our case, it’s a parallel sequential scan.</p>
+<h3 id="Parallel-oblivious-Hash-Join"><a href="#Parallel-oblivious-Hash-Join" class="headerlink" title="Parallel-oblivious Hash Join"></a>Parallel-oblivious Hash Join</h3><p>If the inner side is just a Hash node rather than a “Parallel Hash” node, then it means: a separate full hash table will be built by each of the workers rather than having a shared hash table, which obviously would be expensive than the parallel hash due to the absence of division of hash building work:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">                                                            QUERY PLAN</span><br><span class="line">-----------------------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;5908.032..5971.214 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;5852.417..5971.167 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;5850.930..5850.933 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Hash Join (actual time&#x3D;2309.307..5826.753 rows&#x3D;149782 loops&#x3D;5)</span><br><span class="line">                     Hash Cond: (lineitem.l_orderkey &#x3D; orders.o_orderkey)</span><br><span class="line">                     -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;12.631..1712.443 rows&#x3D;3248732 loops&#x3D;5)</span><br><span class="line">                           Filter: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 2751227</span><br><span class="line">                     -&gt;  Hash (actual time&#x3D;2290.063..2290.065 rows&#x3D;3625845 loops&#x3D;5)</span><br><span class="line">                           Buckets: 2097152  Batches: 4  Memory Usage: 48222kB</span><br><span class="line">                           -&gt;  Bitmap Heap Scan on orders (actual time&#x3D;502.264..1512.424 rows&#x3D;3625845 loops&#x3D;5)</span><br><span class="line">                                 Recheck Cond: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                                 Heap Blocks: exact&#x3D;138113</span><br><span class="line">                                 -&gt;  Bitmap Index Scan on idx_orders_orderdate (actual time&#x3D;451.552..451.552 rows&#x3D;3625845 loops&#x3D;5)</span><br><span class="line">                                       Index Cond: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line"> Planning Time: 0.291 ms</span><br><span class="line"> Execution Time: 5977.966 ms</span><br></pre></td></tr></table></figure>
+
+
+<h3 id="Nested-Loop-Join"><a href="#Nested-Loop-Join" class="headerlink" title="Nested Loop Join"></a>Nested Loop Join</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">                                                      QUERY PLAN</span><br><span class="line">-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Finalize Aggregate (actual time&#x3D;7211.122..7258.289 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Gather (actual time&#x3D;7193.150..7258.259 rows&#x3D;5 loops&#x3D;1)</span><br><span class="line">         Workers Planned: 4</span><br><span class="line">         Workers Launched: 4</span><br><span class="line">         -&gt;  Partial Aggregate (actual time&#x3D;7129.209..7129.210 rows&#x3D;1 loops&#x3D;5)</span><br><span class="line">               -&gt;  Nested Loop (actual time&#x3D;13.924..7100.095 rows&#x3D;149782 loops&#x3D;5)</span><br><span class="line">                     -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;13.621..1919.712 rows&#x3D;3248732 loops&#x3D;5)</span><br><span class="line">                           Filter: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                           Rows Removed by Filter: 2751227</span><br><span class="line">                     -&gt;  Result Cache (actual time&#x3D;0.001..0.001 rows&#x3D;0 loops&#x3D;16243662)</span><br><span class="line">                           Cache Key: lineitem.l_orderkey</span><br><span class="line">                           Hits: 2450631  Misses: 844081  Evictions: 0  Overflows: 0  Memory Usage: 61379kB</span><br><span class="line">                           Worker 0:  Hits: 2443189  Misses: 841050  Evictions: 0  Overflows: 0  Memory Usage: 61158kB</span><br><span class="line">                           Worker 1:  Hits: 2350093  Misses: 808929  Evictions: 0  Overflows: 0  Memory Usage: 58824kB</span><br><span class="line">                           Worker 2:  Hits: 2424018  Misses: 833681  Evictions: 0  Overflows: 0  Memory Usage: 60615kB</span><br><span class="line">                           Worker 3:  Hits: 2417114  Misses: 830876  Evictions: 0  Overflows: 0  Memory Usage: 60407kB</span><br><span class="line">                           -&gt;  Index Scan using orders_pkey on orders (actual time&#x3D;0.004..0.004 rows&#x3D;0 loops&#x3D;4158617)</span><br><span class="line">                                 Index Cond: (o_orderkey &#x3D; lineitem.l_orderkey)</span><br><span class="line">                                 Filter: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                                 Rows Removed by Filter: 1</span><br><span class="line"> Planning Time: 0.294 ms</span><br><span class="line"> Execution Time: 7268.857 ms</span><br></pre></td></tr></table></figure>
+
+<p>By nature, nested loop join has to have the whole inner side scanned for each of the outer tuple. So we can divide the outer scan among workers, and have a complete inner table scan by each of the workers, which will give us a parallel-oblivious Nested Loop Join. There is no need to make it parallel-aware.</p>
+<h3 id="Sequential-Join"><a href="#Sequential-Join" class="headerlink" title="Sequential Join"></a>Sequential Join</h3><p>If we disable parallelism, we can see a sequential hash join. Note that all of the above parallel joins are reasonably fater than the below sequential join …</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">tpch&#x3D;# set max_parallel_workers_per_gather TO  0;</span><br><span class="line"></span><br><span class="line">                                                       QUERY PLAN</span><br><span class="line">-----------------------------------------------------------------------------------------------------------------------</span><br><span class="line"> Aggregate (actual time&#x3D;15714.776..15714.779 rows&#x3D;1 loops&#x3D;1)</span><br><span class="line">   -&gt;  Hash Join (actual time&#x3D;5134.219..15603.861 rows&#x3D;748912 loops&#x3D;1)</span><br><span class="line">         Hash Cond: (lineitem.l_orderkey &#x3D; orders.o_orderkey)</span><br><span class="line">         -&gt;  Bitmap Heap Scan on lineitem (actual time&#x3D;2837.938..7162.214 rows&#x3D;16243662 loops&#x3D;1)</span><br><span class="line">               Recheck Cond: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">               Heap Blocks: exact&#x3D;607593</span><br><span class="line">               -&gt;  Bitmap Index Scan on idx_lineitem_shipdate (actual time&#x3D;2556.845..2556.845 rows&#x3D;16243662 loops&#x3D;1)</span><br><span class="line">                     Index Cond: (l_shipdate &gt; &#39;1995-03-09&#39;::date)</span><br><span class="line">         -&gt;  Hash (actual time&#x3D;2290.201..2290.202 rows&#x3D;3625845 loops&#x3D;1)</span><br><span class="line">               Buckets: 2097152  Batches: 4  Memory Usage: 48222kB</span><br><span class="line">               -&gt;  Bitmap Heap Scan on orders (actual time&#x3D;563.536..1548.176 rows&#x3D;3625845 loops&#x3D;1)</span><br><span class="line">                     Recheck Cond: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line">                     Heap Blocks: exact&#x3D;138113</span><br><span class="line">                     -&gt;  Bitmap Index Scan on idx_orders_orderdate (actual time&#x3D;333.284..333.285 rows&#x3D;3625845 loops&#x3D;1)</span><br><span class="line">                           Index Cond: (o_orderdate &lt; &#39;1995-03-09&#39;::date)</span><br><span class="line"> Planning Time: 0.267 ms</span><br><span class="line"> Execution Time: 15727.275 ms</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="Gather-Merge-1"><a href="#Gather-Merge-1" class="headerlink" title="Gather Merge"></a>Gather Merge</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">tpch&#x3D;# explain (analyze, costs off)</span><br><span class="line">select  l_orderkey from lineitem where l_suppkey &gt; 10000 order by l_suppkey ;</span><br><span class="line">                                          QUERY PLAN</span><br><span class="line">----------------------------------------------------------------------------------------------</span><br><span class="line"> Gather Merge (actual time&#x3D;3351.705..8310.367 rows&#x3D;23998124 loops&#x3D;1)</span><br><span class="line">   Workers Planned: 4</span><br><span class="line">   Workers Launched: 4</span><br><span class="line">   -&gt;  Sort (actual time&#x3D;3181.446..3896.115 rows&#x3D;4799625 loops&#x3D;5)</span><br><span class="line">         Sort Key: l_suppkey</span><br><span class="line">         Sort Method: external merge  Disk: 136216kB</span><br><span class="line">         Worker 0:  Sort Method: external merge  Disk: 120208kB</span><br><span class="line">         Worker 1:  Sort Method: external merge  Disk: 116392kB</span><br><span class="line">         Worker 2:  Sort Method: external merge  Disk: 123520kB</span><br><span class="line">         Worker 3:  Sort Method: external merge  Disk: 114264kB</span><br><span class="line">         -&gt;  Parallel Seq Scan on lineitem (actual time&#x3D;55.688..915.160 rows&#x3D;4799625 loops&#x3D;5)</span><br><span class="line">               Filter: (l_suppkey &gt; 10000)</span><br><span class="line">               Rows Removed by Filter: 1200334</span><br><span class="line"> Planning Time: 0.102 ms</span><br><span class="line"> Execution Time: 9654.078 ms</span><br></pre></td></tr></table></figure>
+
+<p>Gather Merge is a modified version of the Gather plan. It basically parallelizes the sort. So Gather gets sorted output from the workers, and then it merges them and returns sorted output.</p>
+<p>A sequential Sort took almost almost twice longer :</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">                                   QUERY PLAN                                    </span><br><span class="line">---------------------------------------------------------------------------------</span><br><span class="line"> Sort (actual time&#x3D;14399.200..18068.514 rows&#x3D;23998124 loops&#x3D;1)</span><br><span class="line">   Sort Key: l_suppkey</span><br><span class="line">   Sort Method: external merge  Disk: 610560kB</span><br><span class="line">   -&gt;  Seq Scan on lineitem (actual time&#x3D;16.346..4320.823 rows&#x3D;23998124 loops&#x3D;1)</span><br><span class="line">         Filter: (l_suppkey &gt; 10000)</span><br><span class="line">         Rows Removed by Filter: 6001671</span><br><span class="line"> Planning Time: 0.086 ms</span><br><span class="line"> Execution Time: 20015.980 ms</span><br></pre></td></tr></table></figure>
+
+
+<p>There are lot of other scenarios where parallelism can be observed, but probably I will take it up in a later blog ….</p>
+</div>
+
+<style type="text/css">
+.content .tabs ul { margin: 0; }
+.content .tabs ul li { margin: 0; }
+.tab-content { display: none; }
+</style>
+
+<script>
+function onTabClick (event) {
+    var tabTitle = $(event.currentTarget).children('span:last-child').text();
+    $('.article .content .tab-content').css('display', 'none');
+    $('.article .content .tabs li').removeClass('is-active');
+    $('#' + tabTitle).css('display', 'block');
+    $(event.currentTarget).parent().addClass('is-active');
+}
+</script>
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2021/07/07/need-for-external-compression-methods-in-postgresql/">
+                <span class="level-item">Need for external compression methods in PostgreSQL</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 77,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="A quick sanity testing of PostgreSQL parallel query on Arm64" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>

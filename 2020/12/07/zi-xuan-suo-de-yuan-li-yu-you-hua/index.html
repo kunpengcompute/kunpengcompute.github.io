@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html  lang="en">
+<head>
+    <meta charset="utf-8" />
+
+<meta name="generator" content="Hexo 4.2.1" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+
+<title>自旋锁的原理与优化 - Kunpeng Compute Team Blog</title>
+
+
+    <meta name="description" content="作者: wangxiyuan 本文介绍自旋锁的概念、实现以及优化">
+<meta property="og:type" content="article">
+<meta property="og:title" content="自旋锁的原理与优化">
+<meta property="og:url" content="https://kunpengcompute.github.io/2020/12/07/zi-xuan-suo-de-yuan-li-yu-you-hua/index.html">
+<meta property="og:site_name" content="Kunpeng Compute Team Blog">
+<meta property="og:description" content="作者: wangxiyuan 本文介绍自旋锁的概念、实现以及优化">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://kunpengcompute.github.io/images/og_image.png">
+<meta property="article:published_time" content="2020-12-07T09:36:00.000Z">
+<meta property="article:modified_time" content="2021-07-08T02:56:40.868Z">
+<meta property="article:author" content="鲲鹏计算开源生态团队">
+<meta property="article:tag" content="数据库">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://kunpengcompute.github.io/images/og_image.png">
+
+
+
+
+
+<link rel="alternative" href="/atom.xml" title="自旋锁的原理与优化" type="application/atom+xml">
+
+
+
+<link rel="icon" href="/images/logo.png">
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.7.2/css/bulma.css">
+<link rel="stylesheet" href="https://cdn.bootcdn.net/ajax/libs/font-awesome/5.4.1/css/all.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Ubuntu:400,600|Source+Code+Pro">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@9.12.0/styles/atom-one-light.css">
+
+
+    
+    
+<style>body>.footer,body>.navbar,body>.section{opacity:0}</style>
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/css/lightgallery.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/css/justifiedGallery.min.css">
+
+    
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.css">
+
+    
+    
+    
+    
+<link rel="stylesheet" href="/css/back-to-top.css">
+
+    
+    
+    
+    <script>
+var _hmt = _hmt || [];
+(function() {
+    var hm = document.createElement("script");
+    hm.src = "//hm.baidu.com/hm.js?5def612917161d75998e840a01d72a58";
+    var s = document.getElementsByTagName("script")[0];
+    s.parentNode.insertBefore(hm, s);
+})();
+</script>
+    
+    
+    
+    <link rel="stylesheet" href="/css/progressbar.css">
+<script src="https://cdn.jsdelivr.net/npm/pace-js@1.0.2/pace.min.js"></script>
+    
+    
+    
+
+
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="is-3-column">
+    <div style='margin:0 auto;display:none;'>
+        <img src='/images/logo.png' />
+    </div>
+    <nav class="navbar navbar-main">
+    <div class="container">
+        <div class="navbar-brand is-flex-center">
+            <a class="navbar-item navbar-logo" href="/">
+            
+                <img src="/images/banner.png" alt="自旋锁的原理与优化" height="28">
+            
+            </a>
+        </div>
+        <div class="navbar-menu">
+            
+            <div class="navbar-start">
+                
+                <a class="navbar-item"
+                href="/">主页</a>
+                
+                <a class="navbar-item"
+                href="/archives">归档</a>
+                
+                <a class="navbar-item"
+                href="/tags">标签</a>
+                
+                <a class="navbar-item"
+                href="/arm-landscape">Landscape</a>
+                
+                <a class="navbar-item"
+                href="/about">关于</a>
+                
+            </div>
+            
+            <div class="navbar-end">
+                
+                    
+                    <a class="navbar-item" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                    
+                
+                
+                
+                <a class="navbar-item search" title="Search" href="javascript:;">
+                    <i class="fas fa-search"></i>
+                </a>
+                
+            </div>
+        </div>
+    </div>
+</nav>
+    
+    <section class="section">
+        <div class="container">
+            <div class="columns">
+                <div class="column is-8-tablet is-8-desktop is-6-widescreen has-order-2 column-main">
+<div class="card">
+    
+    <div class="card-content article ">
+        
+        <div class="level article-meta is-size-7 is-uppercase is-mobile is-overflow-x-auto">
+            <div class="level-left">
+                <time class="level-item has-text-grey" datetime="2020-12-07T09:36:00.000Z">2020-12-07</time>
+                
+                <div class="level-item">
+                <a class="has-link-grey -link" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">数据库</a>
+                </div>
+                
+                
+                
+            </div>
+        </div>
+        
+        <h1 class="title is-size-3 is-size-4-mobile has-text-weight-normal">
+            
+                自旋锁的原理与优化
+            
+        </h1>
+        <div class="content">
+            <p>作者: <a href="https://github.com/wangxiyuan">wangxiyuan</a></p>
+<p>本文介绍自旋锁的概念、实现以及优化</p>
+<a id="more"></a>
+
+<h1 id="什么是自旋锁"><a href="#什么是自旋锁" class="headerlink" title="什么是自旋锁"></a>什么是自旋锁</h1><p>自旋锁（spin lock）与互斥锁（mutex）类似，任时刻只有一个线程能够获得锁。当一个线程在获取锁的时候，如果锁已经被其它线程获取，那么该线程将循环等待，然后不断的判断锁是否能够被成功获取，直到获取到锁才会退出循环。</p>
+<p>在获取锁的过程中，线程一直处于活跃状态。因此与mutex不同，spinlock不会导致线程的状态切换(用户态-&gt;内核态)，一直处于用户态，即线程一直都是active的；不会使线程进入阻塞状态，减少了不必要的上下文切换，执行速度快。</p>
+<p>由于自旋时不释放CPU，如果持有自旋锁的线程一直不释放自旋锁，那么等待该自旋锁的线程会一直浪费CPU时间。因此，自旋锁主要适用于被持有时间短，线程不希望在重新调度上花过多时间的情况。</p>
+<h1 id="实现"><a href="#实现" class="headerlink" title="实现"></a>实现</h1><p>根据自旋锁的原理，我们先尝试写出伪代码实现：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;循环检查锁状态，并尝试获取，直到成功</span><br><span class="line">while (true):</span><br><span class="line">  locked &#x3D; get_lock()</span><br><span class="line">  if locked &#x3D;&#x3D; false:</span><br><span class="line">    locked &#x3D; true</span><br><span class="line">    break</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;上锁后执行相关任务</span><br><span class="line">do_something</span><br><span class="line"></span><br><span class="line">&#x2F;&#x2F;执行完毕，释放锁</span><br><span class="line">locked &#x3D; false</span><br></pre></td></tr></table></figure>
+
+<p>细心的同学可以发现上面的逻辑在并发场景会遇到问题：两个线程可能会同时进入<code>if</code>语句，同时获取锁，导致锁不生效。</p>
+<p>如何解决这个问题？我们可以把查询锁（get_lock）和设置锁（locked=true）组合成一个原子操作，保证同一时间只有一个线程在执行。如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;&#x2F;这里get_and_set(locked)就是一个原子操作，执行成功后把locked设置成true。</span><br><span class="line">while (get_and_set(locked) &#x3D;&#x3D; false):</span><br><span class="line">  continue</span><br><span class="line"></span><br><span class="line">do_something</span><br><span class="line"></span><br><span class="line">locked &#x3D; false</span><br></pre></td></tr></table></figure>
+
+<p>如此，就实现了一个简单的自旋锁。</p>
+<p>那么现在的问题是如何实现<code>get_and_set(locked)</code>这个原子操作？这里有两个常用的方法可以使用：<code>TAS（test and set）</code>和<code>CAS （compare and swap）</code>。</p>
+<ol>
+<li><p><code>TAS</code>：一个TAS指令包括两个子步骤，把给定的内存地址设置为1，然后返回之前的旧值。</p>
+</li>
+<li><p><code>CAS</code>：CAS指令需要三个参数，一个内存位置(V)、一个期望旧值(A)、一个新值(B)。过程如下：</p>
+<p> a. 比较内存V的值是否与A相等？<br> b. 如果相等，则用新值B替换内存位置V的旧值<br> c. 如果不相等，不做任何操作。<br> d. 无论哪个情况，CAS都会把内存V原来的值返回。</p>
+</li>
+</ol>
+<p>很多语言都提供了封装后的TAS和CAS调用方法。</p>
+<ol>
+<li>以C++ 11为例，<code>atomic</code>标准库提供了相关方法：<a href="https://en.cppreference.com/w/c/atomic/atomic_flag_test_and_set">std::atomic_flag::test_and_set</a>和<a href="http://www.cplusplus.com/reference/atomic/atomic/compare_exchange_strong/">std::atomic::compare_exchange_strong</a></li>
+<li>GCC编译器也内置了相关方法：<code>__atomic_test_and_set</code>和<code>__atomic_compare_exchange_n</code>.</li>
+<li>Java也提供了例如<code>java.util.concurrent.atomic.AtomicReference.compareAndSet</code>等方法。</li>
+</ol>
+<p>使用这些方法替换伪代码中的<code>get_and_set(locked)</code>，就能快速实现自旋锁。</p>
+<h1 id="参考实现"><a href="#参考实现" class="headerlink" title="参考实现"></a>参考实现</h1><p>下面我们看看一些顶级开源项目中是如何实现自旋锁的。注意，以下每个软件的代码可能在很多地方都实现/使用了自旋锁，这里只选取了其中某一些加以分析。</p>
+<h2 id="MariaDB-10-4"><a href="#MariaDB-10-4" class="headerlink" title="MariaDB 10.4"></a>MariaDB 10.4</h2><p>代码路径：<code>/storage/innobase/include/ib0mutex.h</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">struct TTASMutex &#123;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line"></span><br><span class="line">    &#x2F;** Try and lock the mutex.</span><br><span class="line">    @return true on success *&#x2F;</span><br><span class="line">    bool try_lock() UNIV_NOTHROW</span><br><span class="line">    &#123;</span><br><span class="line">        uint32_t oldval &#x3D; MUTEX_STATE_UNLOCKED;</span><br><span class="line">        return m_lock_word.compare_exchange_strong(</span><br><span class="line">            oldval,</span><br><span class="line">            MUTEX_STATE_LOCKED,</span><br><span class="line">            std::memory_order_acquire,</span><br><span class="line">            std::memory_order_relaxed);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    &#x2F;** Acquire the mutex.</span><br><span class="line">    @param max_spins max number of spins</span><br><span class="line">    @param max_delay max delay per spin *&#x2F;</span><br><span class="line">    void enter(uint32_t max_spins, uint32_t max_delay,</span><br><span class="line">            const char*, uint32_t) UNIV_NOTHROW</span><br><span class="line">    &#123;</span><br><span class="line">        const uint32_t step &#x3D; max_spins;</span><br><span class="line">        uint32_t n_spins &#x3D; 0;</span><br><span class="line"></span><br><span class="line">        while (!try_lock()) &#123;</span><br><span class="line">            ut_delay(max_delay);</span><br><span class="line">            if (++n_spins &#x3D;&#x3D; max_spins) &#123;</span><br><span class="line">                os_thread_yield();</span><br><span class="line">                max_spins+&#x3D; step;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        m_policy.add(n_spins, 0);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如上所示，在<code>TTASMutex</code>结构里，有个<code>enter</code>方法，里面实现了上锁+自旋的功能。其中上锁动作调用了<code>try_lock</code>方法，里面使用了CAS原子操作。</p>
+<p>在我们之前写的简单伪代码中，while循环内什么都没做（直接continue），即每次自旋之间无停顿、无其他操作。而mariaDB这里却做了一些动作，在每次while循环中：</p>
+<ol>
+<li>执行<code>ut_delay</code>。即每次上锁失败后，会等待一段时间，然后再去尝试上锁。</li>
+<li>判断自旋次数，当自旋次数达到某个阈值，不再自旋，直接线程挂起。</li>
+</ol>
+<p>这样做可以防止某些自旋锁无限空转、浪费CPU资源的情况。</p>
+<h2 id="PostgreSQL"><a href="#PostgreSQL" class="headerlink" title="PostgreSQL"></a>PostgreSQL</h2><p>代码路径：<code>src/include/storage/s_lock.h</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;*</span><br><span class="line"> * s_lock(lock) - platform-independent portion of waiting for a spinlock.</span><br><span class="line"> *&#x2F;</span><br><span class="line">int</span><br><span class="line">s_lock(volatile slock_t *lock, const char *file, int line, const char *func)</span><br><span class="line">&#123;</span><br><span class="line">    SpinDelayStatus delayStatus;</span><br><span class="line"></span><br><span class="line">    init_spin_delay(&amp;delayStatus, file, line, func);</span><br><span class="line"></span><br><span class="line">    while (TAS_SPIN(lock))</span><br><span class="line">    &#123;</span><br><span class="line">        perform_spin_delay(&amp;delayStatus);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    finish_spin_delay(&amp;delayStatus);</span><br><span class="line"></span><br><span class="line">    return delayStatus.delays;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>我们可以看到，与MariaDB类似，while的判断中不断获取锁，while语句中加入delay。<code>TAS_SPIN</code>的实现如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">static __inline__ int</span><br><span class="line">tas(volatile slock_t *lock)</span><br><span class="line">&#123;</span><br><span class="line">    return __sync_lock_test_and_set(lock, 1);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p><code>__sync_lock_test_and_set</code>是gcc内置的老版本的TAS原子操作，推荐使用<code>__atomic_test_and_set</code></p>
+<h2 id="Linux-kernel"><a href="#Linux-kernel" class="headerlink" title="Linux kernel"></a>Linux kernel</h2><p>Kernel的spin lock很复杂，有多种实现，以arm64为例，在4.16版本之前，使用的是汇编实现。4.16之后<a href="https://github.com/torvalds/linux/commit/c11090474d70590170cf5fa6afe85864ab494b37#diff-b986d1b5abd625b1eb28906791cef2146c371d10e4e8e5b23bb9f4158c2f16f1">使用</a>了通用的qspinlock，qspinlock较复杂，请参考<a href="https://blog.csdn.net/feisezaiyue/article/details/106171499">这里</a>和<a href="https://blog.csdn.net/yhb1047818384/article/details/84677203">这里</a>。以后另开文章分析。</p>
+<h1 id="优化"><a href="#优化" class="headerlink" title="优化"></a>优化</h1><h2 id="原子操作优化"><a href="#原子操作优化" class="headerlink" title="原子操作优化"></a>原子操作优化</h2><p>首先我们先看看TAS和CAS在汇编层面是什么样的？这里需要特别说明一下硬件架构和编译工具的选择，在不同硬件架构上使用不同版本的编译器，得到的汇编指令是不同的。本文以ARM64为例，使用gcc 8.2编译器, 编译参入为<code>-O2 -std=c++11</code>，分别执行<code>__atomic_test_and_set</code>和<code>__atomic_compare_exchange_n</code>。</p>
+<h3 id="atomic-test-and-set"><a href="#atomic-test-and-set" class="headerlink" title="__atomic_test_and_set"></a><code>__atomic_test_and_set</code></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;atomic&gt;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">   int val &#x3D; 456;</span><br><span class="line">   __atomic_test_and_set(&amp;val, 1);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>汇编结果如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">main:</span><br><span class="line">        sub     sp, sp, #16</span><br><span class="line">        mov     w0, 456</span><br><span class="line">        add     x2, sp, 12</span><br><span class="line">        str     w0, [sp, 12]</span><br><span class="line">        mov     w0, 1</span><br><span class="line">.L2:</span><br><span class="line">        ldaxrb  w1, [x2]</span><br><span class="line">        stxrb   w3, w0, [x2]</span><br><span class="line">        cbnz    w3, .L2</span><br><span class="line">        mov     w0, 0</span><br><span class="line">        add     sp, sp, 16</span><br><span class="line">        ret</span><br></pre></td></tr></table></figure>
+
+<h3 id="atomic-compare-exchange-n"><a href="#atomic-compare-exchange-n" class="headerlink" title="__atomic_compare_exchange_n"></a><code>__atomic_compare_exchange_n</code></h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">#include &lt;atomic&gt;</span><br><span class="line"></span><br><span class="line">int main()</span><br><span class="line">&#123;</span><br><span class="line">   int expected &#x3D; 123;</span><br><span class="line">   int val &#x3D; 456;</span><br><span class="line">   __atomic_compare_exchange_n(&amp;val, &amp;expected, 1 , false, __ATOMIC_ACQUIRE, __ATOMIC_ACQUIRE); </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>汇编结果如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">main:</span><br><span class="line">        sub     sp, sp, #16</span><br><span class="line">        mov     w0, 456</span><br><span class="line">        add     x2, sp, 12</span><br><span class="line">        str     w0, [sp, 12]</span><br><span class="line">        mov     w0, 1</span><br><span class="line">.L2:</span><br><span class="line">        ldaxr   w1, [x2]</span><br><span class="line">        cmp     w1, 123</span><br><span class="line">        bne     .L3</span><br><span class="line">        stxr    w3, w0, [x2]</span><br><span class="line">        cbnz    w3, .L2</span><br><span class="line">.L3:</span><br><span class="line">        mov     w0, 0</span><br><span class="line">        add     sp, sp, 16</span><br><span class="line">        ret</span><br></pre></td></tr></table></figure>
+
+<p>分析可以发现，TAS是直接写操作，CAS是先比较，满足条件后再写。而<code>写</code>是一个相对耗时的操作，因此在高并发、频繁使用锁的场景，CAS性能会更好。</p>
+<p>因此在Postgre中，使用CAS代替TAS就是一个优化点了。详见<a href="https://www.postgresql.org/message-id/flat/CAB10pyamDkTFWU_BVGeEVmkc8%3DEhgCjr6QBk02SCdJtKpHkdFw%40mail.gmail.com">社区讨论</a>。</p>
+<h2 id="锁等待优化"><a href="#锁等待优化" class="headerlink" title="锁等待优化"></a>锁等待优化</h2><p>在MariaDB和Postgre的源码中，我们可以看到在不断获取锁的过程中，都有delay的操作。适当的delay操作可以避免很多无意义的锁获取动作。那么当执行delay操作时，数据库到底在干什么？</p>
+<p>我们先看MariaDB的<code>ut_delay</code>方法。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">&#x2F;**</span><br><span class="line">  Run a delay loop while waiting for a shared resource to be released.</span><br><span class="line">  @param delay originally, roughly microseconds on 100 MHz Intel Pentium</span><br><span class="line">*&#x2F;</span><br><span class="line">static inline void ut_delay(unsigned delay)</span><br><span class="line">&#123;</span><br><span class="line">  unsigned i&#x3D; my_cpu_relax_multiplier &#x2F; 4 * delay;</span><br><span class="line">  HMT_low();</span><br><span class="line">  while (i--)</span><br><span class="line">    MY_RELAX_CPU();</span><br><span class="line">  HMT_medium();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">static inline void MY_RELAX_CPU(void)</span><br><span class="line">&#123;</span><br><span class="line">#ifdef _WIN32</span><br><span class="line">  &#x2F;*</span><br><span class="line">    In the Win32 API, the x86 PAUSE instruction is executed by calling</span><br><span class="line">    the YieldProcessor macro defined in WinNT.h. It is a CPU architecture-</span><br><span class="line">    independent way by using YieldProcessor.</span><br><span class="line">  *&#x2F;</span><br><span class="line">  YieldProcessor();</span><br><span class="line">#elif defined HAVE_PAUSE_INSTRUCTION</span><br><span class="line">  &#x2F;*</span><br><span class="line">    According to the gcc info page, asm volatile means that the</span><br><span class="line">    instruction has important side-effects and must not be removed.</span><br><span class="line">    Also asm volatile may trigger a memory barrier (spilling all registers</span><br><span class="line">    to memory).</span><br><span class="line">  *&#x2F;</span><br><span class="line">#ifdef __SUNPRO_CC</span><br><span class="line">  asm (&quot;pause&quot; );</span><br><span class="line">#else</span><br><span class="line">  __asm__ __volatile__ (&quot;pause&quot;);</span><br><span class="line">#endif</span><br><span class="line">#elif defined(_ARCH_PWR8)</span><br><span class="line">  __ppc_get_timebase();</span><br><span class="line">#elif defined __GNUC__ &amp;&amp; (defined __arm__ || defined __aarch64__)</span><br><span class="line">  &#x2F;* Mainly, prevent the compiler from optimizing away delay loops *&#x2F;</span><br><span class="line">  __asm__ __volatile__ (&quot;&quot;:::&quot;memory&quot;);</span><br><span class="line">#else</span><br><span class="line">  int32 var, oldval &#x3D; 0;</span><br><span class="line">  my_atomic_cas32_strong_explicit(&amp;var, &amp;oldval, 1, MY_MEMORY_ORDER_RELAXED,</span><br><span class="line">                                  MY_MEMORY_ORDER_RELAXED);</span><br><span class="line">#endif</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到<code>ut_delay</code>中调用了<code>MY_RELAX_CPU</code>方法， 而<code>MY_RELAX_CPU</code>方法中，根据不同架构和平台，执行了不同的命令。在X86架构中，调用了底层汇编指令<code>PAUSE</code>。在ARM64平台执行内存屏障(<code>__asm__ __volatile__ (&quot;&quot;:::&quot;memory&quot;);</code>)，防止编译优化，保持CPU空转（即不执行任何操作）。注意，ARM64的这个内存屏障代码是在这个<a href="https://github.com/MariaDB/server/commit/24f510bba4f0c3236aa5a8c96c209eb71317f4fe#diff-e877f572e9fd77c43d5e7af075f92e74">优化提交</a>中新增的。</p>
+<p>在这个提交没有合入前，在ARM64平台上，默认执行的是<code>my_atomic_cas32_strong_explicit</code>方法，这是一个模拟无效的CAS的方法。为什么会有这样的修改？</p>
+<p>最早的时候，社区开发者在48核的Qualcomm Centriq 2400 ARM服务上测试后，发现模拟CAS操作能提高ARM的性能。但随着代码不断迭代以及ARM服务器的不断发展。在MariaDB 10.4分支，开发者发现，在ARM上保持CPU空转的性能更高，有大概12%的性能提升。</p>
+<p>所以我们很难在原理上讲清为什么CPU空转比模拟CAS性能高，但事实就是如此。通过这个优化，我也学到了两点，分享给大家：</p>
+<ol>
+<li>性能优化有时不是看代码就能发现的，更多的还是需要实际测试。</li>
+<li>性能是实时变化的，以前的优化可能放到后来就是负担。性能优化需要持续不断的展开。</li>
+</ol>
+
+        </div>
+        
+        <div class="level is-size-7 is-uppercase">
+            <div class="level-start">
+                <div class="level-item">
+                    <span class="is-size-6 has-text-grey has-mr-7">#</span>
+                    <a class="has-link-grey -link" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/" rel="tag">数据库</a>
+                </div>
+            </div>
+        </div>
+        
+        
+        
+    </div>
+</div>
+
+
+
+
+
+<div class="card card-transparent">
+    <div class="level post-navigation is-flex-wrap is-mobile">
+        
+        <div class="level-start">
+            <a class="level level-item has-link-grey  article-nav-prev" href="/2020/12/08/hybrid-deployment-of-mariadb-cluster-on-x86-and-arm64/">
+                <i class="level-item fas fa-chevron-left"></i>
+                <span class="level-item">Hybrid deployment of MariaDB cluster on x86 and arm64</span>
+            </a>
+        </div>
+        
+        
+        <div class="level-end">
+            <a class="level level-item has-link-grey  article-nav-next" href="/2020/12/04/test-mariadb-s-s3-storage-engine-on-arm64-platform/">
+                <span class="level-item">Test MariaDB&#39;s S3 storage engine on arm64 platform</span>
+                <i class="level-item fas fa-chevron-right"></i>
+            </a>
+        </div>
+        
+    </div>
+</div>
+
+
+
+<div class="card">
+    <div class="card-content">
+        <h3 class="title is-5 has-text-weight-normal">Comments</h3>
+        
+<div id="comment-container"></div>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.css">
+<script src="https://cdn.jsdelivr.net/npm/gitalk@1.4.1/dist/gitalk.min.js"></script>
+<script>
+    var gitalk = new Gitalk({
+        clientID: '77c4b9cab07e89404cc4',
+        clientSecret: '350dad6204f4803d3109cc9b73331eea0e7350ad',
+        number: 63,
+        repo: 'kunpengcompute.github.io',
+        owner: 'kunpengcompute',
+        admin: "Yikun",
+        createIssueManually: false,
+        distractionFreeMode: false
+    })
+    gitalk.render('comment-container')
+</script>
+
+
+    </div>
+</div>
+
+</div>
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen  has-order-1 column-left ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <nav class="level">
+            <div class="level-item has-text-centered" style="flex-shrink: 1">
+                <div>
+                    
+                    <figure class="image is-128x128 has-mb-6">
+                        <img class="" src="/images/logo.png" alt="鲲鹏展翅，力算未来">
+                    </figure>
+                    
+                    <p class="is-size-4 is-block">
+                        鲲鹏展翅，力算未来
+                    </p>
+                    
+                    
+                    
+                </div>
+            </div>
+        </nav>
+        <nav class="level is-mobile">
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Posts
+                    </p>
+                    <a href="/archives">
+                        <p class="title has-text-weight-normal">
+                            62
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Categories
+                    </p>
+                    <a href="/categories">
+                        <p class="title has-text-weight-normal">
+                            5
+                        </p>
+                    </a>
+                </div>
+            </div>
+            <div class="level-item has-text-centered is-marginless">
+                <div>
+                    <p class="heading">
+                        Tags
+                    </p>
+                    <a href="/tags">
+                        <p class="title has-text-weight-normal">
+                            8
+                        </p>
+                    </a>
+                </div>
+            </div>
+        </nav>
+        
+        <div class="level">
+            <a class="level-item button is-link is-rounded" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                Follow</a>
+        </div>
+        
+        
+        
+        <div class="level is-mobile">
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="Github" href="https://github.com/kunpengcompute">
+                
+                <i class="fab fa-github"></i>
+                
+            </a>
+            
+            <a class="level-item button is-white is-marginless" target="_blank" rel="noopener"
+                title="RSS" href="/atom.xml">
+                
+                <i class="fas fa-rss"></i>
+                
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+    
+        
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+        <h3 class="menu-label">
+            Links
+        </h3>
+        <ul class="menu-list">
+        
+            <li>
+                <a class="level is-mobile" href="https://join.slack.com/t/armserverecosystem/shared_invite/enQtOTE0MDMxOTc0MTY0LTBiMTdkZWFhMjZmYzI2ZWVmYWUxMTU1YTcxY2NlZWViOGM5YTY4YzkwZDU3M2ZiZWUxMDQzMmU0NGY5YmFiYWY" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">Slack</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">join.slack.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://kunpengcompute.github.io/2020/03/27/kun-peng-ji-suan-tuan-dui-bo-ke-kai-zhang-la-huan-ying-tou-gao/" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">欢迎投稿</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">kunpengcompute.github.io</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://github.com/kunpengcompute" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">鲲鹏Github主页</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">github.com</span>
+                    </span>
+                </a>
+            </li>
+        
+            <li>
+                <a class="level is-mobile" href="https://huaweicloud.com/kunpeng" target="_blank" rel="noopener">
+                    <span class="level-left">
+                        <span class="level-item">华为鲲鹏社区</span>
+                    </span>
+                    <span class="level-right">
+                        <span class="level-item tag">huaweicloud.com</span>
+                    </span>
+                </a>
+            </li>
+        
+        </ul>
+        </div>
+    </div>
+</div>
+
+    
+    
+        <div class="column-right-shadow is-hidden-widescreen ">
+        
+            
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+        
+            <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+        
+        </div>
+    
+</div>
+
+                
+
+
+
+
+<div class="column is-4-tablet is-4-desktop is-3-widescreen is-hidden-touch is-hidden-desktop-only has-order-3 column-right ">
+    
+        
+<div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Categories
+            </h3>
+            <ul class="menu-list">
+            <li>
+        <a class="level is-marginless" href="/categories/Web/">
+            <span class="level-start">
+                <span class="level-item">Web</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">4</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">基础库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">8</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+            <span class="level-start">
+                <span class="level-item">大数据</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">2</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+            <span class="level-start">
+                <span class="level-item">数据库</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">43</span>
+            </span>
+        </a></li><li>
+        <a class="level is-marginless" href="/categories/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+            <span class="level-start">
+                <span class="level-item">虚拟化</span>
+            </span>
+            <span class="level-end">
+                <span class="level-item tag">3</span>
+            </span>
+        </a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+    
+        <div class="card widget">
+    <div class="card-content">
+        <div class="menu">
+            <h3 class="menu-label">
+                Tags
+            </h3>
+            <div class="field is-grouped is-grouped-multiline">
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Java/">
+                        <span class="tag">Java</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Packaging/">
+                        <span class="tag">Packaging</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/Web/">
+                        <span class="tag">Web</span>
+                        <span class="tag is-grey">4</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E4%BC%9A%E8%AE%AE/">
+                        <span class="tag">会议</span>
+                        <span class="tag is-grey">1</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%9F%BA%E7%A1%80%E5%BA%93/">
+                        <span class="tag">基础库</span>
+                        <span class="tag is-grey">6</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E5%A4%A7%E6%95%B0%E6%8D%AE/">
+                        <span class="tag">大数据</span>
+                        <span class="tag is-grey">2</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E6%95%B0%E6%8D%AE%E5%BA%93/">
+                        <span class="tag">数据库</span>
+                        <span class="tag is-grey">42</span>
+                    </a>
+                </div>
+                
+                <div class="control">
+                    <a class="tags has-addons" href="/tags/%E8%99%9A%E6%8B%9F%E5%8C%96/">
+                        <span class="tag">虚拟化</span>
+                        <span class="tag is-grey">3</span>
+                    </a>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+</div>
+    
+    
+</div>
+
+            </div>
+        </div>
+    </section>
+    <footer class="footer">
+    <div class="container">
+        <div class="level">
+            <div class="level-start has-text-centered-mobile">
+                <a class="footer-logo is-block has-mb-6" href="/">
+                
+                    <img src="/images/banner.png" alt="自旋锁的原理与优化" height="28">
+                
+                </a>
+                <p class="is-size-7">
+                &copy; 2021 鲲鹏计算开源生态团队&nbsp;
+                Powered by <a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a> & <a
+                        href="https://github.com/ppoffice/hexo-theme-icarus" target="_blank" rel="noopener">Icarus</a>
+                
+                </p>
+            </div>
+            <div class="level-end">
+            
+                <div class="field has-addons is-flex-center-mobile has-mt-5-mobile is-flex-wrap is-flex-middle">
+                
+                <p class="control">
+                    <a class="button is-white is-large" target="_blank" rel="noopener" title="Our GitHub" href="https://github.com/kunpengcompute">
+                        
+                        <i class="fab fa-github"></i>
+                        
+                    </a>
+                </p>
+                
+                </div>
+            
+            </div>
+        </div>
+    </div>
+</footer>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.3.1/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/moment@2.22.2/min/moment-with-locales.min.js"></script>
+<script>moment.locale("en");</script>
+
+
+<script>
+var IcarusThemeSettings = {
+    site: {
+        url: 'https://kunpengcompute.github.io',
+        external_link: {"enable":true,"exclude":[]}
+    },
+    article: {
+        highlight: {
+            clipboard: true,
+            fold: 'unfolded'
+        }
+    }
+};
+</script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.4/dist/clipboard.min.js" defer></script>
+
+
+
+
+
+<script src="/js/animation.js"></script>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/lightgallery@1.6.8/dist/js/lightgallery.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/justifiedGallery@3.7.0/dist/js/jquery.justifiedGallery.min.js" defer></script>
+<script src="/js/gallery.js" defer></script>
+
+
+
+<div id="outdated">
+    <h6>Your browser is out-of-date!</h6>
+    <p>Update your browser to view this website correctly. <a id="btnUpdateBrowser" href="http://outdatedbrowser.com/">Update
+            my browser now </a></p>
+    <p class="last"><a href="#" id="btnCloseUpdateBrowser" title="Close">&times;</a></p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/outdatedbrowser@1.1.5/outdatedbrowser/outdatedbrowser.min.js" defer></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        outdatedBrowser({
+            bgColor: '#f25648',
+            color: '#ffffff',
+            lowerThan: 'flex'
+        });
+    });
+</script>
+
+
+
+
+
+<a id="back-to-top" title="Back to Top" href="javascript:;">
+    <i class="fas fa-chevron-up"></i>
+</a>
+<script src="/js/back-to-top.js" defer></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script src="/js/main.js" defer></script>
+
+    
+    <div class="searchbox ins-search">
+    <div class="searchbox-container ins-search-container">
+        <div class="searchbox-input-wrapper">
+            <input type="text" class="searchbox-input ins-search-input" placeholder="Type something..." />
+            <span class="searchbox-close ins-close ins-selectable"><i class="fa fa-times-circle"></i></span>
+        </div>
+        <div class="searchbox-result-wrapper ins-section-wrapper">
+            <div class="ins-section-container"></div>
+        </div>
+    </div>
+</div>
+<script>
+    (function (window) {
+        var INSIGHT_CONFIG = {
+            TRANSLATION: {
+                POSTS: 'Posts',
+                PAGES: 'Pages',
+                CATEGORIES: 'Categories',
+                TAGS: 'Tags',
+                UNTITLED: '(Untitled)',
+            },
+            CONTENT_URL: '/content.json',
+        };
+        window.INSIGHT_CONFIG = INSIGHT_CONFIG;
+    })(window);
+</script>
+<script src="/js/insight.js" defer></script>
+<link rel="stylesheet" href="/css/search.css">
+<link rel="stylesheet" href="/css/insight.css">
+    
+</body>
+</html>
